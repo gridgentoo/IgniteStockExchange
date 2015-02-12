@@ -43,7 +43,6 @@ import org.apache.ignite.thread.*;
 import org.jdk8.backport.*;
 import org.jetbrains.annotations.*;
 
-import javax.cache.*;
 import javax.cache.processor.*;
 import java.io.*;
 import java.nio.*;
