@@ -199,12 +199,13 @@ public class VisorCache implements Serializable {
 
         int cnt = 0;
 
-//        TODO ignite-96
-//        while (it.hasNext() && cnt < sz) {
-//            memSz += it.next().memorySize();
-//
-//            cnt++;
-//        }
+        while (it.hasNext() && cnt < sz) {
+            Cache.Entry<?, ?> entry = it.next();
+
+            memSz += entry.unwrap(GridCacheEntryEx.class).memorySize();
+
+            cnt++;
+        }
 
         if (cnt > 0)
             memSz = (long)((double)memSz / cnt * size);

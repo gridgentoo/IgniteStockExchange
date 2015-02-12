@@ -417,7 +417,7 @@ public class GridCacheSwapSelfTest extends GridCommonAbstractTest {
      * @param cache Cache.
      * @throws Exception In case of error.
      */
-    private void populate(CacheProjection<Integer, CacheValue> cache) throws Exception {
+    private void populate(GridCache<Integer, CacheValue> cache) throws Exception {
         resetCounters();
 
         for (int i = 0; i < ENTRY_CNT; i++) {
@@ -428,12 +428,11 @@ public class GridCacheSwapSelfTest extends GridCommonAbstractTest {
             assert val != null;
             assert val.value() == i;
 
-            Cache.Entry<Integer, CacheValue> entry = cache.entry(i);
+            GridCacheEntryEx entry = ((GridCacheAdapter)cache.cache()).peekEx(i);
 
             assert entry != null;
 
-            assert false : "ignite-96";
-            // versions.put(i, entry.version());
+            versions.put(i, entry.version());
         }
 
         assert swapCnt.get() == 0;
@@ -648,8 +647,8 @@ public class GridCacheSwapSelfTest extends GridCommonAbstractTest {
 
             assert val != null;
             assert entry.getKey() == val.value();
-            assert false : "ignite-96";
-//            assert entry.version().equals(versions.get(i));
+
+            assert ((GridCacheAdapter)cache.cache()).peekEx(i).version().equals(versions.get(i));
         }
     }
 

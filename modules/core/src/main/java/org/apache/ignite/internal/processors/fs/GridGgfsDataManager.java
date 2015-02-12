@@ -43,6 +43,7 @@ import org.apache.ignite.thread.*;
 import org.jdk8.backport.*;
 import org.jetbrains.annotations.*;
 
+import javax.cache.*;
 import javax.cache.processor.*;
 import java.io.*;
 import java.nio.*;
@@ -392,16 +393,19 @@ public class GridGgfsDataManager extends GridGgfsManager {
         // Schedule block request BEFORE prefetch requests.
         final GridGgfsBlockKey key = blockKey(blockIdx, fileInfo);
 
-//        TODO ignite-96
-//        if (log.isDebugEnabled()) {
-//            Entry<GridGgfsBlockKey, byte[]> entry = dataCachePrj.entry(key);
-//
-//            assert entry != null;
-//
-//            if (!entry.primary() && !entry.backup())
-//                log.debug("Reading non-local data block [path=" + path + ", fileInfo=" + fileInfo +
-//                    ", blockIdx=" + blockIdx + ']');
-//        }
+        if (log.isDebugEnabled()) {
+            Cache.Entry<GridGgfsBlockKey, byte[]> entry = dataCachePrj.entry(key);
+
+            assert entry != null;
+
+            CacheAffinity<Object> affinity = dataCachePrj.cache().affinity();
+            ClusterNode locNode = dataCachePrj.gridProjection().ignite().cluster().localNode();
+
+            if (!affinity.isPrimary(locNode, key) && !affinity.isBackup(locNode, key)) {
+                log.debug("Reading non-local data block [path=" + path + ", fileInfo=" + fileInfo +
+                    ", blockIdx=" + blockIdx + ']');
+            }
+        }
 
         IgniteInternalFuture<byte[]> fut = dataCachePrj.getAsync(key);
 

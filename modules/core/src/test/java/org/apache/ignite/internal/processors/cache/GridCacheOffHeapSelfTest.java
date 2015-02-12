@@ -22,6 +22,7 @@ import org.apache.ignite.cache.*;
 import org.apache.ignite.cache.query.*;
 import org.apache.ignite.configuration.*;
 import org.apache.ignite.events.*;
+import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
@@ -224,7 +225,7 @@ public class GridCacheOffHeapSelfTest extends GridCommonAbstractTest {
                 }
             }, EVT_CACHE_OBJECT_TO_OFFHEAP, EVT_CACHE_OBJECT_FROM_OFFHEAP);
 
-            GridCache<Integer, CacheValue> cache = grid(0).cache(null);
+            GridCache<Integer, CacheValue> cache = ((IgniteKernal)grid(0)).cache(null);
 
             populate(cache);
             evictAll(cache);
@@ -332,7 +333,7 @@ public class GridCacheOffHeapSelfTest extends GridCommonAbstractTest {
      * @param cache Cache.
      * @throws Exception In case of error.
      */
-    private void populate(CacheProjection<Integer, CacheValue> cache) throws Exception {
+    private void populate(GridCache<Integer, CacheValue> cache) throws Exception {
         resetCounters();
 
         for (int i = 0; i < ENTRY_CNT; i++) {
@@ -343,13 +344,11 @@ public class GridCacheOffHeapSelfTest extends GridCommonAbstractTest {
             assert val != null;
             assert val.value() == i;
 
-            Cache.Entry<Integer, CacheValue> entry = cache.entry(i);
+            GridCacheEntryEx entry = dht(cache).peekEx(i);
 
             assert entry != null;
 
-            assert false : "ignite-96";
-
-//            versions.put(i, entry.version());
+            versions.put(i, entry.version());
         }
 
         assert swapCnt.get() == 0;
@@ -576,8 +575,8 @@ public class GridCacheOffHeapSelfTest extends GridCommonAbstractTest {
 
             assertNotNull("Value null for key: " + i, val);
             assertEquals(entry.getKey(), (Integer)val.value());
-            assert false : "ignite-96";
-            //assertEquals(entry.version(), versions.get(i));
+
+            assertEquals(entry.unwrap(CacheVersionedEntryImpl.class).version(), versions.get(i));
         }
     }
 
