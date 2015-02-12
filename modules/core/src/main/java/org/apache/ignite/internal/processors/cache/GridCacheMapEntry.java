@@ -4475,7 +4475,7 @@ public abstract class GridCacheMapEntry<K, V> implements GridCacheEntryEx<K, V> 
 
         /** {@inheritDoc} */
         @Override public String toString() {
-            return "LazyValueEntry [key=" + key + ']';
+            return "IteratorEntry [key=" + key + ']';
         }
     }
 }
