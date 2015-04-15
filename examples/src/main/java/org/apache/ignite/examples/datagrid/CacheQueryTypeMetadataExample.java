@@ -87,28 +87,28 @@ public class CacheQueryTypeMetadataExample {
      * @return Person type metadata.
      */
     private static Collection<CacheTypeMetadata> personTypeMetadata() {
-    Collection<CacheTypeMetadata> types = new ArrayList<>();
+        Collection<CacheTypeMetadata> types = new ArrayList<>();
 
-    CacheTypeMetadata type = new CacheTypeMetadata();
-    type.setValueType(Person.class.getName());
+        CacheTypeMetadata type = new CacheTypeMetadata();
+        type.setValueType(Person.class.getName());
 
-    Map<String, Class<?>> qryFlds = type.getQueryFields();
-    qryFlds.put("id", UUID.class);
-    qryFlds.put("orgId", UUID.class);
-    qryFlds.put("firstName", String.class);
-    qryFlds.put("lastName", String.class);
-    qryFlds.put("resume", String.class);
-    qryFlds.put("salary", double.class);
+        Map<String, Class<?>> qryFlds = type.getQueryFields();
+        qryFlds.put("id", UUID.class);
+        qryFlds.put("orgId", UUID.class);
+        qryFlds.put("firstName", String.class);
+        qryFlds.put("lastName", String.class);
+        qryFlds.put("resume", String.class);
+        qryFlds.put("salary", double.class);
 
-    Map<String, Class<?>> ascFlds = type.getAscendingFields();
-    ascFlds.put("id", UUID.class);
-    ascFlds.put("orgId", UUID.class);
-    ascFlds.put("salary", double.class);
+        Map<String, Class<?>> ascFlds = type.getAscendingFields();
+        ascFlds.put("id", UUID.class);
+        ascFlds.put("orgId", UUID.class);
+        ascFlds.put("salary", double.class);
 
-    Collection<String> txtFlds = type.getTextFields();
-    txtFlds.add("resume");
+        Collection<String> txtFlds = type.getTextFields();
+        txtFlds.add("resume");
 
-    types.add(type);
+        types.add(type);
 
         return types;
     }
