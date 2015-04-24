@@ -20,6 +20,7 @@ package org.apache.ignite.internal.processors.datastreamer;
 import org.apache.ignite.*;
 import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.cache.*;
+import org.apache.ignite.internal.processors.cache.distributed.dht.*;
 import org.apache.ignite.internal.util.lang.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.stream.*;
@@ -123,6 +124,9 @@ class DataStreamerUpdateJob implements GridPlainCallable<Object> {
                 rcvr.receive(cache, col);
 
             return null;
+        }
+        catch (GridDhtInvalidPartitionException e) {
+            throw new IgniteCheckedException(e);
         }
         finally {
             if (ignoreDepOwnership)

@@ -3312,6 +3312,9 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
                         if (ttl == CU.TTL_ZERO)
                             return;
 
+                        if (!topVer.equals(ctx.topology().topologyVersion()))
+                            throw new ClusterTopologyException("Topology changed");
+
                         loadEntry(key, val, ver0, (IgniteBiPredicate<Object, Object>) p, topVer, replicate, ttl);
                     }
                 }, args);
@@ -3531,17 +3534,15 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
      */
     IgniteInternalFuture<?> globalLoadCacheAsync(@Nullable IgniteBiPredicate<K, V> p, @Nullable Object... args)
         throws IgniteCheckedException {
-        ClusterGroup nodes = ctx.kernalContext().grid().cluster().forCacheNodes(ctx.name());
-
         ctx.kernalContext().task().setThreadContext(TC_NO_FAILOVER, true);
 
         CacheOperationContext opCtx = ctx.operationContextPerCall();
 
         ExpiryPolicy plc = opCtx != null ? opCtx.expiry() : null;
 
-        return ctx.kernalContext().closure().callAsync(BROADCAST,
-            Arrays.asList(new LoadCacheClosure<>(ctx.name(), p, args, plc)),
-            nodes.nodes());
+        final LoadCacheClosure<K, V> loadClos = new LoadCacheClosure<>(ctx.name(), p, args, plc);
+
+        return new GlobalLoadCacheFuture(loadClos, ctx);
     }
 
     /**
@@ -5695,6 +5696,54 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         /** {@inheritDoc} */
         @Override protected void updateTimeStat() {
             metrics.addPutAndGetTimeNanos(System.nanoTime() - start);
+        }
+    }
+
+    /**
+     * Global load cache future.
+     */
+    private static class GlobalLoadCacheFuture<K1, V1> extends GridFutureAdapter<Void> {
+        /** Load clos. */
+        private final LoadCacheClosure<K1, V1> loadClos;
+
+        /** Context. */
+        private final GridCacheContext<K1, V1> ctx;
+
+        /**
+         * @param loadClos Load cache closure.
+         * @param ctx Context.
+         */
+        public GlobalLoadCacheFuture(LoadCacheClosure<K1, V1> loadClos, GridCacheContext<K1, V1> ctx) {
+            this.loadClos = loadClos;
+            this.ctx = ctx;
+
+            init();
+        }
+
+        /**
+         * Inits future.
+         */
+        private void init() {
+            ClusterGroup nodes = ctx.kernalContext().grid().cluster().forCacheNodes(ctx.name());
+
+            ComputeTaskInternalFuture<Collection<Void>> loadFut = ctx.kernalContext().closure().callAsync(BROADCAST,
+                Arrays.asList(loadClos), nodes.nodes());
+
+            loadFut.listen(new IgniteInClosure<IgniteInternalFuture<Collection<Void>>>() {
+                @Override public void apply(IgniteInternalFuture<Collection<Void>> fut) {
+                    try {
+                        fut.get();
+
+                        onDone();
+                    }
+                    catch (Exception e) {
+                        if (X.hasCause(e, ClusterTopologyException.class))
+                            init();
+                        else
+                            onDone(null, fut.error());
+                    }
+                }
+            });
         }
     }
 }

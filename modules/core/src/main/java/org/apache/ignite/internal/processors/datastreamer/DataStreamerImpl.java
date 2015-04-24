@@ -28,7 +28,6 @@ import org.apache.ignite.internal.managers.deployment.*;
 import org.apache.ignite.internal.managers.eventstorage.*;
 import org.apache.ignite.internal.processors.affinity.*;
 import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.cache.distributed.dht.*;
 import org.apache.ignite.internal.processors.cache.version.*;
 import org.apache.ignite.internal.processors.cacheobject.*;
 import org.apache.ignite.internal.processors.dr.*;
@@ -40,6 +39,7 @@ import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.stream.*;
+
 import org.jetbrains.annotations.*;
 import org.jsr166.*;
 
@@ -59,6 +59,9 @@ import static org.apache.ignite.internal.managers.communication.GridIoPolicy.*;
  */
 @SuppressWarnings("unchecked")
 public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed {
+    /** Debug map. */
+    public static final ConcurrentMap<Integer, Collection<DebugInfo>> DEBUG_MAP = new ConcurrentHashMap<>();
+
     /** Isolated receiver. */
     private static final StreamReceiver ISOLATED_UPDATER = new IsolatedUpdater();
 
@@ -1419,9 +1422,27 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                         topVer,
                         GridDrType.DR_LOAD);
 
+                    Integer key = entry.key().value(null, false);
+
+                    Collection<DebugInfo> debugInfos = DEBUG_MAP.get(key);
+
+                    if (debugInfos == null) {
+                        Collection<DebugInfo> oldDebugInfo =
+                            DEBUG_MAP.putIfAbsent(key, debugInfos = new ConcurrentLinkedQueue());
+
+                        if (oldDebugInfo != null)
+                            debugInfos = oldDebugInfo;
+                    }
+
+                    DebugInfo debugInfo = new DebugInfo(topVer, cctx.nodeId(), cctx.cache().affinity().partition(key),
+                        cctx.cache().affinity().isPrimary(cctx.localNode(), key),
+                        cctx.cache().affinity().isBackup(cctx.localNode(), key));
+
+                    debugInfos.add(debugInfo);
+
                     cctx.evicts().touch(entry, topVer);
                 }
-                catch (GridDhtInvalidPartitionException | GridCacheEntryRemovedException ignored) {
+                catch (GridCacheEntryRemovedException ignored) {
                     // No-op.
                 }
                 catch (IgniteCheckedException ex) {
@@ -1430,6 +1451,56 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                     U.error(log, "Failed to set initial value for cache entry: " + e, ex);
                 }
             }
+        }
+    }
+
+    /**
+     * Debug info.
+     */
+    public static class DebugInfo {
+        /** Timestamp. */
+        public long ts = U.currentTimeMillis();
+
+        /** Topology version. */
+        public AffinityTopologyVersion topVer;
+
+        /** Node id. */
+        public UUID nodeId;
+
+        /** Partition. */
+        public int part;
+
+        /** Primary. */
+        public boolean primary;
+
+        /** Backup. */
+        public boolean backup;
+
+        /**
+         * @param topVer Topology version.
+         * @param nodeId Node id.
+         * @param part Partition.
+         * @param primary Primary.
+         * @param backup Backup.
+         */
+        public DebugInfo(AffinityTopologyVersion topVer, UUID nodeId, int part, boolean primary, boolean backup) {
+            this.topVer = topVer;
+            this.nodeId = nodeId;
+            this.part = part;
+            this.primary = primary;
+            this.backup = backup;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return "DebugInfo{" +
+                "ts=" + ts +
+                ", topVer=" + topVer +
+                ", nodeId=" + nodeId +
+                ", part=" + part +
+                ", primary=" + primary +
+                ", backup=" + backup +
+                '}';
         }
     }
 }
