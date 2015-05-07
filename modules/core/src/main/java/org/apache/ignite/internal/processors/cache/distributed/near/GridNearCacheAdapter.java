@@ -26,6 +26,7 @@ import org.apache.ignite.internal.processors.cache.distributed.*;
 import org.apache.ignite.internal.processors.cache.distributed.dht.*;
 import org.apache.ignite.internal.processors.cache.transactions.*;
 import org.apache.ignite.internal.processors.cache.version.*;
+import org.apache.ignite.internal.util.*;
 import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
@@ -329,42 +330,41 @@ public abstract class GridNearCacheAdapter<K, V> extends GridDistributedCacheAda
         @Nullable final CacheEntryPredicate... filter) {
         final AffinityTopologyVersion topVer = ctx.affinity().affinityTopologyVersion();
 
-        Collection<Cache.Entry<K, V>> entries =
-            F.flatCollections(
-                F.viewReadOnly(
-                    dht().topology().currentLocalPartitions(),
-                    new C1<GridDhtLocalPartition, Collection<Cache.Entry<K, V>>>() {
-                        @Override public Collection<Cache.Entry<K, V>> apply(GridDhtLocalPartition p) {
-                            Collection<GridDhtCacheEntry> entries0 = p.entries();
+        Iterable<GridDhtLocalPartition> primaryOnly = IgniteIterables.filter(dht().topology().currentLocalPartitions(),
+            new P1<GridDhtLocalPartition>() {
+            @Override public boolean apply(GridDhtLocalPartition p) {
+                return p.primary(topVer);
+            }
+        });
 
-                            if (!F.isEmpty(filter))
-                                entries0 = F.view(entries0, new CacheEntryPredicateAdapter() {
-                                    @Override public boolean apply(GridCacheEntryEx e) {
-                                        return F.isAll(e, filter);
-                                    }
-                                });
+        Iterable<Collection<Cache.Entry<K, V>>> entriesCol = IgniteIterables.transform(primaryOnly,
+            new C1<GridDhtLocalPartition, Collection<Cache.Entry<K, V>>>() {
+            @Override public Collection<Cache.Entry<K, V>> apply(GridDhtLocalPartition p) {
+                Collection<GridDhtCacheEntry> entries0 = p.entries();
 
-                            return F.viewReadOnly(
-                                entries0,
-                                new C1<GridDhtCacheEntry, Cache.Entry<K, V>>() {
-                                    @Override public Cache.Entry<K, V> apply(GridDhtCacheEntry e) {
-                                        return e.wrapLazyValue();
-                                    }
-                                },
-                                new P1<GridDhtCacheEntry>() {
-                                    @Override public boolean apply(GridDhtCacheEntry e) {
-                                        return !e.obsoleteOrDeleted();
-                                    }
-                                });
+                if (!F.isEmpty(filter))
+                    entries0 = F.view(entries0, new CacheEntryPredicateAdapter() {
+                        @Override public boolean apply(GridCacheEntryEx e) {
+                            return F.isAll(e, filter);
+                        }
+                    });
+
+                return F.viewReadOnly(
+                    entries0,
+                    new C1<GridDhtCacheEntry, Cache.Entry<K, V>>() {
+                        @Override public Cache.Entry<K, V> apply(GridDhtCacheEntry e) {
+                            return e.wrapLazyValue();
                         }
                     },
-                    new P1<GridDhtLocalPartition>() {
-                        @Override public boolean apply(GridDhtLocalPartition p) {
-                            return p.primary(topVer);
+                    new P1<GridDhtCacheEntry>() {
+                        @Override public boolean apply(GridDhtCacheEntry e) {
+                            return !e.obsoleteOrDeleted();
                         }
-                    }));
+                    });
+            }
+        });
 
-        return new GridCacheEntrySet<>(ctx, entries, null);
+        return new GridCacheEntrySet<>(ctx, F.flatCollections(entriesCol), null);
     }
 
     /** {@inheritDoc} */

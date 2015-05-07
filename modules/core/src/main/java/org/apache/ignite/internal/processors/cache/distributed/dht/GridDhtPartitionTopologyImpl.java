@@ -28,10 +28,8 @@ import org.apache.ignite.internal.util.tostring.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
-import org.jsr166.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
 import static org.apache.ignite.events.EventType.*;
@@ -55,8 +53,7 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology {
     private final IgniteLogger log;
 
     /** */
-    private final ConcurrentMap<Integer, GridDhtLocalPartition> locParts =
-        new ConcurrentHashMap8<>();
+    private final RarefiedConcurrentIntMap<GridDhtLocalPartition> locParts;
 
     /** Node to partition map. */
     private GridDhtPartitionFullMap node2part;
@@ -90,6 +87,8 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology {
 
         this.cctx = cctx;
 
+        locParts = new RarefiedConcurrentIntMap<>(cctx.affinity().partitions());
+
         log = cctx.logger(getClass());
     }
 
@@ -120,7 +119,7 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology {
         boolean changed = false;
 
         // Synchronously wait for all renting partitions to complete.
-        for (Iterator<GridDhtLocalPartition> it = locParts.values().iterator(); it.hasNext();) {
+        for (Iterator<GridDhtLocalPartition> it = locParts.iterator(); it.hasNext();) {
             GridDhtLocalPartition p = it.next();
 
             GridDhtPartitionState state = p.state();
@@ -557,12 +556,16 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology {
 
     /** {@inheritDoc} */
     @Override public List<GridDhtLocalPartition> localPartitions() {
-        return new LinkedList<>(locParts.values());
+        List<GridDhtLocalPartition> res = new LinkedList<>();
+
+        locParts.addAllTo(res);
+
+        return res;
     }
 
     /** {@inheritDoc} */
-    @Override public Collection<GridDhtLocalPartition> currentLocalPartitions() {
-        return locParts.values();
+    @Override public Iterable<GridDhtLocalPartition> currentLocalPartitions() {
+        return locParts;
     }
 
     /** {@inheritDoc} */
@@ -603,8 +606,16 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology {
         lock.readLock().lock();
 
         try {
-            return new GridDhtPartitionMap(cctx.nodeId(), updateSeq.get(),
-                F.viewReadOnly(locParts, CU.<K, V>part2state()), true);
+            GridDhtPartitionMap res = new GridDhtPartitionMap(cctx.nodeId(), updateSeq.get());
+
+            for (int i = 0; i < locParts.maxIndex(); i++) {
+                GridDhtLocalPartition part = locParts.get(i);
+
+                if (part.state().active())
+                    res.put(i, part.state());
+            }
+
+            return res;
         }
         finally {
             lock.readLock().unlock();
@@ -950,7 +961,7 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology {
 
         UUID locId = cctx.nodeId();
 
-        for (GridDhtLocalPartition part : locParts.values()) {
+        for (GridDhtLocalPartition part : locParts) {
             GridDhtPartitionState state = part.state();
 
             if (state.active()) {
@@ -1172,7 +1183,7 @@ class GridDhtPartitionTopologyImpl<K, V> implements GridDhtPartitionTopology {
     @Override public void printMemoryStats(int threshold) {
         X.println(">>>  Cache partition topology stats [grid=" + cctx.gridName() + ", cache=" + cctx.name() + ']');
 
-        for (GridDhtLocalPartition part : locParts.values()) {
+        for (GridDhtLocalPartition part : locParts) {
             int size = part.size();
 
             if (size >= threshold)

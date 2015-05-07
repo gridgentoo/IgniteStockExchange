@@ -2884,6 +2884,25 @@ public class GridFunc {
         if (F.isEmpty(c))
             return Collections.emptyList();
 
+        return flatCollections((Iterable<? extends Collection<T>>)c);
+    }
+
+    /**
+     * Flattens collection-of-collections and returns collection over the
+     * elements of the inner collections. This method doesn't create any
+     * new collections or copies any elements.
+     * <p>
+     * Note that due to non-copying nature of implementation, the
+     * {@link Collection#size() size()} method of resulting collection will have to
+     * iterate over all elements to produce size. Method {@link Collection#isEmpty() isEmpty()},
+     * however, is constant time and is much more preferable to use instead
+     * of {@code 'size()'} method when checking if list is not empty.
+     *
+     * @param c Input collection of collections.
+     * @param <T> Type of the inner collections.
+     * @return Iterable over the elements of the inner collections.
+     */
+    public static <T> Collection<T> flatCollections(@Nullable final Iterable<? extends Collection<T>> c) {
         return new GridSerializableCollection<T>() {
             @NotNull
             @Override public Iterator<T> iterator() {
