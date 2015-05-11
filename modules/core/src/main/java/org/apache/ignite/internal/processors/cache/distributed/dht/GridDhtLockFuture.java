@@ -960,7 +960,7 @@ public final class GridDhtLockFuture<K, V> extends GridCompoundIdentityFuture<Bo
      *
      */
     private void loadMissingFromStore() {
-        if (!skipStore && cctx.loadPreviousValue() && cctx.readThrough() && (needReturnVal || read)) {
+        if (!skipStore && cctx.readThrough() && (read || needReturnVal && cctx.loadPreviousValue())) {
             final Map<KeyCacheObject, GridDhtCacheEntry> loadMap = new LinkedHashMap<>();
 
             final GridCacheVersion ver = version();
