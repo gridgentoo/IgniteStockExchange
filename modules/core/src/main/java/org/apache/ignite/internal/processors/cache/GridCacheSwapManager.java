@@ -580,8 +580,12 @@ public class GridCacheSwapManager extends GridCacheManagerAdapter {
             part,
             key.valueBytes(cctx.cacheObjectContext()));
 
-        for (GridCacheSwapListener lsnr : swapLsnrs.get(part))
-            lsnr.onEntryUnswapping(part, key, entry);
+        Collection<GridCacheSwapListener> lsnrs = swapLsnrs.get(part);
+
+        if (lsnrs != null) {
+            for (GridCacheSwapListener lsnr : lsnrs)
+                lsnr.onEntryUnswapping(key);
+        }
 
         swapMgr.remove(spaceName, swapKey,  new CI1<byte[]>() {
             @Override public void apply(byte[] rmv) {
@@ -595,7 +599,6 @@ public class GridCacheSwapManager extends GridCacheManagerAdapter {
                         t.set(entry);
 
                         CacheObject v = entry.value();
-                        byte[] valBytes = entry.valueBytes();
 
                         // Event notification.
                         if (cctx.events().isRecordable(EVT_CACHE_OBJECT_UNSWAPPED)) {
@@ -1928,7 +1931,7 @@ public class GridCacheSwapManager extends GridCacheManagerAdapter {
         }
 
         /** {@inheritDoc} */
-        @Override public void onEntryUnswapping(int part, KeyCacheObject key, GridCacheSwapEntry e)
+        @Override public void onEntryUnswapping(KeyCacheObject key)
             throws IgniteCheckedException {
             // No-op.
         }

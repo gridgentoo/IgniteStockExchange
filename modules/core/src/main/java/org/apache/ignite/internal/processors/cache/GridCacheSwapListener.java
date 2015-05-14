@@ -24,12 +24,10 @@ import org.apache.ignite.*;
  */
 public interface GridCacheSwapListener {
     /**
-     * @param part Partition.
      * @param key Cache key.
-     * @param e Entry.
      * @throws IgniteCheckedException If failed.
      */
-    public void onEntryUnswapping(int part, KeyCacheObject key, GridCacheSwapEntry e) throws IgniteCheckedException;
+    public void onEntryUnswapping(KeyCacheObject key) throws IgniteCheckedException;
 
     /**
      * @param part Partition.

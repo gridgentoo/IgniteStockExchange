@@ -18,6 +18,8 @@
 package org.apache.ignite.internal.processors.cache;
 
 import org.apache.ignite.*;
+import org.apache.ignite.internal.*;
+import org.apache.ignite.internal.client.util.*;
 import org.jsr166.*;
 
 import java.util.*;
@@ -30,11 +32,14 @@ public class GridCacheEntryInfoCollectSwapListener implements GridCacheSwapListe
     /** */
     private final Map<KeyCacheObject, GridCacheEntryInfo> swappedEntries = new ConcurrentHashMap8<>();
 
-    private final ConcurrentHashMap8<KeyCacheObject, GridCacheEntryInfo>  notFinishedSwappedEntries = new ConcurrentHashMap8<>();
+    /** Entries in swapping. */
+    private final GridConcurrentHashSet<KeyCacheObject> swappingKeys = new GridConcurrentHashSet();
 
+    /** Lock for empty condition. */
+    final Lock emptyLock = new ReentrantLock();
 
-    final Lock lock = new ReentrantLock();
-    final Condition emptyCond  = lock.newCondition();
+    /** Condition for empty swapping entries. */
+    final Condition emptyCond  = emptyLock.newCondition();
 
     /** */
     private final IgniteLogger log;
@@ -49,26 +54,36 @@ public class GridCacheEntryInfoCollectSwapListener implements GridCacheSwapListe
     /**
      * Wait until all entries finish unswapping.
      */
-    public void waitUnswapFinished() {
-        lock.lock();
-        try{
-            if (notFinishedSwappedEntries.size() != 0)
-                try {
-                    emptyCond.await();
-                }
-                catch (InterruptedException e) {
-                    // No-op.
-                }
-        } finally {
-            lock.unlock();
+    public void waitUnswapFinished() throws IgniteCheckedException {
+        emptyLock.lock();
+
+        try {
+            if (swappingKeys.size() != 0)
+                emptyCond.await();
+        }
+        catch (InterruptedException e) {
+            throw new IgniteInterruptedCheckedException(e);
+        }
+        finally {
+            emptyLock.unlock();
         }
     }
 
     /** {@inheritDoc} */
-    @Override public void onEntryUnswapping(int part, KeyCacheObject key, GridCacheSwapEntry swapEntry) throws IgniteCheckedException {
+    @Override public void onEntryUnswapping(KeyCacheObject key) throws IgniteCheckedException {
         if (log.isDebugEnabled())
-            log.debug("Received unswapped event for key: " + key);
+            log.debug("Received unswapping event for key: " + key);
 
+        assert key != null;
+
+        swappingKeys.add(key);
+    }
+
+    /** {@inheritDoc} */
+    @Override public void onEntryUnswapped(int part,
+        KeyCacheObject key,
+        GridCacheSwapEntry swapEntry)
+    {
         assert key != null;
         assert swapEntry != null;
 
@@ -80,26 +95,17 @@ public class GridCacheEntryInfoCollectSwapListener implements GridCacheSwapListe
         info.version(swapEntry.version());
         info.value(swapEntry.value());
 
-        notFinishedSwappedEntries.put(key, info);
-    }
-
-    /** {@inheritDoc} */
-    @Override public void onEntryUnswapped(int part,
-        KeyCacheObject key,
-        GridCacheSwapEntry swapEntry)
-    {
-        GridCacheEntryInfo info = notFinishedSwappedEntries.remove(key);
-
-        assert info != null;
-
         swappedEntries.put(key, info);
 
-        lock.lock();
+        swappingKeys.remove(key);
+
+        emptyLock.lock();
+
         try{
-            if (notFinishedSwappedEntries.size() == 0)
+            if (swappingKeys.size() == 0)
                 emptyCond.signalAll();
         } finally {
-            lock.unlock();
+            emptyLock.unlock();
         }
     }
 

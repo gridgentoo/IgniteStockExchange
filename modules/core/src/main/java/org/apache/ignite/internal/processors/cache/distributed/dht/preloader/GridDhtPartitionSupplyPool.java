@@ -411,6 +411,7 @@ class GridDhtPartitionSupplyPool<K, V> {
                         // Stop receiving promote notifications.
                         if (swapLsnr != null) {
                             swapLsnr.waitUnswapFinished();
+
                             cctx.swap().removeOffHeapListener(part, swapLsnr);
                             cctx.swap().removeSwapListener(part, swapLsnr);
                         }
