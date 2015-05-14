@@ -156,83 +156,85 @@ public class GridCacheSwapPreloadSelfTest extends GridCommonAbstractTest {
         final AtomicBoolean done = new AtomicBoolean();
         IgniteInternalFuture<?> fut = null;
 
-        try {
-            startGrid(0);
-
-            final IgniteCache<Integer, Integer> cache = grid(0).cache(null);
-
-            assertNotNull(cache);
-
-            // Populate.
-            for (int i = 0; i < ENTRY_CNT; i++)
-                cache.put(i, i);
-
-            Set<Integer> keys = new HashSet<>();
-
-            for (Cache.Entry<Integer, Integer> entry : cache.localEntries())
-                keys.add(entry.getKey());
-
-            cache.localEvict(keys);
-
-            fut = multithreadedAsync(new Callable<Object>() {
-                @Nullable @Override public Object call() throws Exception {
-                    Random rnd = new Random();
-
-                    while (!done.get()) {
-                        int key = rnd.nextInt(ENTRY_CNT);
-
-                        Integer i = cache.get(key);
-
-                        assertNotNull(i);
-                        assertEquals(Integer.valueOf(key), i);
-
-                        cache.localEvict(Collections.singleton(rnd.nextInt(ENTRY_CNT)));
-                    }
-
-                    return null;
-                }
-            }, 10);
-
-            startGrid(1);
-
-            done.set(true);
-
-            fut.get();
-
-            fut = null;
-
-            int size = grid(1).cache(null).localSize(CachePeekMode.PRIMARY, CachePeekMode.BACKUP,
-                CachePeekMode.NEAR, CachePeekMode.ONHEAP);
-
-            info("New node cache size: " + size);
-
-            if (size != ENTRY_CNT) {
-                Set<Integer> keySet = new TreeSet<>();
-
-                int next = 0;
-
-                for (IgniteCache.Entry<Integer, Integer> e : grid(1).<Integer, Integer>cache(null).localEntries())
-                    keySet.add(e.getKey());
-
-                for (Integer i : keySet) {
-                    while (next < i)
-                        info("Missing key: " + next++);
-
-                    next++;
-                }
-            }
-
-            assertEquals(ENTRY_CNT, size);
-        }
-        finally {
-            done.set(true);
-
+        for (int attempt = 0; attempt < 10; attempt++) {
             try {
-                if (fut != null)
-                    fut.get();
+                startGrid(0);
+
+                final IgniteCache<Integer, Integer> cache = grid(0).cache(null);
+
+                assertNotNull(cache);
+
+                // Populate.
+                for (int i = 0; i < ENTRY_CNT; i++)
+                    cache.put(i, i);
+
+                Set<Integer> keys = new HashSet<>();
+
+                for (Cache.Entry<Integer, Integer> entry : cache.localEntries())
+                    keys.add(entry.getKey());
+
+                cache.localEvict(keys);
+
+                fut = multithreadedAsync(new Callable<Object>() {
+                    @Nullable @Override public Object call() throws Exception {
+                        Random rnd = new Random();
+
+                        while (!done.get()) {
+                            int key = rnd.nextInt(ENTRY_CNT);
+
+                            Integer i = cache.get(key);
+
+                            assertNotNull(i);
+                            assertEquals(Integer.valueOf(key), i);
+
+                            //cache.localEvict(Collections.singleton(rnd.nextInt(ENTRY_CNT)));
+                        }
+
+                        return null;
+                    }
+                }, 10);
+
+                startGrid(1);
+
+                done.set(true);
+
+                fut.get();
+
+                fut = null;
+
+                int size = grid(1).cache(null).localSize(CachePeekMode.PRIMARY, CachePeekMode.BACKUP,
+                    CachePeekMode.NEAR, CachePeekMode.ONHEAP);
+
+                info("New node cache size: " + size);
+
+                if (size != ENTRY_CNT) {
+                    Set<Integer> keySet = new TreeSet<>();
+
+                    int next = 0;
+
+                    for (IgniteCache.Entry<Integer, Integer> e : grid(1).<Integer, Integer>cache(null).localEntries())
+                        keySet.add(e.getKey());
+
+                    for (Integer i : keySet) {
+                        while (next < i)
+                            info("Missing key: " + next++);
+
+                        next++;
+                    }
+                }
+
+                assertEquals(ENTRY_CNT, size);
             }
             finally {
-                stopAllGrids();
+                done.set(true);
+
+                try {
+                    if (fut != null)
+                        fut.get();
+                }
+                finally {
+                    stopAllGrids();
+                }
             }
         }
     }
