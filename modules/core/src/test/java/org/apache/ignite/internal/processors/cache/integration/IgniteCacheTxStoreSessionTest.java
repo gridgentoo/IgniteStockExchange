@@ -66,6 +66,9 @@ public class IgniteCacheTxStoreSessionTest extends IgniteCacheStoreSessionAbstra
 
         testTxPutRemove(null, null);
 
+        // Need to clear cache before next test to trigger store load on get.
+        jcache(0).withSkipStore().removeAll();
+
         for (TransactionConcurrency concurrency : F.asList(PESSIMISTIC)) {
             for (TransactionIsolation isolation : F.asList(REPEATABLE_READ)) {
                 testTxPut(jcache(0), concurrency, isolation);
@@ -135,6 +138,8 @@ public class IgniteCacheTxStoreSessionTest extends IgniteCacheStoreSessionAbstra
 
         try (Transaction tx = startTx(concurrency, isolation)) {
             log.info("Do tx get.");
+
+            expData.add(new ExpectedData(false, "load", new HashMap<>(), cache.getName()));
 
             cache.get(key1);
 
