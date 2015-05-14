@@ -21,6 +21,7 @@ import org.apache.ignite.*;
 import org.jsr166.*;
 
 import java.util.*;
+import java.util.concurrent.locks.*;
 
 /**
  *
@@ -28,6 +29,12 @@ import java.util.*;
 public class GridCacheEntryInfoCollectSwapListener implements GridCacheSwapListener {
     /** */
     private final Map<KeyCacheObject, GridCacheEntryInfo> swappedEntries = new ConcurrentHashMap8<>();
+
+    private final ConcurrentHashMap8<KeyCacheObject, GridCacheEntryInfo>  notFinishedSwappedEntries = new ConcurrentHashMap8<>();
+
+
+    final Lock lock = new ReentrantLock();
+    final Condition emptyCond  = lock.newCondition();
 
     /** */
     private final IgniteLogger log;
@@ -39,11 +46,26 @@ public class GridCacheEntryInfoCollectSwapListener implements GridCacheSwapListe
         this.log = log;
     }
 
+    /**
+     * Wait until all entries finish unswapping.
+     */
+    public void waitUnswapFinished() {
+        lock.lock();
+        try{
+            if (notFinishedSwappedEntries.size() != 0)
+                try {
+                    emptyCond.await();
+                }
+                catch (InterruptedException e) {
+                    // No-op.
+                }
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /** {@inheritDoc} */
-    @Override public void onEntryUnswapped(int part,
-        KeyCacheObject key,
-        GridCacheSwapEntry swapEntry)
-    {
+    @Override public void onEntryUnswapping(int part, KeyCacheObject key, GridCacheSwapEntry swapEntry) throws IgniteCheckedException {
         if (log.isDebugEnabled())
             log.debug("Received unswapped event for key: " + key);
 
@@ -58,7 +80,27 @@ public class GridCacheEntryInfoCollectSwapListener implements GridCacheSwapListe
         info.version(swapEntry.version());
         info.value(swapEntry.value());
 
+        notFinishedSwappedEntries.put(key, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override public void onEntryUnswapped(int part,
+        KeyCacheObject key,
+        GridCacheSwapEntry swapEntry)
+    {
+        GridCacheEntryInfo info = notFinishedSwappedEntries.remove(key);
+
+        assert info != null;
+
         swappedEntries.put(key, info);
+
+        lock.lock();
+        try{
+            if (notFinishedSwappedEntries.size() == 0)
+                emptyCond.signalAll();
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**

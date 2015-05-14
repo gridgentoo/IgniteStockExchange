@@ -42,7 +42,7 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.*;
  */
 public class GridCacheSwapPreloadSelfTest extends GridCommonAbstractTest {
     /** Entry count. */
-    private static final int ENTRY_CNT = 15_000;
+    private static final int ENTRY_CNT = 150_000;
 
     /** */
     private final TcpDiscoveryIpFinder ipFinder = new TcpDiscoveryVmIpFinder(true);

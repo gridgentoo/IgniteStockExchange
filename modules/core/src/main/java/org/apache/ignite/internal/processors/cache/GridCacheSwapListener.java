@@ -29,5 +29,13 @@ public interface GridCacheSwapListener {
      * @param e Entry.
      * @throws IgniteCheckedException If failed.
      */
+    public void onEntryUnswapping(int part, KeyCacheObject key, GridCacheSwapEntry e) throws IgniteCheckedException;
+
+    /**
+     * @param part Partition.
+     * @param key Cache key.
+     * @param e Entry.
+     * @throws IgniteCheckedException If failed.
+     */
     public void onEntryUnswapped(int part, KeyCacheObject key, GridCacheSwapEntry e) throws IgniteCheckedException;
 }
