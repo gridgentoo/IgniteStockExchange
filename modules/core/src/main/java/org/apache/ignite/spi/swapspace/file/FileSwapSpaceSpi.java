@@ -392,13 +392,6 @@ public class FileSwapSpaceSpi extends IgniteSpiAdapter implements SwapSpaceSpi, 
 
         byte[] val = space.remove(key, c != null);
 
-        try {
-            U.sleep(1000);
-        }
-        catch (IgniteInterruptedCheckedException e) {
-            e.printStackTrace();
-        }
-
         if (c != null)
             c.apply(val);
 
