@@ -104,7 +104,8 @@ public class GridCacheEntryInfoCollectSwapListener implements GridCacheSwapListe
         try{
             if (swappingKeys.size() == 0)
                 emptyCond.signalAll();
-        } finally {
+        }
+        finally {
             emptyLock.unlock();
         }
     }
