@@ -50,6 +50,9 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
     /** Near tx thread ID. */
     private long nearThreadId;
 
+    /** */
+    private GridCacheVersion dhtVer;
+
     /**
      * Empty constructor required by {@link Externalizable}.
      */
@@ -65,7 +68,7 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
      * @param err Error.
      */
     public GridNearTxFinishResponse(GridCacheVersion xid, long nearThreadId, IgniteUuid futId, IgniteUuid miniId,
-        @Nullable Throwable err) {
+        GridCacheVersion dhtVer, @Nullable Throwable err) {
         super(xid, futId);
 
         assert miniId != null;
@@ -73,6 +76,7 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
         this.nearThreadId = nearThreadId;
         this.miniId = miniId;
         this.err = err;
+        this.dhtVer = dhtVer;
     }
 
     /**
@@ -94,6 +98,13 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
      */
     public long threadId() {
         return nearThreadId;
+    }
+
+    /**
+     * @return DHT version.
+     */
+    public GridCacheVersion dhtVersion() {
+        return dhtVer;
     }
 
     /** {@inheritDoc}
@@ -129,18 +140,24 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
 
         switch (writer.state()) {
             case 5:
-                if (!writer.writeByteArray("errBytes", errBytes))
+                if (!writer.writeMessage("dhtVer", dhtVer))
                     return false;
 
                 writer.incrementState();
 
             case 6:
-                if (!writer.writeIgniteUuid("miniId", miniId))
+                if (!writer.writeByteArray("errBytes", errBytes))
                     return false;
 
                 writer.incrementState();
 
             case 7:
+                if (!writer.writeIgniteUuid("miniId", miniId))
+                    return false;
+
+                writer.incrementState();
+
+            case 8:
                 if (!writer.writeLong("nearThreadId", nearThreadId))
                     return false;
 
@@ -163,7 +180,7 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
 
         switch (reader.state()) {
             case 5:
-                errBytes = reader.readByteArray("errBytes");
+                dhtVer = reader.readMessage("dhtVer");
 
                 if (!reader.isLastRead())
                     return false;
@@ -171,7 +188,7 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
                 reader.incrementState();
 
             case 6:
-                miniId = reader.readIgniteUuid("miniId");
+                errBytes = reader.readByteArray("errBytes");
 
                 if (!reader.isLastRead())
                     return false;
@@ -179,6 +196,14 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
                 reader.incrementState();
 
             case 7:
+                miniId = reader.readIgniteUuid("miniId");
+
+                if (!reader.isLastRead())
+                    return false;
+
+                reader.incrementState();
+
+            case 8:
                 nearThreadId = reader.readLong("nearThreadId");
 
                 if (!reader.isLastRead())
@@ -198,7 +223,7 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
 
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
-        return 8;
+        return 9;
     }
 
     /** {@inheritDoc} */

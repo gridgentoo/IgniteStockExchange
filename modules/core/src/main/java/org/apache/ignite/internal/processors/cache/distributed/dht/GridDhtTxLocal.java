@@ -660,7 +660,7 @@ public class GridDhtTxLocal extends GridDhtTxLocalAdapter implements GridCacheMa
             }
 
             GridNearTxFinishResponse res = new GridNearTxFinishResponse(nearXidVer, threadId, nearFinFutId,
-                nearFinMiniId, err);
+                nearFinMiniId, xidVer, err);
 
             try {
                 cctx.io().send(nearNodeId, res, ioPolicy());

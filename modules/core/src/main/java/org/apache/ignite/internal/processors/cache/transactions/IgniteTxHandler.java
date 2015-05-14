@@ -379,6 +379,9 @@ public class IgniteTxHandler {
      * @param res Response.
      */
     private void processNearTxFinishResponse(UUID nodeId, GridNearTxFinishResponse res) {
+        if (res.dhtVersion() != null)
+            ctx.versions().onReceived(nodeId, res.dhtVersion());
+
         ctx.tm().onFinishedRemote(nodeId, res.threadId());
 
         GridNearTxFinishFuture fut = (GridNearTxFinishFuture)ctx.mvcc().<IgniteInternalTx>future(
@@ -522,7 +525,7 @@ public class IgniteTxHandler {
 
             // Always send finish response.
             GridCacheMessage res = new GridNearTxFinishResponse(req.version(), req.threadId(), req.futureId(),
-                req.miniId(), new IgniteCheckedException("Transaction has been already completed."));
+                req.miniId(), req.version(), new IgniteCheckedException("Transaction has been already completed."));
 
             try {
                 ctx.io().send(nodeId, res, req.policy());
@@ -626,7 +629,7 @@ public class IgniteTxHandler {
                 else {
                     // Always send finish response.
                     GridCacheMessage res = new GridNearTxFinishResponse(req.version(), req.threadId(),
-                        req.futureId(), req.miniId(), null);
+                        req.futureId(), req.miniId(), req.version(), null);
 
                     try {
                         ctx.io().send(nodeId, res, req.policy());
