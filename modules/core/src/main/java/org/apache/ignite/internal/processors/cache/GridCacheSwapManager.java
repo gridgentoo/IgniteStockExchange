@@ -801,6 +801,13 @@ public class GridCacheSwapManager extends GridCacheManagerAdapter {
                     key.valueBytes(cctx.cacheObjectContext()));
 
                 unprocessedKeys.add(swapKey);
+
+                Collection<GridCacheSwapListener> lsnrs = swapLsnrs.get(cctx.affinity().partition(key));
+
+                if (lsnrs != null) {
+                    for (GridCacheSwapListener lsnr : lsnrs)
+                        lsnr.onEntryUnswapping(key);
+                }
             }
         }
 
