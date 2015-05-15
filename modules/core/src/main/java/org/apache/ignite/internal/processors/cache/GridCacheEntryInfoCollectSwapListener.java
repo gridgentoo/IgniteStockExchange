@@ -84,29 +84,36 @@ public class GridCacheEntryInfoCollectSwapListener implements GridCacheSwapListe
         KeyCacheObject key,
         GridCacheSwapEntry swapEntry)
     {
+        if (log.isDebugEnabled())
+            log.debug("Received unswapped event for key: " + key);
+
         assert key != null;
-        assert swapEntry != null;
 
-        GridCacheEntryInfo info = new GridCacheEntryInfo();
+        try {
+            assert swapEntry != null;
 
-        info.key(key);
-        info.ttl(swapEntry.ttl());
-        info.expireTime(swapEntry.expireTime());
-        info.version(swapEntry.version());
-        info.value(swapEntry.value());
+            GridCacheEntryInfo info = new GridCacheEntryInfo();
 
-        swappedEntries.put(key, info);
+            info.key(key);
+            info.ttl(swapEntry.ttl());
+            info.expireTime(swapEntry.expireTime());
+            info.version(swapEntry.version());
+            info.value(swapEntry.value());
 
-        swappingKeys.remove(key);
-
-        emptyLock.lock();
-
-        try{
-            if (swappingKeys.size() == 0)
-                emptyCond.signalAll();
+            swappedEntries.put(key, info);
         }
         finally {
-            emptyLock.unlock();
+            swappingKeys.remove(key);
+
+            emptyLock.lock();
+
+            try {
+                if (swappingKeys.size() == 0)
+                    emptyCond.signalAll();
+            }
+            finally {
+                emptyLock.unlock();
+            }
         }
     }
 
