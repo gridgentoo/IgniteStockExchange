@@ -15,7 +15,16 @@
  * limitations under the License.
  */
 
+package org.apache.ignite.internal;
+
 /**
- * Demonstrates usage of data streamer.
+ * Internal wrapper interface for custom resource injection logic.
  */
-package org.apache.ignite.examples.streaming;
+public interface GridInternalWrapper<T> {
+    /**
+     * Get user object where resources must be injected.
+     *
+     * @return User object.
+     */
+    public T userObject();
+}

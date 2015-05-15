@@ -15,16 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.resource;
-
-import java.lang.annotation.*;
-
 /**
- * Indicates that resource injection should be performed for field value too.
+ * Contains {@link org.apache.ignite.stream.socket.SocketStreamer} usage examples.
  */
-@Documented
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
-public @interface InjectRecursively {
-    // No-op.
-}
+package org.apache.ignite.examples.streaming.wordcount.socket;
