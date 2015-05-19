@@ -102,8 +102,6 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
      * @param timeout Timeout.
      * @param storeEnabled Store enabled flag.
      * @param txSize Transaction size.
-     * @param grpLockKey Group lock key if this is a group lock transaction.
-     * @param partLock {@code True} if this is a group-lock transaction and the whole partition should be locked.
      * @param subjId Subject ID.
      * @param taskNameHash Task name hash code.
      */
@@ -118,8 +116,6 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
         long timeout,
         boolean storeEnabled,
         int txSize,
-        @Nullable IgniteTxKey grpLockKey,
-        boolean partLock,
         @Nullable UUID subjId,
         int taskNameHash
     ) {
@@ -137,8 +133,6 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
             false,
             storeEnabled,
             txSize,
-            grpLockKey,
-            partLock,
             subjId,
             taskNameHash);
 
@@ -272,9 +266,6 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
 
     /** {@inheritDoc} */
     @Override public Collection<IgniteTxEntry> optimisticLockEntries() {
-        if (groupLock())
-            return super.optimisticLockEntries();
-
         return optimisticLockEntries;
     }
 
@@ -387,15 +378,16 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
     /**
      * @param nodeId Node ID.
      * @param dhtVer DHT version.
+     * @param writeVer Write version.
      */
-    void addDhtVersion(UUID nodeId, GridCacheVersion dhtVer) {
+    void addDhtVersion(UUID nodeId, GridCacheVersion dhtVer, GridCacheVersion writeVer) {
         // This step is very important as near and DHT versions grow separately.
         cctx.versions().onReceived(nodeId, dhtVer);
 
         GridDistributedTxMapping m = mappings.get(nodeId);
 
         if (m != null)
-            m.dhtVersion(dhtVer);
+            m.dhtVersion(dhtVer, writeVer);
     }
 
     /**
@@ -414,13 +406,6 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
 
             return false;
         }
-    }
-
-    /** {@inheritDoc} */
-    @Override protected void addGroupTxMapping(Collection<IgniteTxKey> keys) {
-        super.addGroupTxMapping(keys);
-
-        addKeyMapping(cctx.localNode(), keys);
     }
 
     /**
@@ -562,9 +547,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
         Collection<GridCacheVersion> committedVers,
         Collection<GridCacheVersion> rolledbackVers)
     {
-        Collection<IgniteTxEntry> entries = groupLock() ?
-            Collections.singletonList(groupLockEntry()) :
-            F.concat(false, mapping.reads(), mapping.writes());
+        Collection<IgniteTxEntry> entries = F.concat(false, mapping.reads(), mapping.writes());
 
         for (IgniteTxEntry txEntry : entries) {
             while (true) {
