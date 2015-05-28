@@ -1565,6 +1565,8 @@ public class IgnitionEx {
                 if (e instanceof Error)
                     throw e;
 
+                System.out.println("Some change");
+
                 throw new IgniteCheckedException("Unexpected exception when starting grid.", e);
             }
             finally {
