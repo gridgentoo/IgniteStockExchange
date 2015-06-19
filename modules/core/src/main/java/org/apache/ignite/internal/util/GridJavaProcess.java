@@ -174,6 +174,48 @@ public final class GridJavaProcess {
     }
 
     /**
+     * Executes cmd in a separate system process.
+     *
+     * @param cmd Commands to run.
+     * @param env Environment variable.
+     * @param log Log to use.
+     * @param printC Optional closure to be called each time wrapped process prints line to system.out or system.err.
+     * @param procKilledC Optional closure to be called when process termination is detected.
+     * @return Wrapper around {@link Process}
+     * @throws Exception If any problem occurred.
+     */
+    public static GridJavaProcess exec(List<String> cmd, Map<String, String> env, @Nullable IgniteLogger log,
+        @Nullable IgniteInClosure<String> printC, @Nullable GridAbsClosure procKilledC)
+        throws Exception {
+
+        if (!(U.isLinux() || U.isMacOs() || U.isWindows()))
+            throw new Exception("Your OS is not supported.");
+
+        GridJavaProcess gjProc = new GridJavaProcess();
+
+        gjProc.log = log;
+        gjProc.procKilledC = procKilledC;
+
+        ProcessBuilder builder = new ProcessBuilder(cmd);
+
+        builder.redirectErrorStream(true);
+
+        builder.environment().putAll(env);
+
+        Process proc = builder.start();
+
+        gjProc.osGrabber = gjProc.new ProcessStreamGrabber(proc.getInputStream(), printC);
+        gjProc.esGrabber = gjProc.new ProcessStreamGrabber(proc.getErrorStream(), printC);
+
+        gjProc.osGrabber.start();
+        gjProc.esGrabber.start();
+
+        gjProc.proc = proc;
+
+        return gjProc;
+    }
+
+    /**
      * Kills the java process.
      *
      * @throws Exception If any problem occurred.

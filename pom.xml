@@ -70,6 +70,7 @@
         <module>modules/gce</module>
         <module>modules/cloud</module>
         <module>modules/mesos</module>
+        <module>modules/nodejs</module>
     </modules>
 
     <profiles>

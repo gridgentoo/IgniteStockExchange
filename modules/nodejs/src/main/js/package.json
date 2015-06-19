@@ -1,0 +1,14 @@
+{
+  "name" : "apache-ignite",
+  "version" : "1.0.0-SNAPSHOT",
+  "author" : "Semyon Boikov <sboikov@gridgain.com>",
+  "contributors": [{
+    "name": "Irina Vasilinets",
+    "email": "ivasilients@gridgain.com"
+  }],
+  "main" : "apache-ignite.js",
+  "license" : "Apache-2.0",
+  "keywords" : "grid",
+  "homepage" : "https://ignite.incubator.apache.org/",
+  "engines" : { "node" : ">=0.12.4" }
+}
