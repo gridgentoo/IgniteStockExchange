@@ -15,46 +15,26 @@
  * limitations under the License.
  */
 
-/**
- * Create an instance of Ignite
- *
- * @constructor
- * @this {Ignite}
- * @param {Server} Server
- */
-function Ignite(server) {
-  this._server = server;
-}
+package org.apache.ignite.internal.processors.rest.request;
 
 /**
- * @returns {Server} Server
+ * Compute request.
  */
-Ignite.prototype.server = function() {
-  return this._server;
+public class RestComputeRequest extends GridRestRequest {
+    /** Java script function. */
+    private String func;
+
+    /**
+     * @return Java script function.
+     */
+    public String function() {
+        return func;
+    }
+
+    /**
+     * @param func Java script function.
+     */
+    public void function(String func) {
+        this.func = func;
+    }
 }
-
-/**
- * Get an instance of cache
- *
- * @this {Ignite}
- * @param {string} Cache name
- * @returns {Cache} Cache
- */
-Ignite.prototype.cache = function(cacheName) {
-  var Cache = require("./cache").Cache;
-
-  return new Cache(this._server, cacheName);
-}
-
-/**
- * Get an instance of compute
- *
- * @this {Ignite}
- * @returns {Compute} Compute
- */
-Ignite.prototype.compute = function() {
-  var Compute = require("./compute").Compute
-
-  return new Compute(this._server);
-}
-exports.Ignite = Ignite;

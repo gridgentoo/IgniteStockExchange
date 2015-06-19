@@ -15,46 +15,31 @@
  * limitations under the License.
  */
 
+var Server = require("./server").Server;
+
 /**
- * Create an instance of Ignite
- *
  * @constructor
- * @this {Ignite}
- * @param {Server} Server
+ * @this {Compute}
+ * @param {Server} server Server class
  */
-function Ignite(server) {
+function Compute(server) {
   this._server = server;
 }
 
 /**
- * @returns {Server} Server
+ * Callback for affinityRun
+ * @callback Compute~runnable
  */
-Ignite.prototype.server = function() {
-  return this._server;
-}
 
 /**
- * Get an instance of cache
- *
- * @this {Ignite}
- * @param {string} Cache name
- * @returns {Cache} Cache
+ * @this {Compute}
+ * @param {Compute~runnable} runnable Function without parameters
  */
-Ignite.prototype.cache = function(cacheName) {
-  var Cache = require("./cache").Cache;
-
-  return new Cache(this._server, cacheName);
+Compute.prototype.affinityRun = function(runnable, callback) {
+  var f = runnable.toString();
+  var qs = require('querystring');
+  f = qs.escape(f);
+  this._server.runCommand("affrun", [Server.pair("func", f)], callback);
 }
 
-/**
- * Get an instance of compute
- *
- * @this {Ignite}
- * @returns {Compute} Compute
- */
-Ignite.prototype.compute = function() {
-  var Compute = require("./compute").Compute
-
-  return new Compute(this._server);
-}
-exports.Ignite = Ignite;
+exports.Compute = Compute;

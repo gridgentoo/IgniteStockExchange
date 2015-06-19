@@ -53,6 +53,7 @@ import org.apache.ignite.internal.processors.port.*;
 import org.apache.ignite.internal.processors.query.*;
 import org.apache.ignite.internal.processors.resource.*;
 import org.apache.ignite.internal.processors.rest.*;
+import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.processors.security.*;
 import org.apache.ignite.internal.processors.segmentation.*;
 import org.apache.ignite.internal.processors.service.*;
@@ -776,6 +777,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
             startProcessor(new GridTaskProcessor(ctx));
             startProcessor((GridProcessor)SCHEDULE.createOptional(ctx));
             startProcessor(new GridRestProcessor(ctx));
+            startProcessor(new IgniteScriptProcessor(ctx));
             startProcessor(new DataStreamProcessor(ctx));
             startProcessor((GridProcessor)IGFS.create(ctx, F.isEmpty(cfg.getFileSystemConfiguration())));
             startProcessor(new GridContinuousProcessor(ctx));

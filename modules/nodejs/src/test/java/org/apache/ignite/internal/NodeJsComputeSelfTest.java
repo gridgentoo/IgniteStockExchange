@@ -15,46 +15,36 @@
  * limitations under the License.
  */
 
-/**
- * Create an instance of Ignite
- *
- * @constructor
- * @this {Ignite}
- * @param {Server} Server
- */
-function Ignite(server) {
-  this._server = server;
-}
+package org.apache.ignite.internal;
 
 /**
- * @returns {Server} Server
+ * Test compute node js.
  */
-Ignite.prototype.server = function() {
-  return this._server;
+public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
+    /** Constructor. */
+    public NodeJsComputeSelfTest() {
+        super("test-compute.js");
+    }
+
+    /** {@inheritDoc} */
+    @Override protected void beforeTestsStarted() throws Exception {
+        startGrid(0);
+    }
+
+    /** {@inheritDoc} */
+    @Override protected void afterTestsStopped() throws Exception {
+        stopAllGrids();
+    }
+
+    /** {@inheritDoc} */
+    @Override protected void beforeTest() throws Exception {
+        grid(0).cache(NodeJsAbstractTest.CACHE_NAME).removeAll();
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testCompute() throws Exception {
+        runJsScript("testCompute");
+    }
 }
-
-/**
- * Get an instance of cache
- *
- * @this {Ignite}
- * @param {string} Cache name
- * @returns {Cache} Cache
- */
-Ignite.prototype.cache = function(cacheName) {
-  var Cache = require("./cache").Cache;
-
-  return new Cache(this._server, cacheName);
-}
-
-/**
- * Get an instance of compute
- *
- * @this {Ignite}
- * @returns {Compute} Compute
- */
-Ignite.prototype.compute = function() {
-  var Compute = require("./compute").Compute
-
-  return new Compute(this._server);
-}
-exports.Ignite = Ignite;

@@ -49,6 +49,7 @@ import org.apache.ignite.internal.processors.query.*;
 import org.apache.ignite.internal.processors.resource.*;
 import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.schedule.*;
+import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.processors.security.*;
 import org.apache.ignite.internal.processors.segmentation.*;
 import org.apache.ignite.internal.processors.service.*;
@@ -195,6 +196,10 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
     /** */
     @GridToStringInclude
     private GridRestProcessor restProc;
+
+    /** */
+    @GridToStringInclude
+    private IgniteScriptProcessor scriptProc;
 
     /** */
     @GridToStringInclude
@@ -477,6 +482,8 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
             dataStructuresProc = (DataStructuresProcessor)comp;
         else if (comp instanceof ClusterProcessor)
             cluster = (ClusterProcessor)comp;
+        else if (comp instanceof IgniteScriptProcessor)
+            scriptProc = (IgniteScriptProcessor) comp;
         else if (!(comp instanceof DiscoveryNodeValidationProcessor))
             assert (comp instanceof GridPluginComponent) : "Unknown manager class: " + comp.getClass();
 
@@ -654,6 +661,11 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
     /** {@inheritDoc} */
     @Override public GridRestProcessor rest() {
         return restProc;
+    }
+
+    /** {@inheritDoc} */
+    @Override public IgniteScriptProcessor scripting() {
+        return scriptProc;
     }
 
     /** {@inheritDoc} */

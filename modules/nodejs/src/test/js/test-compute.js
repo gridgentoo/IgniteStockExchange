@@ -15,46 +15,36 @@
  * limitations under the License.
  */
 
-/**
- * Create an instance of Ignite
- *
- * @constructor
- * @this {Ignite}
- * @param {Server} Server
- */
-function Ignite(server) {
-  this._server = server;
+var TestUtils = require("./test-utils").TestUtils;
+
+var Apache = require(TestUtils.scriptPath());
+var Cache = Apache.Cache;
+var Server = Apache.Server;
+
+var assert = require("assert");
+
+testCompute = function() {
+  TestUtils.startIgniteNode(onStart.bind(null));
 }
 
-/**
- * @returns {Server} Server
- */
-Ignite.prototype.server = function() {
-  return this._server;
+function onStart(error, ignite) {
+  var comp = ignite.compute();
+
+  var f = function () {
+    print("Hello world!");
+  }
+
+  comp.affinityRun(f, onError.bind(null));
 }
 
-/**
- * Get an instance of cache
- *
- * @this {Ignite}
- * @param {string} Cache name
- * @returns {Cache} Cache
- */
-Ignite.prototype.cache = function(cacheName) {
-  var Cache = require("./cache").Cache;
+function onError(error, res) {
+  console.log("Error "  + error);
 
-  return new Cache(this._server, cacheName);
+  assert(error == null);
+
+  assert(res.indexOf("AFFINITY RUN") !== -1);
+
+  console.log("!!!!!!!!RES = " + res);
+
+  TestUtils.testDone();
 }
-
-/**
- * Get an instance of compute
- *
- * @this {Ignite}
- * @returns {Compute} Compute
- */
-Ignite.prototype.compute = function() {
-  var Compute = require("./compute").Compute
-
-  return new Compute(this._server);
-}
-exports.Ignite = Ignite;

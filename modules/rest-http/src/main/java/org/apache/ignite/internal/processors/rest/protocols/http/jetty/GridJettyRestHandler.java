@@ -447,6 +447,16 @@ public class GridJettyRestHandler extends AbstractHandler {
                 break;
             }
 
+            case AFFINITY_RUN: {
+                System.out.println("!!!!!!!AFFINITY RUN");
+                RestComputeRequest restReq0 = new RestComputeRequest();
+
+                restReq0.function((String)params.get("func"));
+
+                restReq = restReq0;
+                break;
+            }
+
             default:
                 throw new IgniteCheckedException("Invalid command: " + cmd);
         }
