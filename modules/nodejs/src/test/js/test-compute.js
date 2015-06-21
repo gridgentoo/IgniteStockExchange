@@ -28,13 +28,25 @@ testCompute = function() {
 }
 
 function onStart(error, ignite) {
+  var cache = ignite.cache("mycache");
+
+  var params = {"key0" : "val0"}
+
+  for (var i = 0; i < 1000; ++i)
+    params["key" + i] = "val" + i;
+
+  cache.putAll(params, onPut.bind(null, ignite))
+
+}
+
+function onPut(ignite, error) {
   var comp = ignite.compute();
 
   var f = function () {
     print("Hello world!");
   }
 
-  comp.affinityRun(f, onError.bind(null));
+  comp.affinityRun("mycache", "key999", f, onError.bind(null));
 }
 
 function onError(error, res) {

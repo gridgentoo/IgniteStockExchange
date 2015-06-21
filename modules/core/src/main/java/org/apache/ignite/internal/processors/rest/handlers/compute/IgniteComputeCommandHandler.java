@@ -24,6 +24,8 @@ import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
+import org.apache.ignite.lang.*;
+import org.apache.ignite.resources.*;
 
 import javax.script.*;
 import java.util.*;
@@ -57,12 +59,21 @@ public class IgniteComputeCommandHandler extends GridRestCommandHandlerAdapter {
 
         assert SUPPORTED_COMMANDS.contains(req.command());
 
-        try {
-            ctx.scripting().runJS(((RestComputeRequest) req).function());
-        }
-        catch (ScriptException e) {
-            throw new IgniteException(e);
-        }
+        final RestComputeRequest req0 = (RestComputeRequest) req;
+
+        ctx.grid().compute().affinityRun(req0.cacheName(), req0.key(), new IgniteRunnable() {
+            @IgniteInstanceResource
+            private Ignite ignite;
+
+            @Override public void run() {
+                try {
+                    ((IgniteKernal)ignite).context().scripting().runJS(req0.function());
+                }
+                catch (ScriptException e) {
+                    throw new IgniteException(e);
+                }
+            }
+        });
 
         return new GridFinishedFuture<>(new GridRestResponse("AFFINITY RUN " + req));
     }

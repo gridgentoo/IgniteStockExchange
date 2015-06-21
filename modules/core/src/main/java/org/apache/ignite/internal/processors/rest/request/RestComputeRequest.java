@@ -24,6 +24,12 @@ public class RestComputeRequest extends GridRestRequest {
     /** Java script function. */
     private String func;
 
+    /** Cache name. */
+    private String cacheName;
+
+    /** Key. */
+    private Object key;
+
     /**
      * @return Java script function.
      */
@@ -36,5 +42,33 @@ public class RestComputeRequest extends GridRestRequest {
      */
     public void function(String func) {
         this.func = func;
+    }
+
+    /**
+     * @return Cache name.
+     */
+    public String cacheName() {
+        return cacheName;
+    }
+
+    /**
+     * @param cacheName Cache name.
+     */
+    public void cacheName(String cacheName) {
+        this.cacheName = cacheName;
+    }
+
+    /**
+     * @param key Key.
+     */
+    public void key(Object key) {
+        this.key = key;
+    }
+
+    /**
+     * @return Key.
+     */
+    public Object key() {
+        return key;
     }
 }

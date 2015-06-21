@@ -28,17 +28,12 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
 
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
-        startGrid(0);
+        startGrids(2);
     }
 
     /** {@inheritDoc} */
     @Override protected void afterTestsStopped() throws Exception {
         stopAllGrids();
-    }
-
-    /** {@inheritDoc} */
-    @Override protected void beforeTest() throws Exception {
-        grid(0).cache(NodeJsAbstractTest.CACHE_NAME).removeAll();
     }
 
     /**

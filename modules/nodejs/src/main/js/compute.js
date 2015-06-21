@@ -33,13 +33,17 @@ function Compute(server) {
 
 /**
  * @this {Compute}
+ * @param {String} cacheName Cache name.
+ * @param {String} key Key.
  * @param {Compute~runnable} runnable Function without parameters
+ * @param {Cache~noValue} callback Callback
  */
-Compute.prototype.affinityRun = function(runnable, callback) {
+Compute.prototype.affinityRun = function(cacheName, key, runnable, callback) {
   var f = runnable.toString();
   var qs = require('querystring');
   f = qs.escape(f);
-  this._server.runCommand("affrun", [Server.pair("func", f)], callback);
+  this._server.runCommand("affrun", [Server.pair("cacheName", cacheName),
+    Server.pair("key", key), Server.pair("func", f)], callback);
 }
 
 exports.Compute = Compute;
