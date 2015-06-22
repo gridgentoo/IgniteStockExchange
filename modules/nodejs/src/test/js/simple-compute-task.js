@@ -15,10 +15,43 @@
  * limitations under the License.
  */
 
-module.exports = {
-  Cache : require('./cache.js').Cache,
-  Ignition : require('./ignition.js').Ignition,
-  Server : require('./server.js').Server,
-  Ignite : require('./ignite.js').Ignite,
-  Compute : require('./compute.js').Compute
+function CharacterCountTask() {
 }
+
+CharacterCountTask.prototype.map = function(nodes, arg) {
+  var words = arg.split(" ");
+
+  var map = {};
+
+  var nodeId = 0;
+
+  for (var word of words) {
+    var node = nodes[nodeId];
+
+    if (nodeId < nodes.length - 1) {
+      nodeId++;
+    }
+
+    var f = function() {
+      println(">>> Printing " + word);
+
+      return word.length;
+    }
+
+    map[f] = node;
+  }
+
+  return map;
+}
+
+CharacterCountTask.prototype.reduce = function(results) {
+  var sum = 0;
+
+  for (var res of results) {
+    sum += parseInt(res, 10);
+  }
+
+  return sum;
+}
+
+exports.CharacterCountTask = CharacterCountTask

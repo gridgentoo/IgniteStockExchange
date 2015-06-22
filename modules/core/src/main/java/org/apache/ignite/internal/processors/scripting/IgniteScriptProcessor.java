@@ -59,8 +59,23 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
     public Object runJS(String script) throws ScriptException {
         ScriptEngine engine = factory.getEngineByName("JavaScript");
 
+        Bindings b = engine.createBindings();
+
+        b.put("ignite", new Ignite());
+
+        engine.setBindings(b, ScriptContext.ENGINE_SCOPE);
+
         script = "(" + script + ")();";
 
         return engine.eval(script);
+    }
+
+    /**
+     * Ignite JS binding.
+     */
+    public static class Ignite {
+        public void hello() {
+            System.out.println("HELLO HAPPY WORLD!!!");
+        }
     }
 }

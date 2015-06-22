@@ -15,10 +15,24 @@
  * limitations under the License.
  */
 
-module.exports = {
-  Cache : require('./cache.js').Cache,
-  Ignition : require('./ignition.js').Ignition,
-  Server : require('./server.js').Server,
-  Ignite : require('./ignite.js').Ignite,
-  Compute : require('./compute.js').Compute
+/**
+ * @constructor
+ * @this {ComputeTask}
+ */
+function ComputeTask() {
+}
+
+/**
+ * @param {string[]} nodes Nodes id
+ * @param {string} arg Argument
+ * @returns {Object.<string, Cache~onGet>} Map of grid jobs assigned to subgrid node. Unless {@link ComputeTaskContinuousMapper} is
+ * injected into task, if {@code null} or empty map is returned, exception will be thrown
+ */
+ComputeTask.prototype.map = function(nodes, arg) {
+}
+
+/**
+ * @param {string[]} results Results
+ */
+ComputeTask.prototype.reduce = function(results) {
 }

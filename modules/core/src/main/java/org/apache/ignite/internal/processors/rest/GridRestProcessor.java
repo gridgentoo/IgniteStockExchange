@@ -254,6 +254,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
             addHandler(new GridVersionCommandHandler(ctx));
             addHandler(new DataStructuresCommandHandler(ctx));
             addHandler(new IgniteComputeCommandHandler(ctx));
+            addHandler(new IgniteComputeTaskCommandHandler(ctx));
 
             // Start protocols.
             startTcpProtocol();

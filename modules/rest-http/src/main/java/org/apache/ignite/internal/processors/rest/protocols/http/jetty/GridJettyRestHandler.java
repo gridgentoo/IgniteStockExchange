@@ -447,8 +447,8 @@ public class GridJettyRestHandler extends AbstractHandler {
                 break;
             }
 
-            case AFFINITY_RUN: {
-                System.out.println("!!!!!!!AFFINITY RUN");
+            case AFFINITY_RUN:
+            case AFFINITY_CALL: {
                 RestComputeRequest restReq0 = new RestComputeRequest();
 
                 restReq0.function((String)params.get("func"));
@@ -456,6 +456,26 @@ public class GridJettyRestHandler extends AbstractHandler {
                 restReq0.key(params.get("key"));
 
                 restReq = restReq0;
+                break;
+            }
+
+            case EXECUTE_TASK: {
+                RestComputeTaskRequest restReq0 = new RestComputeTaskRequest();
+
+                List<Object> funcs = values("f", params);
+                List<Object> nodes = values("n", params);
+
+                assert funcs.size() == nodes.size();
+
+                Map<String, String> mapping = new HashMap<>();
+
+                for (int i = 0; i < funcs.size(); ++i)
+                    mapping.put((String) funcs.get(i), (String)nodes.get(i));
+
+                restReq0.mapping(mapping);
+
+                restReq = restReq0;
+
                 break;
             }
 

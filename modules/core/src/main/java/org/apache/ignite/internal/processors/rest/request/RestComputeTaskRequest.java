@@ -15,10 +15,28 @@
  * limitations under the License.
  */
 
-module.exports = {
-  Cache : require('./cache.js').Cache,
-  Ignition : require('./ignition.js').Ignition,
-  Server : require('./server.js').Server,
-  Ignite : require('./ignite.js').Ignite,
-  Compute : require('./compute.js').Compute
+package org.apache.ignite.internal.processors.rest.request;
+
+import java.util.*;
+
+/**
+ * Compute task request.
+ */
+public class RestComputeTaskRequest extends GridRestRequest {
+    /** Mapping tasks to nodes. */
+    private Map<String, String> mapping;
+
+    /**
+     * @param mapping Mapping tasks to nodes.
+     */
+    public void mapping(Map<String, String> mapping) {
+        this.mapping = mapping;
+    }
+
+    /**
+     * @return Mapping tasks to nodes.
+     */
+    public Map<String, String> mapping() {
+        return mapping;
+    }
 }

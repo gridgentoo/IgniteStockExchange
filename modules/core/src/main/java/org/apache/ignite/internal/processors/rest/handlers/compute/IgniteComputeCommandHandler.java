@@ -37,7 +37,8 @@ import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
  */
 public class IgniteComputeCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
-    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(AFFINITY_RUN);
+    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(AFFINITY_RUN,
+        AFFINITY_CALL);
 
     /**
      * @param ctx Context.
@@ -61,20 +62,42 @@ public class IgniteComputeCommandHandler extends GridRestCommandHandlerAdapter {
 
         final RestComputeRequest req0 = (RestComputeRequest) req;
 
-        ctx.grid().compute().affinityRun(req0.cacheName(), req0.key(), new IgniteRunnable() {
-            @IgniteInstanceResource
-            private Ignite ignite;
+        switch (req.command()) {
+            case AFFINITY_RUN:
+                ctx.grid().compute().affinityRun(req0.cacheName(), req0.key(), new IgniteRunnable() {
+                    @IgniteInstanceResource
+                    private Ignite ignite;
 
-            @Override public void run() {
-                try {
-                    ((IgniteKernal)ignite).context().scripting().runJS(req0.function());
-                }
-                catch (ScriptException e) {
-                    throw new IgniteException(e);
-                }
-            }
-        });
+                    @Override public void run() {
+                        try {
+                            ((IgniteKernal) ignite).context().scripting().runJS(req0.function());
+                        }
+                        catch (ScriptException e) {
+                            throw new IgniteException(e);
+                        }
+                    }
+                });
 
-        return new GridFinishedFuture<>(new GridRestResponse("AFFINITY RUN " + req));
+                return new GridFinishedFuture<>(new GridRestResponse("AFFINITY RUN " + req));
+
+            case AFFINITY_CALL:
+                Object res = ctx.grid().compute().affinityCall(req0.cacheName(), req0.key(), new IgniteCallable<Object>() {
+                    @IgniteInstanceResource
+                    private Ignite ignite;
+
+                    @Override public Object call() {
+                        try {
+                            return ((IgniteKernal) ignite).context().scripting().runJS(req0.function());
+                        }
+                        catch (ScriptException e) {
+                            throw new IgniteException(e);
+                        }
+                    }
+                });
+
+                return new GridFinishedFuture<>(new GridRestResponse("AFFINITY RUN " + res));
+        }
+
+        return new GridFinishedFuture<>();
     }
 }

@@ -16,6 +16,7 @@
  */
 
 var Server = require("./server").Server;
+var ComputeTask = require("./compute-task").ComputeTask;
 
 /**
  * @constructor
@@ -33,17 +34,104 @@ function Compute(server) {
 
 /**
  * @this {Compute}
- * @param {String} cacheName Cache name.
- * @param {String} key Key.
+ * @param {string} cacheName Cache name.
+ * @param {string} key Key.
  * @param {Compute~runnable} runnable Function without parameters
  * @param {Cache~noValue} callback Callback
  */
 Compute.prototype.affinityRun = function(cacheName, key, runnable, callback) {
-  var f = runnable.toString();
-  var qs = require('querystring');
-  f = qs.escape(f);
   this._server.runCommand("affrun", [Server.pair("cacheName", cacheName),
-    Server.pair("key", key), Server.pair("func", f)], callback);
+    Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
 }
 
-exports.Compute = Compute;
+/**
+ * @this {Compute}
+ * @param {string} cacheName Cache name.
+ * @param {string} key Key.
+ * @param {Compute~runnable} runnable Function without parameters
+ * @param {Cache~onGet} callback Callback
+ */
+Compute.prototype.affinityCall = function(cacheName, key, runnable, callback) {
+  this._server.runCommand("affcall", [Server.pair("cacheName", cacheName),
+    Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
+}
+
+/**
+ * @param{Cache~noValue} f Function
+ * @returns {string} Encoding function
+ */
+Compute.prototype._escape = function(f) {
+  var f = f.toString();
+  var qs = require('querystring');
+  return qs.escape(f);
+}
+
+/**
+ * @this {Compute}
+ * @param {ComputeTask} task Compute task
+ * @param {string} arg  Argument
+ * @param {} callback Callback
+ */
+Compute.prototype.execute = function(task, arg, callback) {
+  this._nodes(this._onNodesExecute.bind(this, task, arg, callback));
+}
+
+Compute.prototype._nodes = function(callback) {
+  this._server.runCommand("top", [Server.pair("mtr", "false"), Server.pair("attr", "false")],
+    this._onNodes.bind(this, callback))
+}
+
+Compute.prototype._onNodes = function(callback, error, results) {
+  if (error) {
+    callback.call(null, error, null);
+
+    return;
+  }
+
+  var nodes = [];
+
+  for (var res of results) {
+    nodes.push(res["nodeId"])
+  }
+
+  callback.call(null, null, nodes);
+}
+
+Compute.prototype._onNodesExecute = function(task, arg, callback, err, nodes) {
+  if (err) {
+      callback.call(null, error, null);
+
+      return;
+  }
+
+  var taskMap = task.map(nodes, arg);
+
+  var params = [];
+  var i = 0;
+
+  console.log("TASK" + taskMap);
+  for (var f in taskMap) {
+    params.push(Server.pair("f" + i, this._escape(f)));
+    params.push(Server.pair("n" + i, taskMap[f]));
+    i++;
+  }
+
+  this._server.runCommand("exectask", params, this._onResExecute.bind(this, task, callback));
+}
+
+
+Compute.prototype._onResExecute = function(task, callback, err, results) {
+  if (err) {
+    callback.call(null, err, null);
+
+    return;
+  }
+
+  console.log("ON RES EXEC = " + results);
+
+  var res = task.reduce(results);
+
+  callback.call(null, null, res);
+}
+
+exports.Compute = Compute

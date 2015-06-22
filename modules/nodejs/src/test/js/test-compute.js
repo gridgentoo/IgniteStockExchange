@@ -23,40 +23,89 @@ var Server = Apache.Server;
 
 var assert = require("assert");
 
-testCompute = function() {
-  TestUtils.startIgniteNode(onStart.bind(null));
+testComputeAffinityRun = function() {
+  TestUtils.startIgniteNode(onStart.bind(null, onPut));
 }
 
-function onStart(error, ignite) {
+testComputeAffinityCall = function() {
+  TestUtils.startIgniteNode(onStart.bind(null, onPut1));
+}
+
+testComputeExecute = function() {
+  var CharacterCountTask = require("./simple-compute-task").CharacterCountTask
+
+  var task = new CharacterCountTask();
+
+  TestUtils.startIgniteNode(onStart1.bind(null, task));
+}
+
+function onStart(locOnPut, error, ignite) {
   var cache = ignite.cache("mycache");
 
-  var params = {"key0" : "val0"}
+  var params = {}
 
-  for (var i = 0; i < 1000; ++i)
+  for (var i = 900; i < 1000; ++i)
     params["key" + i] = "val" + i;
 
-  cache.putAll(params, onPut.bind(null, ignite))
-
+  cache.putAll(params, locOnPut.bind(null, ignite))
 }
 
 function onPut(ignite, error) {
   var comp = ignite.compute();
 
   var f = function () {
-    print("Hello world!");
+    println("Hello world!");
+
+    ignite.hello();
   }
 
   comp.affinityRun("mycache", "key999", f, onError.bind(null));
 }
 
-function onError(error, res) {
+function onError(error) {
   console.log("Error "  + error);
 
   assert(error == null);
 
-  assert(res.indexOf("AFFINITY RUN") !== -1);
+  TestUtils.testDone();
+}
+
+function onPut1(ignite, error) {
+  var comp = ignite.compute();
+
+  var f = function () {
+    println("Hello world!");
+
+    ignite.hello();
+  }
+
+  comp.affinityCall("mycache", "key999", f, onError1.bind(null));
+}
+
+function onError1(error, res) {
+  console.log("Error "  + error);
+
+  assert(error == null);
+
+  assert(res.indexOf("AFFINITY CALL") !== -1);
 
   console.log("!!!!!!!!RES = " + res);
+
+  TestUtils.testDone();
+}
+
+function onStart1(task, error, ignite) {
+  var comp = ignite.compute();
+
+  comp.execute(task, "Hi Alice", onComputeResult);
+}
+
+function onComputeResult(error, res) {
+  console.log("Error "  + error);
+
+  assert(error == null);
+
+  console.log("!!!!!!!!EXECUTE TASK RESULT = " + res);
 
   TestUtils.testDone();
 }
