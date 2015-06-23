@@ -20,23 +20,18 @@ var Server = require("./server").Server;
 /**
  * @constructor
  * @this {Compute}
- * @param {Server} server Server class
+ * @param {Server} server Server
  */
 function Compute(server) {
   this._server = server;
 }
 
 /**
- * Callback for affinityRun
- * @callback Compute~runnable
- */
-
-/**
  * @this {Compute}
- * @param {string} cacheName Cache name.
- * @param {string} key Key.
- * @param {Compute~runnable} runnable Function without parameters
- * @param {Cache~noValue} callback Callback
+ * @param {string} cacheName Cache name
+ * @param {string} key Key
+ * @param runnable Function without parameters and return value
+ * @param {noValue} callback Callback
  */
 Compute.prototype.affinityRun = function(cacheName, key, runnable, callback) {
   this._server.runCommand("affscriptrun", [Server.pair("cacheName", cacheName),
@@ -45,10 +40,10 @@ Compute.prototype.affinityRun = function(cacheName, key, runnable, callback) {
 
 /**
  * @this {Compute}
- * @param {string} cacheName Cache name.
- * @param {string} key Key.
- * @param {Compute~runnable} runnable Function without parameters
- * @param {Cache~onGet} callback Callback
+ * @param {string} cacheName Cache name
+ * @param {string} key Key
+ * @param runnable Function without parameters
+ * @param {onGet} callback Callback
  */
 Compute.prototype.affinityCall = function(cacheName, key, runnable, callback) {
   this._server.runCommand("affscriptcall", [Server.pair("cacheName", cacheName),
@@ -56,29 +51,30 @@ Compute.prototype.affinityCall = function(cacheName, key, runnable, callback) {
 }
 
 /**
- * @param{Cache~noValue} f Function
+ * @param {noValue} f Function
  * @returns {string} Encoding function
  */
 Compute.prototype._escape = function(f) {
-  var f = f.toString();
   var qs = require('querystring');
-  return qs.escape(f);
+
+  return qs.escape(f.toString());
 }
 
 /**
  * @this {Compute}
- * @param {ComputeTask} task Compute task
- * @param {string} arg  Argument
- * @param {} callback Callback
+ * @param {MapFunction} map Map function
+ * @param {ReduceFunction} reduce Reduce function
+ * @param {string} arg Argument
+ * @param {onGet} callback Callback
  */
 Compute.prototype.execute = function(map, reduce, arg, callback) {
-   var params = [];
+  var params = [];
 
-    params.push(Server.pair("map", this._escape(map)));
-    params.push(Server.pair("reduce", this._escape(reduce)));
-    params.push(Server.pair("arg", this._escape(arg)));
+  params.push(Server.pair("map", this._escape(map)));
+  params.push(Server.pair("reduce", this._escape(reduce)));
+  params.push(Server.pair("arg", this._escape(arg)));
 
-    this._server.runCommand("execscripttask", params, callback);
+  this._server.runCommand("execscripttask", params, callback);
 }
 
 /**
