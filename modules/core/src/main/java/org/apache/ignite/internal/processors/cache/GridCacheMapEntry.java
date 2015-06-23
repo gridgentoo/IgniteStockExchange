@@ -2501,6 +2501,8 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
             if (mvcc == null || mvcc.isEmpty(ver)) {
                 obsoleteVer = ver;
 
+                U.dumpStack(log, "Marking entry as obsolete [entry=" + this + ", thread=" + Thread.currentThread().getName() + ']');
+
                 obsoleteVersionExtras(obsoleteVer);
 
                 if (clear)
@@ -2509,8 +2511,11 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
 
             return obsoleteVer != null;
         }
-        else
+        else {
+            U.debug(log, "Did not mark entry as obsolete (ver was null): " + this);
+
             return obsoleteVer != null;
+        }
     }
 
     /** {@inheritDoc} */
