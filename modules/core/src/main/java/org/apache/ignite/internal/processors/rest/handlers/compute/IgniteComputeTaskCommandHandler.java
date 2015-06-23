@@ -72,6 +72,9 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
      * JS Compute Task.
      */
     private static class JsTask extends ComputeTaskAdapter<String, Object> {
+        /** */
+        private static final long serialVersionUID = 0L;
+
         /** Mapping function. */
         private String mapFunc;
 
