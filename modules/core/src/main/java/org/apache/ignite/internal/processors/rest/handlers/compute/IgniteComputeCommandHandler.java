@@ -27,7 +27,6 @@ import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.resources.*;
 
-import javax.script.*;
 import java.util.*;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
@@ -37,7 +36,8 @@ import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
  */
 public class IgniteComputeCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
-    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(AFFINITY_RUN,
+    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(
+        AFFINITY_RUN,
         AFFINITY_CALL);
 
     /**
@@ -73,7 +73,7 @@ public class IgniteComputeCommandHandler extends GridRestCommandHandlerAdapter {
                     }
                 });
 
-                return new GridFinishedFuture<>(new GridRestResponse("AFFINITY RUN " + req));
+                return new GridFinishedFuture<>(new GridRestResponse());
 
             case AFFINITY_CALL:
                 Object res = ctx.grid().compute().affinityCall(req0.cacheName(), req0.key(), new IgniteCallable<Object>() {
@@ -85,7 +85,7 @@ public class IgniteComputeCommandHandler extends GridRestCommandHandlerAdapter {
                     }
                 });
 
-                return new GridFinishedFuture<>(new GridRestResponse("AFFINITY RUN " + res));
+                return new GridFinishedFuture<>(new GridRestResponse(res));
         }
 
         return new GridFinishedFuture<>();
