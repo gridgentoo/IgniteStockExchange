@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+var Cache = require("./cache").Cache;
+var Compute = require("./compute").Compute
+
 /**
  * Create an instance of Ignite
  *
@@ -27,6 +30,7 @@ function Ignite(server) {
 }
 
 /**
+ * @this {Ignite}
  * @returns {Server} Server
  */
 Ignite.prototype.server = function() {
@@ -41,8 +45,6 @@ Ignite.prototype.server = function() {
  * @returns {Cache} Cache
  */
 Ignite.prototype.cache = function(cacheName) {
-  var Cache = require("./cache").Cache;
-
   return new Cache(this._server, cacheName);
 }
 
@@ -53,8 +55,7 @@ Ignite.prototype.cache = function(cacheName) {
  * @returns {Compute} Compute
  */
 Ignite.prototype.compute = function() {
-  var Compute = require("./compute").Compute
-
   return new Compute(this._server);
 }
+
 exports.Ignite = Ignite;
