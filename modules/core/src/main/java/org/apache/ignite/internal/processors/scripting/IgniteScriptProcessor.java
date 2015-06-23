@@ -20,20 +20,20 @@ package org.apache.ignite.internal.processors.scripting;
 import org.apache.ignite.*;
 import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.*;
-import org.apache.ignite.internal.util.typedef.*;
 
 import javax.script.*;
-import java.util.*;
+
+import static javax.script.ScriptContext.*;
 
 /**
- * Ignite scripting manager.
+ * Ignite scripting processor.
  */
 public class IgniteScriptProcessor extends GridProcessorAdapter {
     /** Javascript engine name. */
     public static final String JAVA_SCRIPT_ENGINE_NAME = "JavaScript";
 
-    /** Script factory **/
-    private final ScriptEngineManager factory = new ScriptEngineManager();
+    /** Javascript engine. */
+    private ScriptEngine jsEngine;
 
     /**
      * @param ctx Kernal context.
@@ -42,16 +42,17 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
         super(ctx);
     }
 
-    /**
-     * @param engName Engine name.
-     * @param script Script.
-     * @throws ScriptException If script failed.
-     */
-    public Object run(String engName, String script) throws ScriptException {
-        if (!engName.equals(JAVA_SCRIPT_ENGINE_NAME))
-            throw new IgniteException("Engine is not supported. [engName=" + engName + "]");
+    /** {@inheritDoc} */
+    @Override public void start() throws IgniteCheckedException {
+        ScriptEngineManager factory = new ScriptEngineManager();
 
-        return runJS(script);
+        jsEngine = factory.getEngineByName(JAVA_SCRIPT_ENGINE_NAME);
+
+        Bindings bind = jsEngine.createBindings();
+
+        bind.put("ignite", new IgniteJS());
+
+        jsEngine.setBindings(bind, ENGINE_SCOPE);
     }
 
     /**
@@ -60,23 +61,13 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @return Script result.
      * @throws ScriptException If script failed.
      */
-    public Object runJS(String script, String[] args) throws ScriptException {
-        ScriptEngine engine = factory.getEngineByName("JavaScript");
-
-        Bindings b = engine.createBindings();
-
-        b.put("ignite", new Ignite());
-
-        engine.setBindings(b, ScriptContext.ENGINE_SCOPE);
-
-        script = "(" + script + ")(" ;
-
-        for (int i = 0; i < args.length; ++i)
-            script += args[i] + (i < args.length - 1 ? "," : "");
-
-        script += ");";
-
-        return engine.eval(script);
+    public Object runJSFunction(String script, String[] args) throws IgniteException {
+        try {
+            return jsEngine.eval(callJsFunction(script, args));
+        }
+        catch (ScriptException e) {
+            throw new IgniteException("Cannot evaluate javascript function + " + script, e);
+        }
     }
 
     /**
@@ -84,16 +75,23 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @return Script result.
      * @throws ScriptException If script failed.
      */
-    public Object runJS(String script) throws ScriptException {
-        return runJS(script, new String[]{""});
+    public Object runJSFunction(String script) throws IgniteException {
+        return runJSFunction(script, new String[]{""});
     }
 
     /**
-     * Ignite JS binding.
+     * @param script JS function script.
+     * @param args Arguments.
+     * @return Script that calls function.
      */
-    public static class Ignite {
-        public void hello() {
-            System.out.println("HELLO HAPPY WORLD!!!");
-        }
+    private String callJsFunction(String script, String[] args) {
+        String callFuncScript = "(" + script + ")(";
+
+        for (int i = 0; i < args.length; ++i)
+            callFuncScript += args[i] + (i < args.length - 1 ? "," : "");
+
+        callFuncScript += ");";
+
+        return callFuncScript;
     }
 }

@@ -15,26 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal;
-
-import org.apache.ignite.internal.processors.scripting.*;
-import org.apache.ignite.testframework.junits.common.*;
+package org.apache.ignite.internal.processors.scripting;
 
 /**
- * Test {@link IgniteScriptProcessor}
+ * Ignite JS binding.
  */
-public class IgniteScriptManagerSelfTest extends GridCommonAbstractTest {
-    /**
-     * @throws Exception If failed.
-     */
-    public void testRunScript() throws Exception {
-        IgniteScriptProcessor mng = startGrid(0).context().scripting();
-
-        System.out.println("Result = " + mng.runJS("5 + 5;"));
-        System.out.println("Result = " + mng.runJS("function () {return (5+5)}"));
-
-        System.out.println("Result = " + mng.runJS("function sum() {return (5+5)}; sum(); "));
-
-        stopAllGrids();
+public class IgniteJS {
+    public void hello() {
+        System.out.println("HELLO HAPPY WORLD!!!");
     }
 }

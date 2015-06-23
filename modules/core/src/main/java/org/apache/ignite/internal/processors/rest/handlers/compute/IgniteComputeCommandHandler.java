@@ -69,12 +69,7 @@ public class IgniteComputeCommandHandler extends GridRestCommandHandlerAdapter {
                     private Ignite ignite;
 
                     @Override public void run() {
-                        try {
-                            ((IgniteKernal) ignite).context().scripting().runJS(req0.function());
-                        }
-                        catch (ScriptException e) {
-                            throw new IgniteException(e);
-                        }
+                        ((IgniteKernal) ignite).context().scripting().runJSFunction(req0.function());
                     }
                 });
 
@@ -86,12 +81,7 @@ public class IgniteComputeCommandHandler extends GridRestCommandHandlerAdapter {
                     private Ignite ignite;
 
                     @Override public Object call() {
-                        try {
-                            return ((IgniteKernal) ignite).context().scripting().runJS(req0.function());
-                        }
-                        catch (ScriptException e) {
-                            throw new IgniteException(e);
-                        }
+                        return ((IgniteKernal) ignite).context().scripting().runJSFunction(req0.function());
                     }
                 });
 

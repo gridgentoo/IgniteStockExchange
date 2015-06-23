@@ -99,61 +99,54 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
 
             nodesIds = nodesIds.substring(0, nodesIds.length() - 1) + "]";
 
-            try {
-                String newMap = new String("function () {\n" +
-                    "   var res = [];\n" +
-                    "   var resCont = function(f, args, nodeId) {\n" +
-                    "       res.push([f.toString(), args, nodeId])\n" +
-                    "   }\n" +
-                    "   var locF = " + mapFunc + "; \n locF(" +
-                        nodesIds + ", " +
-                    "\"" + this.arg + "\"" +
-                    ", resCont.bind(null)" + ");\n" +
-                    "   return res;\n" +
-                    "}");
+            String newMap = new String("function () {\n" +
+                "   var res = [];\n" +
+                "   var resCont = function(f, args, nodeId) {\n" +
+                "       res.push([f.toString(), args, nodeId])\n" +
+                "   }\n" +
+                "   var locF = " + mapFunc + "; \n locF(" +
+                    nodesIds + ", " +
+                "\"" + this.arg + "\"" +
+                ", resCont.bind(null)" + ");\n" +
+                "   return res;\n" +
+                "}");
 
-                List mapRes = (List)ctx.scripting().runJS(newMap);
+            List mapRes = (List)ctx.scripting().runJSFunction(newMap);
 
-                for (Object arr : mapRes) {
-                    Object[] nodeTask = ((List)arr).toArray();
+            for (Object arr : mapRes) {
+                Object[] nodeTask = ((List)arr).toArray();
 
-                    final String func = (String)nodeTask[0];
+                final String func = (String)nodeTask[0];
 
-                    final List argv = (List) nodeTask[1];
+                final List argv = (List) nodeTask[1];
 
-                    String nodeIdStr = (String) nodeTask[2];
+                String nodeIdStr = (String) nodeTask[2];
 
-                    UUID nodeId = UUID.fromString(nodeIdStr);
+                UUID nodeId = UUID.fromString(nodeIdStr);
 
-                    ClusterNode node = ctx.grid().cluster().node(nodeId);
+                ClusterNode node = ctx.grid().cluster().node(nodeId);
 
-                    map.put(new ComputeJobAdapter() {
-                        /** Ignite. */
-                        @IgniteInstanceResource
-                        private Ignite ignite;
+                map.put(new ComputeJobAdapter() {
+                    /** Ignite. */
+                    @IgniteInstanceResource
+                    private Ignite ignite;
 
-                        @Override public Object execute() throws IgniteException {
-                            System.out.println("Compute job on node " + ignite.cluster().localNode().id());
-                            try {
-                                String[] argv1 = new String[argv.size()];
+                    @Override public Object execute() throws IgniteException {
+                        System.out.println("Compute job on node " + ignite.cluster().localNode().id());
+                        try {
+                            String[] argv1 = new String[argv.size()];
 
-                                for (int i = 0; i < argv1.length; ++i)
-                                    argv1[i] = "\"" + argv.get(i).toString() + "\"";
+                            for (int i = 0; i < argv1.length; ++i)
+                                argv1[i] = "\"" + argv.get(i).toString() + "\"";
 
-                                return ctx.scripting().runJS(func, argv1);
-                            }
-                            catch (Exception e) {
-                                throw new IgniteException(e);
-                            }
+                            return ctx.scripting().runJSFunction(func, argv1);
                         }
-                    }, node);
+                        catch (Exception e) {
+                            throw new IgniteException(e);
+                        }
+                    }
+                }, node);
 
-                }
-            }
-            catch (ScriptException e) {
-                throw new IgniteException(e);
-            }
-            finally {
             }
 
             return map;
@@ -166,12 +159,7 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
             for (ComputeJobResult res : results)
                 data.add(res.getData());
 
-            try {
-                return ctx.scripting().runJS(reduceFunc, new String[] {data.toString()});
-            }
-            catch (ScriptException e) {
-                throw new IgniteException(e);
-            }
+            return ctx.scripting().runJSFunction(reduceFunc, new String[]{data.toString()});
         }
     }
 }
