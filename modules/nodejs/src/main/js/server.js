@@ -49,6 +49,11 @@ Server.prototype.host = function() {
  */
 
 /**
+ * @callback noValue
+ * @param {string} error Error
+ */
+
+/**
  * Run http request
  *
  * @this {Server}

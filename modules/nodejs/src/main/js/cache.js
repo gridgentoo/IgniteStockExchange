@@ -43,12 +43,6 @@ Cache.prototype.get = function(key, callback) {
 };
 
 /**
- * Callback for cache put
- * @callback noValue
- * @param {string} error Error
- */
-
-/**
  * Put cache value
  *
  * @this {Cache}
@@ -91,7 +85,7 @@ Cache.prototype.removeAll = function(keys, callback) {
  * Put keys to cache
  *
  * @this {Cache}
- * @param {Object.<string, string>} collection of entries to put in the cache
+ * @param {Object.<string, string>} map collection of entries to put in the cache
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.putAll = function(map, callback) {
@@ -113,6 +107,7 @@ Cache.prototype.putAll = function(map, callback) {
 
 /**
  * Callback for cache get
+ *
  * @callback Cache~onGetAll
  * @param {string} error Error
  * @param {string[]} results Result values
