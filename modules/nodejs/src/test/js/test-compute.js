@@ -20,29 +20,30 @@ var TestUtils = require("./test-utils").TestUtils;
 var assert = require("assert");
 
 testComputeAffinityRun = function() {
-  TestUtils.startIgniteNode(onStart.bind(null, onPut));
+  TestUtils.startIgniteNode(onStart.bind(null, computeAffinityRun));
 }
 
 testComputeAffinityCall = function() {
-  TestUtils.startIgniteNode(onStart.bind(null, onPut1));
+  TestUtils.startIgniteNode(onStart.bind(null, computeAffinityCall));
 }
 
 testComputeExecute = function() {
-  TestUtils.startIgniteNode(onStart1);
+  TestUtils.startIgniteNode(computeExecute);
 }
 
-function onStart(locOnPut, error, ignite) {
+function onStart(onPut, error, ignite) {
   var cache = ignite.cache("mycache");
 
   var params = {}
 
-  for (var i = 900; i < 1000; ++i)
+  for (var i = 900; i < 1000; ++i) {
     params["key" + i] = "val" + i;
+  }
 
-  cache.putAll(params, locOnPut.bind(null, ignite))
+  cache.putAll(params, onPut.bind(null, ignite))
 }
 
-function onPut(ignite, error) {
+function computeAffinityRun(ignite, error) {
   var comp = ignite.compute();
 
   var f = function () {
@@ -51,40 +52,34 @@ function onPut(ignite, error) {
     ignite.hello();
   }
 
-  comp.affinityRun("mycache", "key999", f, onError.bind(null));
+  function onEnd(error) {
+    assert(error == null);
+
+    TestUtils.testDone();
+  }
+
+  comp.affinityRun("mycache", "key999", f, onEnd.bind(null));
 }
 
-function onError(error) {
-  console.log("Error "  + error);
-
-  assert(error == null);
-
-  TestUtils.testDone();
-}
-
-function onPut1(ignite, error) {
+function computeAffinityCall(ignite, error) {
   var comp = ignite.compute();
 
   var f = function () {
-    println("Hello world!");
-
-    ignite.hello();
+    return ignite.hello();
   }
 
-  comp.affinityCall("mycache", "key999", f, onError1.bind(null));
+  function onEnd(err, res) {
+    assert(err == null);
+
+    assert(res.indexOf("HAPPY") !== -1, "Incorrect result message. [mes=" + res + "].");
+
+    TestUtils.testDone();
+  }
+
+  comp.affinityCall("mycache", "key999", f, onEnd.bind(null));
 }
 
-function onError1(error, res) {
-  console.log("Error "  + error);
-
-  assert(error == null);
-
-  console.log("!!!!!!!!RES = " + res);
-
-  TestUtils.testDone();
-}
-
-function onStart1(error, ignite) {
+function computeExecute(error, ignite) {
   var map = function(nodes, arg, emit) {
     var words = arg.split(" ");
 
@@ -108,17 +103,12 @@ function onStart1(error, ignite) {
     return sum;
   };
 
-  ignite.compute().execute(map, reduce, "Hi Alice", onComputeResult);
-}
+  var callback = function(err, res) {
+    assert(err == null, "Get error on compute task. [err=" + err + "].");
+    assert(res === 7, "Result is not correct. [expected=7, value=" + res + "].");
 
-function onComputeResult(error, res) {
-  console.log("Error "  + error);
+    TestUtils.testDone();
+  }
 
-  assert(error == null);
-
-  console.log("!!!!!!!!EXECUTE TASK RESULT = " + res);
-
-  assert(res === 7, "Result is not correct. [expected=7, value=" + res + "].")
-
-  TestUtils.testDone();
+  ignite.compute().execute(map, reduce, "Hi Alice", callback);
 }

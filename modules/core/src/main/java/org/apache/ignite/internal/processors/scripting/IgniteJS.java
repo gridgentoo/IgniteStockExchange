@@ -21,7 +21,11 @@ package org.apache.ignite.internal.processors.scripting;
  * Ignite JS binding.
  */
 public class IgniteJS {
-    public void hello() {
-        System.out.println("HELLO HAPPY WORLD!!!");
+    public String hello() {
+        String str = "HELLO HAPPY WORLD!!!";
+
+        System.out.println(str);
+
+        return str;
     }
 }
