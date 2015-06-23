@@ -39,6 +39,7 @@ TestRunner.runTest = function() {
         console.log("node js test failed: function with name " + functionName + " not found");
         return;
     }
+
     global[functionName]();
 }
 

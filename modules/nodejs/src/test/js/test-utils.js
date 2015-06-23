@@ -59,16 +59,20 @@ TestUtils.classpath = function(dir) {
   function walk(dir, done) {
     var results = [];
     var list = fs.readdirSync(dir)
+
     for (var i = 0; i < list.length; ++i) {
       file = path.resolve(dir, list[i]);
+
       var stat = fs.statSync(file);
+
       if (stat && stat.isDirectory()) {
         if (list[i] != "optional" && file.indexOf("optional") !== -1 && file.indexOf("rest") == -1 )
           continue;
 
         var sublist = walk(file);
         results = results.concat(sublist);
-      } else {
+      }
+      else {
         if (file.indexOf(".jar") !== -1) {
           results.push(file);
         }
