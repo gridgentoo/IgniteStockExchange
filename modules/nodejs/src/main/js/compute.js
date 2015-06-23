@@ -51,16 +51,6 @@ Compute.prototype.affinityCall = function(cacheName, key, runnable, callback) {
 }
 
 /**
- * @param {noValue} f Function
- * @returns {string} Encoding function
- */
-Compute.prototype._escape = function(f) {
-  var qs = require('querystring');
-
-  return qs.escape(f.toString());
-}
-
-/**
  * @this {Compute}
  * @param {MapFunction} map Map function
  * @param {ReduceFunction} reduce Reduce function
@@ -75,6 +65,16 @@ Compute.prototype.execute = function(map, reduce, arg, callback) {
   params.push(Server.pair("arg", this._escape(arg)));
 
   this._server.runCommand("execscripttask", params, callback);
+}
+
+/**
+ * @param {noValue} f Function
+ * @returns {string} Encoding function
+ */
+Compute.prototype._escape = function(f) {
+  var qs = require('querystring');
+
+  return qs.escape(f.toString());
 }
 
 /**
