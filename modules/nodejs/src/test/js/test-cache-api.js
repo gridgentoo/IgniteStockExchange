@@ -17,10 +17,6 @@
 
 var TestUtils = require("./test-utils").TestUtils;
 
-var Apache = require(TestUtils.scriptPath());
-var Cache = Apache.Cache;
-var Server = Apache.Server;
-
 var assert = require("assert");
 
 testPutGet = function() {
