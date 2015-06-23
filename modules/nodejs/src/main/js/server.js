@@ -117,7 +117,6 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
     });
   }
 
-  console.log("!!!!!!!!!!!!!!!!!REQUEST " + options.path);
   var request = http.request(options, streamCallback);
 
   request.setTimeout(5000, callback.bind(null, "Request timeout: >5 sec"));
