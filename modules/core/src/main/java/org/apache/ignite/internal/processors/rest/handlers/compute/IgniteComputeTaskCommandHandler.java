@@ -29,7 +29,6 @@ import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.resources.*;
 import org.jetbrains.annotations.*;
 
-import javax.script.*;
 import java.util.*;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;

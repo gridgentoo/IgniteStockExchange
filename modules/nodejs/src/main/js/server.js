@@ -43,7 +43,7 @@ Server.prototype.host = function() {
 /**
  * Callback for Server runCommand
  *
- * @callback Server~onRunCommand
+ * @callback onGet
  * @param {string} error Error
  * @param {string} result Result value
  */
@@ -54,7 +54,7 @@ Server.prototype.host = function() {
  * @this {Server}
  * @param {string} cmdName command name.
  * @param params Parameters for command.
- * @param {Server~onRunCommand} Called on finish
+ * @param {onGet} Called on finish
  */
 Server.prototype.runCommand = function(cmdName, params, callback) {
   var paramsString = "";
@@ -126,7 +126,7 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
  * Check the connection with server node.
  *
  * @this {Server}
- * @param {Server~onRunCommand} callback Called on finish
+ * @param {onGet} callback Called on finish
  */
 Server.prototype.checkConnection = function(callback) {
   this.runCommand("version", [], callback);

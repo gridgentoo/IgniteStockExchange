@@ -81,4 +81,37 @@ Compute.prototype.execute = function(map, reduce, arg, callback) {
     this._server.runCommand("exectask", params, callback);
 }
 
+/**
+ * @name EmitFunction
+ * @function
+ * @param {function} func Remote job
+ * @param {string[]} args Arguments for remote job
+ * @param {string} node Node Id to call job on.
+ */
+
+/**
+ * @name MapFunction
+ * @function
+ * @param {string[]} nodes Nodes Id
+ * @param {string} arg Argument
+ * @param {EmitFunction} emit Emit function to call for adding to result
+ */
+
+/**
+ * @name ReduceFunction
+ * @function
+ * @param {string[]} results Results of executing jobs after mapping
+ * @returns {string} Result
+ */
+
+/**
+ * @this{Compute}
+ * @param {MapFunction} map Map function
+ * @param {ReduceFunction} reduce Reduce function
+ * @param {string} arg Argument
+ * @param {onGet} callback Callback
+ */
+Compute.prototype._mapWrapper = function(map) {
+
+}
 exports.Compute = Compute

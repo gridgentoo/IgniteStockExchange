@@ -32,18 +32,11 @@ function Cache(server, cacheName) {
 }
 
 /**
- * Callback for cache get
- * @callback Cache~onGet
- * @param {string} error Error
- * @param {string} result Result value
- */
-
-/**
  * Get cache value
  *
  * @this {Cache}
  * @param {string} key Key
- * @param {Cache~onGet} callback Called on finish
+ * @param {onGet} callback Called on finish
  */
 Cache.prototype.get = function(key, callback) {
   this._server.runCommand("get", [this._cacheNameParam, Server.pair("key", key)], callback);
@@ -51,7 +44,7 @@ Cache.prototype.get = function(key, callback) {
 
 /**
  * Callback for cache put
- * @callback Cache~noValue
+ * @callback noValue
  * @param {string} error Error
  */
 
@@ -61,7 +54,7 @@ Cache.prototype.get = function(key, callback) {
  * @this {Cache}
  * @param {string} key Key
  * @param {string} value Value
- * @param {Cache~noValue} callback Called on finish
+ * @param {noValue} callback Called on finish
  */
 Cache.prototype.put = function(key, value, callback) {
   this._server.runCommand("put", [this._cacheNameParam, Server.pair("key", key), Server.pair("val", value)],
@@ -73,7 +66,7 @@ Cache.prototype.put = function(key, value, callback) {
  *
  * @this {Cache}
  * @param {string} key Key
- * @param {Cache~noValue} callback Called on finish
+ * @param {noValue} callback Called on finish
  */
 Cache.prototype.remove = function(key, callback) {
   this._server.runCommand("rmv", [this._cacheNameParam, Server.pair("key", key)], callback);
@@ -84,7 +77,7 @@ Cache.prototype.remove = function(key, callback) {
  *
  * @this {Cache}
  * @param {string[]} keys Keys to remove
- * @param {Cache~noValue} callback Called on finish
+ * @param {noValue} callback Called on finish
  */
 Cache.prototype.removeAll = function(keys, callback) {
   var params = [this._cacheNameParam];
@@ -99,7 +92,7 @@ Cache.prototype.removeAll = function(keys, callback) {
  *
  * @this {Cache}
  * @param {Object.<string, string>} collection of entries to put in the cache
- * @param {Cache~noValue} callback Called on finish
+ * @param {noValue} callback Called on finish
  */
 Cache.prototype.putAll = function(map, callback) {
   var keys = Object.keys(map);
