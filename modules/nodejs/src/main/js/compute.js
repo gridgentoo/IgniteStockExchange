@@ -113,7 +113,7 @@ Compute.prototype._onNodesExecute = function(task, arg, callback, err, nodes) {
   for (var job of computeJobList) {
     params.push(Server.pair("f" + i, this._escape(job.func)));
     params.push(Server.pair("args" + i,  JSON.stringify(job.args)));
-    params.push(Server.pair("n" + i, job.node.nodeId));
+    params.push(Server.pair("n" + i, job.node));
     i++;
   }
 

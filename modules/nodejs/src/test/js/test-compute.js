@@ -87,8 +87,6 @@ function onError1(error, res) {
 
   assert(error == null);
 
-  assert(res.indexOf("AFFINITY CALL") !== -1);
-
   console.log("!!!!!!!!RES = " + res);
 
   TestUtils.testDone();
@@ -106,6 +104,8 @@ function onComputeResult(error, res) {
   assert(error == null);
 
   console.log("!!!!!!!!EXECUTE TASK RESULT = " + res);
+
+  assert(res === 7, "Result is not correct. [expected=7, value=" + res + "].")
 
   TestUtils.testDone();
 }
