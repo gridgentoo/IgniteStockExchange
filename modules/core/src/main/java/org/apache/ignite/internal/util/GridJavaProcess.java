@@ -152,7 +152,7 @@ public final class GridJavaProcess {
 
         builder.redirectErrorStream(true);
 
-        return setGrabber(builder, log, printC, procKilledC);
+        return startProcess(builder, log, printC, procKilledC);
     }
 
     /**
@@ -175,7 +175,7 @@ public final class GridJavaProcess {
 
         builder.environment().putAll(env);
 
-        return setGrabber(builder, log, printC, procKilledC);
+        return startProcess(builder, log, printC, procKilledC);
     }
 
 
@@ -187,7 +187,7 @@ public final class GridJavaProcess {
      * @return Wrapper around {@link Process}
      * @throws Exception If any problem occurred.
      */
-    private static GridJavaProcess setGrabber(ProcessBuilder builder,
+    private static GridJavaProcess startProcess(ProcessBuilder builder,
         @Nullable IgniteLogger log, @Nullable IgniteInClosure<String> printC,
         @Nullable GridAbsClosure procKilledC) throws Exception {
         if (!(U.isLinux() || U.isMacOs() || U.isWindows()))
