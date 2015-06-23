@@ -56,29 +56,39 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
     @Override public IgniteInternalFuture<GridRestResponse> handleAsync(GridRestRequest req) {
         assert req != null;
 
-        assert req instanceof RestComputeTaskRequest : "Invalid type of compute request.";
+        assert req instanceof RestComputeTaskRequest : "Invalid type of compute task request.";
 
         assert SUPPORTED_COMMANDS.contains(req.command());
 
         final RestComputeTaskRequest req0 = (RestComputeTaskRequest) req;
 
-        Object res = ctx.grid().compute().execute(new JsTask(req0.mapFunc(), req0.argument(), req0.reduceFunc(), ctx), null);
+        Object execRes = ctx.grid().compute().execute(
+            new JsTask(req0.mapFunc(), req0.argument(), req0.reduceFunc(), ctx), null);
 
-        return new GridFinishedFuture<>(new GridRestResponse(res));
+        return new GridFinishedFuture<>(new GridRestResponse(execRes));
     }
 
+    /**
+     * JS Compute Task.
+     */
     private static class JsTask extends ComputeTaskAdapter<String, Object> {
         /** Mapping function. */
         private String mapFunc;
 
+        /** Reduce function. */
         private String reduceFunc;
 
-        /** Grid kernal context. */
+        /** Kernal context. */
         private GridKernalContext ctx;
 
+        /** Map function argument. */
         private String arg;
 
         /**
+         * @param mapFunc Map function.
+         * @param arg Map function argument.
+         * @param reduceFunc Reduce function.
+         * @param ctx Kernal context.
          */
         public JsTask(String mapFunc, String arg, String reduceFunc, GridKernalContext ctx) {
             this.mapFunc = mapFunc;
@@ -91,61 +101,30 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
         @Override public Map<? extends ComputeJob, ClusterNode> map(List<ClusterNode> nodes, String arg) {
             Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-            String nodesIds = "[";
+            List jsMapResult = (List)ctx.scripting().runJSFunction(wrapMapperFunction(nodes));
 
-            for (ClusterNode node : nodes)
-                nodesIds += "\""  + node.id().toString() + "\"" + ",";
+            for (Object jobMapping : jsMapResult) {
+                List task = (List)jobMapping;
 
-            nodesIds = nodesIds.substring(0, nodesIds.length() - 1) + "]";
+                final String func = (String)task.get(0);
+                final List argv = (List)task.get(1);
+                String nodeId = (String)task.get(2);
 
-            String newMap = new String("function () {\n" +
-                "   var res = [];\n" +
-                "   var resCont = function(f, args, nodeId) {\n" +
-                "       res.push([f.toString(), args, nodeId])\n" +
-                "   }\n" +
-                "   var locF = " + mapFunc + "; \n locF(" +
-                    nodesIds + ", " +
-                "\"" + this.arg + "\"" +
-                ", resCont.bind(null)" + ");\n" +
-                "   return res;\n" +
-                "}");
-
-            List mapRes = (List)ctx.scripting().runJSFunction(newMap);
-
-            for (Object arr : mapRes) {
-                Object[] nodeTask = ((List)arr).toArray();
-
-                final String func = (String)nodeTask[0];
-
-                final List argv = (List) nodeTask[1];
-
-                String nodeIdStr = (String) nodeTask[2];
-
-                UUID nodeId = UUID.fromString(nodeIdStr);
-
-                ClusterNode node = ctx.grid().cluster().node(nodeId);
+                ClusterNode node = ctx.grid().cluster().node(UUID.fromString(nodeId));
 
                 map.put(new ComputeJobAdapter() {
-                    /** Ignite. */
                     @IgniteInstanceResource
                     private Ignite ignite;
 
                     @Override public Object execute() throws IgniteException {
-                        System.out.println("Compute job on node " + ignite.cluster().localNode().id());
-                        try {
-                            String[] argv1 = new String[argv.size()];
+                        String[] argv1 = new String[argv.size()];
 
-                            for (int i = 0; i < argv1.length; ++i)
-                                argv1[i] = "\"" + argv.get(i).toString() + "\"";
+                        for (int i = 0; i < argv1.length; ++i)
+                            argv1[i] = "\"" + argv.get(i).toString() + "\"";
 
-                            return ctx.scripting().runJSFunction(func, argv1);
-                        }
-                        catch (Exception e) {
-                            throw new IgniteException(e);
-                        }
+                        return ctx.scripting().runJSFunction(func, argv1);
                     }
                 }, node);
-
             }
 
             return map;
@@ -158,7 +137,30 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
             for (ComputeJobResult res : results)
                 data.add(res.getData());
 
-            return ctx.scripting().runJSFunction(reduceFunc, new String[]{data.toString()});
+            return ctx.scripting().runJSFunction(reduceFunc, data.toString());
+        }
+
+        /**
+         * @param nodes Cluster nodes.
+         * @return Script running map function.
+         */
+        private String wrapMapperFunction(List<ClusterNode> nodes) {
+            List<String> ids = new ArrayList<>();
+
+            for (ClusterNode node : nodes)
+                ids.add("\"" + node.id().toString() + "\"");
+
+            String sep = System.getProperty("line.separator");
+
+            return "function () {" + sep +
+                "       var res = [];" + sep +
+                "       var emitFunc = function(f, args, nodeId) {" + sep +
+                "           res.push([f.toString(), args, nodeId])" + sep +
+                "       }" + sep +
+                "       var f = " + mapFunc + ";" + sep +
+                "       f(" + ids + ", " + "\"" + this.arg + "\"" + ", emitFunc.bind(null)" + ");" + sep +
+                "       return res;" + sep +
+                "   }";
         }
     }
 }

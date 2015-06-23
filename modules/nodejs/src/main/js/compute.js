@@ -104,14 +104,4 @@ Compute.prototype.execute = function(map, reduce, arg, callback) {
  * @returns {string} Result
  */
 
-/**
- * @this{Compute}
- * @param {MapFunction} map Map function
- * @param {ReduceFunction} reduce Reduce function
- * @param {string} arg Argument
- * @param {onGet} callback Callback
- */
-Compute.prototype._mapWrapper = function(map) {
-
-}
 exports.Compute = Compute

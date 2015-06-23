@@ -61,7 +61,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @return Script result.
      * @throws ScriptException If script failed.
      */
-    public Object runJSFunction(String script, String[] args) throws IgniteException {
+    public Object runJSFunction(String script, String... args) throws IgniteException {
         try {
             return jsEngine.eval(callJsFunction(script, args));
         }
