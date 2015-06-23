@@ -101,9 +101,9 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
         @Override public Map<? extends ComputeJob, ClusterNode> map(List<ClusterNode> nodes, String arg) {
             Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-            List jsMapResult = (List)ctx.scripting().runJSFunction(wrapMapperFunction(nodes));
+            List jsMapRes = (List)ctx.scripting().runJSFunction(wrapMapperFunction(nodes));
 
-            for (Object jobMapping : jsMapResult) {
+            for (Object jobMapping : jsMapRes) {
                 List task = (List)jobMapping;
 
                 final String func = (String)task.get(0);
