@@ -21,7 +21,9 @@ package org.apache.ignite.internal;
  * Test compute node js.
  */
 public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
-    /** Constructor. */
+    /**
+     * Constructor.
+     */
     public NodeJsComputeSelfTest() {
         super("test-compute.js");
     }

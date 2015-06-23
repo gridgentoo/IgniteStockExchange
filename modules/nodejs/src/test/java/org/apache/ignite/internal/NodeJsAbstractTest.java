@@ -22,9 +22,9 @@ import org.apache.ignite.configuration.*;
 import org.apache.ignite.internal.util.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.spi.discovery.tcp.*;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
 import org.apache.ignite.testframework.junits.common.*;
 
 import java.util.*;
@@ -48,7 +48,7 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
     /** Node JS file with tests. */
     private String fileName;
 
-    /** */
+    /** Ip finder. */
     private static final TcpDiscoveryIpFinder IP_FINDER = new TcpDiscoveryVmIpFinder(true);
 
     /**
@@ -61,6 +61,7 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
+
         cfg.setCacheConfiguration(cacheConfiguration());
 
         ConnectorConfiguration conCfg = new ConnectorConfiguration();
@@ -118,11 +119,8 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
         List<String> cmd = new ArrayList<>();
 
         cmd.add("node");
-
         cmd.add(getNodeJsTestDir() + "test-runner.js");
-
         cmd.add(fileName);
-
         cmd.add(functionName);
 
         Map<String, String> env = new HashMap<>();
@@ -130,10 +128,7 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
         env.put("IGNITE_HOME", IgniteUtils.getIgniteHome());
 
         try {
-            proc = GridJavaProcess.exec(
-                cmd,
-                env,
-                log,
+            proc = GridJavaProcess.exec(cmd, env, log,
                 new CI1<String>() {
                     @Override public void apply(String s) {
                         info("Node js: " + s);

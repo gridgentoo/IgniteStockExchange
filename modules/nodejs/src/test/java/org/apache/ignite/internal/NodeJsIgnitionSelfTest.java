@@ -21,7 +21,9 @@ package org.apache.ignite.internal;
  * Test node js client.
  */
 public class NodeJsIgnitionSelfTest extends NodeJsAbstractTest {
-    /** Constructor. */
+    /**
+     * Constructor.
+     */
     public NodeJsIgnitionSelfTest() {
         super("test-ignition.js");
     }

@@ -21,7 +21,9 @@ package org.apache.ignite.internal;
  * Test node js client put/get.
  */
 public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
-    /** Constructor. */
+    /**
+     * Constructor.
+     */
     public NodeJsCacheApiSelfTest() {
         super("test-cache-api.js");
     }
