@@ -20,8 +20,10 @@ package org.apache.ignite.internal.processors.scripting;
 import org.apache.ignite.*;
 import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.*;
+import org.apache.ignite.internal.util.typedef.*;
 
 import javax.script.*;
+import java.util.*;
 
 /**
  * Ignite scripting manager.
@@ -46,7 +48,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @throws ScriptException If script failed.
      */
     public Object run(String engName, String script) throws ScriptException {
-        if (engName.equals(JAVA_SCRIPT_ENGINE_NAME))
+        if (!engName.equals(JAVA_SCRIPT_ENGINE_NAME))
             throw new IgniteException("Engine is not supported. [engName=" + engName + "]");
 
         return runJS(script);
@@ -54,9 +56,11 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
 
     /**
      * @param script Script.
+     * @param args Arguments.
+     * @return Script result.
      * @throws ScriptException If script failed.
      */
-    public Object runJS(String script, String args) throws ScriptException {
+    public Object runJS(String script, String[] args) throws ScriptException {
         ScriptEngine engine = factory.getEngineByName("JavaScript");
 
         Bindings b = engine.createBindings();
@@ -65,13 +69,23 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
 
         engine.setBindings(b, ScriptContext.ENGINE_SCOPE);
 
-        script = "(" + script + ")(" + args + ");";
+        script = "(" + script + ")(" ;
+
+        for (int i = 0; i < args.length; ++i)
+            script += args[i] + (i < args.length - 1 ? "," : "");
+
+        script += ");";
 
         return engine.eval(script);
     }
 
+    /**
+     * @param script Script.
+     * @return Script result.
+     * @throws ScriptException If script failed.
+     */
     public Object runJS(String script) throws ScriptException {
-        return runJS(script, "");
+        return runJS(script, new String[]{""});
     }
 
     /**

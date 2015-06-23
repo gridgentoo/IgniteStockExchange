@@ -20,6 +20,5 @@ module.exports = {
   Ignition : require('./ignition.js').Ignition,
   Server : require('./server.js').Server,
   Ignite : require('./ignite.js').Ignite,
-  Compute : require('./compute.js').Compute,
-  ComputeJob: require('./compute.js').ComputeJob
+  Compute : require('./compute.js').Compute
 }

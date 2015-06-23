@@ -129,8 +129,9 @@ TestUtils.testDone = function() {
  * @param {Ignition~onStart} callback Called on connect
  */
 TestUtils.startIgniteNode = function(callback) {
-  var Apache = require(TestUtils.scriptPath());
-  var Ignition = Apache.Ignition;
+  var Ignite = require(TestUtils.scriptPath());
+  var Ignition = Ignite.Ignition;
+
   Ignition.start(['127.0.0.1:9095'], null, callback);
 }
 
@@ -141,8 +142,9 @@ TestUtils.startIgniteNode = function(callback) {
  * @param {Ignition~onStart} callback Called on connect
  */
 TestUtils.startIgniteNodeWithKey = function(secretKey, callback) {
-  var Apache = require(TestUtils.scriptPath());
-  var Ignition = Apache.Ignition;
+  var Ignite = require(TestUtils.scriptPath());
+  var Ignition = Ignite.Ignition;
+
   Ignition.start(['127.0.0.1:9095'], secretKey, callback);
 }
 

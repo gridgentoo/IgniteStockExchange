@@ -25,12 +25,11 @@ import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.util.future.*;
-import org.apache.ignite.internal.util.typedef.T3;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.resources.*;
 import org.jetbrains.annotations.*;
 
-import javax.script.ScriptException;
+import javax.script.*;
 import java.util.*;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
@@ -64,25 +63,28 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
 
         final RestComputeTaskRequest req0 = (RestComputeTaskRequest) req;
 
-        List<T3<String, String, String>> mapping =  req0.mapping();
-
-        Object res = ctx.grid().compute().execute(new JsTask(mapping, ctx), null);
+        Object res = ctx.grid().compute().execute(new JsTask(req0.mapFunc(), req0.argument(), req0.reduceFunc(), ctx), null);
 
         return new GridFinishedFuture<>(new GridRestResponse(res));
     }
 
     private static class JsTask extends ComputeTaskAdapter<String, Object> {
-        /** Mapping. */
-        private List<T3<String, String, String>> mapping;
+        /** Mapping function. */
+        private String mapFunc;
+
+        private String reduceFunc;
 
         /** Grid kernal context. */
         private GridKernalContext ctx;
 
+        private String arg;
+
         /**
-         * @param mapping Task mapping.
          */
-        public JsTask(List<T3<String, String, String>> mapping, GridKernalContext ctx) {
-            this.mapping = mapping;
+        public JsTask(String mapFunc, String arg, String reduceFunc, GridKernalContext ctx) {
+            this.mapFunc = mapFunc;
+            this.reduceFunc = reduceFunc;
+            this.arg = arg;
             this.ctx = ctx;
         }
 
@@ -90,27 +92,68 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
         @Override public Map<? extends ComputeJob, ClusterNode> map(List<ClusterNode> nodes, String arg) {
             Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-            for (final T3<String, String, String> job : mapping) {
-                UUID nodeId = UUID.fromString(job.get2());
+            String nodesIds = "[";
 
-                ClusterNode node = ctx.grid().cluster().node(nodeId);
+            for (ClusterNode node : nodes)
+                nodesIds += "\""  + node.id().toString() + "\"" + ",";
 
-                map.put(new ComputeJobAdapter() {
-                    /** Ignite. */
-                    @IgniteInstanceResource
-                    private Ignite ignite;
+            nodesIds = nodesIds.substring(0, nodesIds.length() - 1) + "]";
 
-                    @Override public Object execute() throws IgniteException {
-                        System.out.println("Compute job on node " + ignite.cluster().localNode().id());
+            try {
+                String newMap = new String("function () {\n" +
+                    "   var res = [];\n" +
+                    "   var resCont = function(f, args, nodeId) {\n" +
+                    "       res.push([f.toString(), args, nodeId])\n" +
+                    "   }\n" +
+                    "   var locF = " + mapFunc + "; \n locF(" +
+                        nodesIds + ", " +
+                    "\"" + this.arg + "\"" +
+                    ", resCont.bind(null)" + ");\n" +
+                    "   return res;\n" +
+                    "}");
 
-                        try {
-                            return ((IgniteKernal)ignite).context().scripting().runJS(job.get1(), job.get3());
+                List mapRes = (List)ctx.scripting().runJS(newMap);
+
+                for (Object arr : mapRes) {
+                    Object[] nodeTask = ((List)arr).toArray();
+
+                    final String func = (String)nodeTask[0];
+
+                    final List argv = (List) nodeTask[1];
+
+                    String nodeIdStr = (String) nodeTask[2];
+
+                    UUID nodeId = UUID.fromString(nodeIdStr);
+
+                    ClusterNode node = ctx.grid().cluster().node(nodeId);
+
+                    map.put(new ComputeJobAdapter() {
+                        /** Ignite. */
+                        @IgniteInstanceResource
+                        private Ignite ignite;
+
+                        @Override public Object execute() throws IgniteException {
+                            System.out.println("Compute job on node " + ignite.cluster().localNode().id());
+                            try {
+                                String[] argv1 = new String[argv.size()];
+
+                                for (int i = 0; i < argv1.length; ++i)
+                                    argv1[i] = "\"" + argv.get(i).toString() + "\"";
+
+                                return ctx.scripting().runJS(func, argv1);
+                            }
+                            catch (Exception e) {
+                                throw new IgniteException(e);
+                            }
                         }
-                        catch (ScriptException e) {
-                            throw new IgniteException(e);
-                        }
-                    }
-                }, node);
+                    }, node);
+
+                }
+            }
+            catch (ScriptException e) {
+                throw new IgniteException(e);
+            }
+            finally {
             }
 
             return map;
@@ -123,7 +166,12 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
             for (ComputeJobResult res : results)
                 data.add(res.getData());
 
-            return data;
+            try {
+                return ctx.scripting().runJS(reduceFunc, new String[] {data.toString()});
+            }
+            catch (ScriptException e) {
+                throw new IgniteException(e);
+            }
         }
     }
 }

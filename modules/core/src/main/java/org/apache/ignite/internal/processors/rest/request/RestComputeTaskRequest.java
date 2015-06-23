@@ -26,19 +26,35 @@ import java.util.*;
  */
 public class RestComputeTaskRequest extends GridRestRequest {
     /** Mapping tasks to nodes. */
-    private List<T3<String, String, String>> mapping;
+    private String mapFunc;
 
-    /**
-     * @param mapping Mapping tasks to nodes.
-     */
-    public void mapping(List<T3<String, String, String>> mapping) {
-        this.mapping = mapping;
+    /** Function argument. */
+    private String arg;
+
+    private String reduceFunc;
+
+    public void reduceFunc(String reduceFunc) {
+        this.reduceFunc = reduceFunc;
     }
 
-    /**
-     * @return Mapping tasks to nodes.
-     */
-    public List<T3<String, String, String>> mapping() {
-        return mapping;
+    public String reduceFunc() {
+
+        return reduceFunc;
+    }
+
+    public String mapFunc() {
+        return mapFunc;
+    }
+
+    public String argument() {
+        return arg;
+    }
+
+    public void mapFunc(String mapFunc) {
+        this.mapFunc = mapFunc;
+    }
+
+    public void argument(String arg) {
+        this.arg = arg;
     }
 }

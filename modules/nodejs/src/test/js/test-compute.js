@@ -17,10 +17,6 @@
 
 var TestUtils = require("./test-utils").TestUtils;
 
-var Apache = require(TestUtils.scriptPath());
-var Cache = Apache.Cache;
-var Server = Apache.Server;
-
 var assert = require("assert");
 
 testComputeAffinityRun = function() {
@@ -32,11 +28,7 @@ testComputeAffinityCall = function() {
 }
 
 testComputeExecute = function() {
-  var CharacterCountTask = require("./simple-compute-task").CharacterCountTask
-
-  var task = new CharacterCountTask();
-
-  TestUtils.startIgniteNode(onStart1.bind(null, task));
+  TestUtils.startIgniteNode(onStart1);
 }
 
 function onStart(locOnPut, error, ignite) {
@@ -92,10 +84,31 @@ function onError1(error, res) {
   TestUtils.testDone();
 }
 
-function onStart1(task, error, ignite) {
-  var comp = ignite.compute();
+function onStart1(error, ignite) {
+  var map = function(nodes, arg, emit) {
+    var words = arg.split(" ");
 
-  comp.execute(task, "Hi Alice", onComputeResult);
+    for (var i = 0; i < words.length; i++) {
+      var f = function (word) {
+        println(">>> Printing " + word);
+
+        return word.length;
+      };
+
+      emit(f, [words[i]], nodes[i %  nodes.length]);
+    }
+  };
+
+  var reduce = function(results) {
+    var sum = 0;
+
+    for (var i = 0; i < results.length; ++i)
+     sum += parseInt(results[i], 10);
+
+    return sum;
+  };
+
+  ignite.compute().execute(map, reduce, "Hi Alice", onComputeResult);
 }
 
 function onComputeResult(error, res) {

@@ -16,7 +16,6 @@
  */
 
 var Server = require("./server").Server;
-var ComputeTask = require("./compute-task").ComputeTask;
 
 /**
  * @constructor
@@ -72,76 +71,14 @@ Compute.prototype._escape = function(f) {
  * @param {string} arg  Argument
  * @param {} callback Callback
  */
-Compute.prototype.execute = function(task, arg, callback) {
-  this._nodes(this._onNodesExecute.bind(this, task, arg, callback));
-}
+Compute.prototype.execute = function(map, reduce, arg, callback) {
+   var params = [];
 
-Compute.prototype._nodes = function(callback) {
-  this._server.runCommand("top", [Server.pair("mtr", "false"), Server.pair("attr", "false")],
-    this._onNodes.bind(this, callback))
-}
+    params.push(Server.pair("map", this._escape(map)));
+    params.push(Server.pair("reduce", this._escape(reduce)));
+    params.push(Server.pair("arg", this._escape(arg)));
 
-Compute.prototype._onNodes = function(callback, error, results) {
-  if (error) {
-    callback.call(null, error, null);
-
-    return;
-  }
-
-  var nodes = [];
-
-  for (var res of results) {
-    nodes.push(res["nodeId"])
-  }
-
-  callback.call(null, null, nodes);
-}
-
-Compute.prototype._onNodesExecute = function(task, arg, callback, err, nodes) {
-  if (err) {
-      callback.call(null, error, null);
-
-      return;
-  }
-
-  var computeJobList = task.map(nodes, arg);
-
-  var params = [];
-  var i = 1;
-
-  console.log("TASK" + computeJobList);
-  for (var job of computeJobList) {
-    params.push(Server.pair("f" + i, this._escape(job.func)));
-    params.push(Server.pair("args" + i,  JSON.stringify(job.args)));
-    params.push(Server.pair("n" + i, job.node));
-    i++;
-  }
-
-  this._server.runCommand("exectask", params, this._onResExecute.bind(this, task, callback));
-}
-
-
-Compute.prototype._onResExecute = function(task, callback, err, results) {
-  if (err) {
-    callback.call(null, err, null);
-
-    return;
-  }
-
-  console.log("ON RES EXEC = " + results);
-
-  var res = task.reduce(results);
-
-  callback.call(null, null, res);
+    this._server.runCommand("exectask", params, callback);
 }
 
 exports.Compute = Compute
-
-
-function ComputeJob(func, args, node) {
-    this.func = func;
-    this.args = args;
-    this.node = node;
-}
-
-exports.ComputeJob = ComputeJob;
