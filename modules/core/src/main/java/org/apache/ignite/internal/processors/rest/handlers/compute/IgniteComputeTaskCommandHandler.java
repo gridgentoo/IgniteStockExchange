@@ -63,7 +63,7 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
         final RestComputeTaskRequest req0 = (RestComputeTaskRequest) req;
 
         Object execRes = ctx.grid().compute().execute(
-            new JsTask(req0.mapFunc(), req0.argument(), req0.reduceFunc(), ctx), null);
+            new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx), null);
 
         return new GridFinishedFuture<>(new GridRestResponse(execRes));
     }

@@ -463,9 +463,9 @@ public class GridJettyRestHandler extends AbstractHandler {
             case EXECUTE_TASK: {
                 RestComputeTaskRequest restReq0 = new RestComputeTaskRequest();
 
-                restReq0.mapFunc((String)params.get("map"));
+                restReq0.mapFunction((String) params.get("map"));
                 restReq0.argument((String)params.get("arg"));
-                restReq0.reduceFunc((String)params.get("reduce"));
+                restReq0.reduceFunction((String) params.get("reduce"));
 
                 restReq = restReq0;
 

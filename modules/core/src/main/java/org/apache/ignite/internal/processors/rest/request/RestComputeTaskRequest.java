@@ -17,10 +17,6 @@
 
 package org.apache.ignite.internal.processors.rest.request;
 
-import org.apache.ignite.internal.util.typedef.T3;
-
-import java.util.*;
-
 /**
  * Compute task request.
  */
@@ -31,30 +27,48 @@ public class RestComputeTaskRequest extends GridRestRequest {
     /** Function argument. */
     private String arg;
 
+    /** Reduce function. */
     private String reduceFunc;
 
-    public void reduceFunc(String reduceFunc) {
+    /**
+     * @param reduceFunc Reduce function.
+     */
+    public void reduceFunction(String reduceFunc) {
         this.reduceFunc = reduceFunc;
     }
 
-    public String reduceFunc() {
-
+    /**
+     * @return Reduce function.
+     */
+    public String reduceFunction() {
         return reduceFunc;
     }
 
-    public String mapFunc() {
-        return mapFunc;
-    }
-
-    public String argument() {
-        return arg;
-    }
-
-    public void mapFunc(String mapFunc) {
+    /**
+     * @param mapFunc Map function.
+     */
+    public void mapFunction(String mapFunc) {
         this.mapFunc = mapFunc;
     }
 
+    /**
+     * @return Map function.
+     */
+    public String mapFunction() {
+        return mapFunc;
+    }
+
+    /**
+     * @param arg Argument.
+     */
     public void argument(String arg) {
         this.arg = arg;
+    }
+
+    /**
+     * @return Argument.
+     */
+    public String argument() {
+        return arg;
     }
 }
