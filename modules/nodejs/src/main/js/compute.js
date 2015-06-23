@@ -39,7 +39,7 @@ function Compute(server) {
  * @param {Cache~noValue} callback Callback
  */
 Compute.prototype.affinityRun = function(cacheName, key, runnable, callback) {
-  this._server.runCommand("affrun", [Server.pair("cacheName", cacheName),
+  this._server.runCommand("affscriptrun", [Server.pair("cacheName", cacheName),
     Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
 }
 
@@ -51,7 +51,7 @@ Compute.prototype.affinityRun = function(cacheName, key, runnable, callback) {
  * @param {Cache~onGet} callback Callback
  */
 Compute.prototype.affinityCall = function(cacheName, key, runnable, callback) {
-  this._server.runCommand("affcall", [Server.pair("cacheName", cacheName),
+  this._server.runCommand("affscriptcall", [Server.pair("cacheName", cacheName),
     Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
 }
 
@@ -78,7 +78,7 @@ Compute.prototype.execute = function(map, reduce, arg, callback) {
     params.push(Server.pair("reduce", this._escape(reduce)));
     params.push(Server.pair("arg", this._escape(arg)));
 
-    this._server.runCommand("exectask", params, callback);
+    this._server.runCommand("execscripttask", params, callback);
 }
 
 /**
