@@ -456,6 +456,7 @@ public class GridJettyRestHandler extends AbstractHandler {
                 restReq0.key(params.get("key"));
 
                 restReq = restReq0;
+
                 break;
             }
 
@@ -463,8 +464,8 @@ public class GridJettyRestHandler extends AbstractHandler {
                 RestComputeTaskRequest restReq0 = new RestComputeTaskRequest();
 
                 restReq0.mapFunc((String)params.get("map"));
-                restReq0.argument((String) params.get("arg"));
-                restReq0.reduceFunc((String) params.get("reduce"));
+                restReq0.argument((String)params.get("arg"));
+                restReq0.reduceFunc((String)params.get("reduce"));
 
                 restReq = restReq0;
 
