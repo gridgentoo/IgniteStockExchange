@@ -56,7 +56,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @param script Script.
      * @throws ScriptException If script failed.
      */
-    public Object runJS(String script) throws ScriptException {
+    public Object runJS(String script, String args) throws ScriptException {
         ScriptEngine engine = factory.getEngineByName("JavaScript");
 
         Bindings b = engine.createBindings();
@@ -65,9 +65,13 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
 
         engine.setBindings(b, ScriptContext.ENGINE_SCOPE);
 
-        script = "(" + script + ")();";
+        script = "(" + script + ")(" + args + ");";
 
         return engine.eval(script);
+    }
+
+    public Object runJS(String script) throws ScriptException {
+        return runJS(script, "");
     }
 
     /**

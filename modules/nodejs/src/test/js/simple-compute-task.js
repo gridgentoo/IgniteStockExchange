@@ -21,9 +21,16 @@ function CharacterCountTask() {
 CharacterCountTask.prototype.map = function(nodes, arg) {
   var words = arg.split(" ");
 
-  var map = {};
+  var results = [];
 
   var nodeId = 0;
+
+  function compute(args) {
+    println(">>> Printing " + args);
+
+    return args[0].length;
+  }
+
 
   for (var word of words) {
     var node = nodes[nodeId];
@@ -32,16 +39,13 @@ CharacterCountTask.prototype.map = function(nodes, arg) {
       nodeId++;
     }
 
-    var f = function() {
-      println(">>> Printing " + word);
-
-      return word.length;
-    }
-
-    map[f] = node;
+    var TestUtils = require("./test-utils").TestUtils;
+    var Apache = require(TestUtils.scriptPath());
+    var ComputeJob = Apache.ComputeJob;
+    results.push(new ComputeJob(compute, [word], node));
   }
 
-  return map;
+  return results;
 }
 
 CharacterCountTask.prototype.reduce = function(results) {

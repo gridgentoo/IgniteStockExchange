@@ -104,15 +104,16 @@ Compute.prototype._onNodesExecute = function(task, arg, callback, err, nodes) {
       return;
   }
 
-  var taskMap = task.map(nodes, arg);
+  var computeJobList = task.map(nodes, arg);
 
   var params = [];
-  var i = 0;
+  var i = 1;
 
-  console.log("TASK" + taskMap);
-  for (var f in taskMap) {
-    params.push(Server.pair("f" + i, this._escape(f)));
-    params.push(Server.pair("n" + i, taskMap[f]));
+  console.log("TASK" + computeJobList);
+  for (var job of computeJobList) {
+    params.push(Server.pair("f" + i, this._escape(job.func)));
+    params.push(Server.pair("args" + i,  JSON.stringify(job.args)));
+    params.push(Server.pair("n" + i, job.node.nodeId));
     i++;
   }
 
@@ -135,3 +136,12 @@ Compute.prototype._onResExecute = function(task, callback, err, results) {
 }
 
 exports.Compute = Compute
+
+
+function ComputeJob(func, args, node) {
+    this.func = func;
+    this.args = args;
+    this.node = node;
+}
+
+exports.ComputeJob = ComputeJob;

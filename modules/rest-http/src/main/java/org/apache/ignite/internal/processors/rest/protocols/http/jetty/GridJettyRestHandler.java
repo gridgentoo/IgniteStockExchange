@@ -465,12 +465,15 @@ public class GridJettyRestHandler extends AbstractHandler {
                 List<Object> funcs = values("f", params);
                 List<Object> nodes = values("n", params);
 
+                List<Object> args = values("args", params);
+
                 assert funcs.size() == nodes.size();
 
-                Map<String, String> mapping = new HashMap<>();
+                List<T3<String, String, String>> mapping = new ArrayList<>();
+
 
                 for (int i = 0; i < funcs.size(); ++i)
-                    mapping.put((String) funcs.get(i), (String)nodes.get(i));
+                    mapping.add(new T3((String) funcs.get(i), (String)nodes.get(i), (String)args.get(i)));
 
                 restReq0.mapping(mapping);
 

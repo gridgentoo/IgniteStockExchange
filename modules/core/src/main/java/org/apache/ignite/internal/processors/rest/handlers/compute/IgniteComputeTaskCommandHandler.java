@@ -22,8 +22,10 @@ import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.util.future.*;
+import org.apache.ignite.internal.util.typedef.T3;
 import org.apache.ignite.internal.util.typedef.internal.*;
 
+import javax.script.ScriptException;
 import java.util.*;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
@@ -57,11 +59,20 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
 
         final RestComputeTaskRequest req0 = (RestComputeTaskRequest) req;
 
-        Map<String, String> mapping = req0.mapping();
+        List<T3<String, String, String>> mapping =  req0.mapping();
 
+        Set<Object> res = new HashSet<>();
+        System.out.println("MAPPING RESULTS " + mapping.size());
+        for (T3<String, String, String> f : mapping) {
+            try {
+                Object locRes = ctx.scripting().runJS(f.get1(), f.get3());
+                System.out.println("LOCAL RESULT=" +locRes);
+                res.add(locRes);
+            } catch (ScriptException e) {
+                e.printStackTrace();
+            }
+        }
 
-
-
-        return new GridFinishedFuture<>(new GridRestResponse("5"));
+        return new GridFinishedFuture<>(new GridRestResponse(res));
     }
 }

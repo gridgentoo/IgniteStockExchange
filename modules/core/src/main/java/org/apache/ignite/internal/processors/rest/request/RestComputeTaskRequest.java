@@ -17,6 +17,8 @@
 
 package org.apache.ignite.internal.processors.rest.request;
 
+import org.apache.ignite.internal.util.typedef.T3;
+
 import java.util.*;
 
 /**
@@ -24,19 +26,19 @@ import java.util.*;
  */
 public class RestComputeTaskRequest extends GridRestRequest {
     /** Mapping tasks to nodes. */
-    private Map<String, String> mapping;
+    private List<T3<String, String, String>> mapping;
 
     /**
      * @param mapping Mapping tasks to nodes.
      */
-    public void mapping(Map<String, String> mapping) {
+    public void mapping(List<T3<String, String, String>> mapping) {
         this.mapping = mapping;
     }
 
     /**
      * @return Mapping tasks to nodes.
      */
-    public Map<String, String> mapping() {
+    public List<T3<String, String, String>> mapping() {
         return mapping;
     }
 }
