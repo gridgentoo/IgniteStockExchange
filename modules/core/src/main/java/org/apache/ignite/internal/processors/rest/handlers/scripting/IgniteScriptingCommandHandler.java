@@ -160,22 +160,15 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             try {
                 Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-                String[] ids = new String[nodes.size()];
-
-                for (int i = 0; i < ids.length; ++i)
-                    ids[i] = nodes.get(i).id().toString();
-
                 List jsMapRes = (List)ctx.scripting().invokeFunctionByName("__compute",
-                    mapFunc, ids, this.arg);
+                    mapFunc, nodes.toArray(new ClusterNode[nodes.size()]), this.arg);
 
                 for (Object jobMapping : jsMapRes) {
                     List task = (List)jobMapping;
 
                     final String func = (String)task.get(0);
                     final List argv = (List)task.get(1);
-                    String nodeId = (String)task.get(2);
-
-                    ClusterNode node = ctx.grid().cluster().node(UUID.fromString(nodeId));
+                    ClusterNode node = (ClusterNode)task.get(2);
 
                     map.put(new ComputeJobAdapter() {
                         @IgniteInstanceResource
