@@ -167,7 +167,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     List task = (List)jobMapping;
 
                     final String func = (String)task.get(0);
-                    final List argv = (List)task.get(1);
+                    final Object argv = task.get(1);
                     ClusterNode node = (ClusterNode)task.get(2);
 
                     map.put(new ComputeJobAdapter() {
@@ -176,13 +176,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
                         @Override public Object execute() throws IgniteException {
                             try {
-                                String[] argv1 = new String[argv.size()];
-
-                                for (int i = 0; i < argv1.length; ++i)
-                                    argv1[i] = argv.get(i).toString();
-
-
-                                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv1);
+                                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv);
                             }
                             catch (IgniteCheckedException e) {
                                throw U.convertException(e);

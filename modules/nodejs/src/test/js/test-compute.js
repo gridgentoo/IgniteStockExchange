@@ -67,7 +67,7 @@ function computeExecute(error, ignite) {
                 return word.length;
             };
 
-            emit(f, [words[i]], nodes[i %  nodes.length]);
+            emit(f, words[i], nodes[i %  nodes.length]);
         }
     };
 
