@@ -26,9 +26,9 @@ var Server = require("./server").Server;
  * @param {string} cacheName Cache name
  */
 function Cache(server, cacheName) {
-  this._server = server;
-  this._cacheName = cacheName;
-  this._cacheNameParam = Server.pair("cacheName", this._cacheName);
+    this._server = server;
+    this._cacheName = cacheName;
+    this._cacheNameParam = Server.pair("cacheName", this._cacheName);
 }
 
 /**
@@ -39,7 +39,7 @@ function Cache(server, cacheName) {
  * @param {onGet} callback Called on finish
  */
 Cache.prototype.get = function(key, callback) {
-  this._server.runCommand("get", [this._cacheNameParam, Server.pair("key", key)], callback);
+    this._server.runCommand("get", [this._cacheNameParam, Server.pair("key", key)], callback);
 };
 
 /**
@@ -51,8 +51,8 @@ Cache.prototype.get = function(key, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.put = function(key, value, callback) {
-  this._server.runCommand("put", [this._cacheNameParam, Server.pair("key", key), Server.pair("val", value)],
-    callback);
+    this._server.runCommand("put", [this._cacheNameParam, Server.pair("key", key), Server.pair("val", value)],
+        callback);
 }
 
 /**
@@ -63,7 +63,7 @@ Cache.prototype.put = function(key, value, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.remove = function(key, callback) {
-  this._server.runCommand("rmv", [this._cacheNameParam, Server.pair("key", key)], callback);
+    this._server.runCommand("rmv", [this._cacheNameParam, Server.pair("key", key)], callback);
 }
 
 /**
@@ -74,11 +74,11 @@ Cache.prototype.remove = function(key, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.removeAll = function(keys, callback) {
-  var params = [this._cacheNameParam];
+    var params = [this._cacheNameParam];
 
-  params = params.concat(Cache.concatParams("k", keys));
+    params = params.concat(Cache.concatParams("k", keys));
 
-  this._server.runCommand("rmvall", params, callback);
+    this._server.runCommand("rmvall", params, callback);
 }
 
 /**
@@ -89,20 +89,20 @@ Cache.prototype.removeAll = function(keys, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.putAll = function(map, callback) {
-  var keys = Object.keys(map);
+    var keys = Object.keys(map);
 
-  var values = [];
+    var values = [];
 
-  for (var key of keys) {
-    values.push(map[key]);
-  }
+    for (var key of keys) {
+        values.push(map[key]);
+    }
 
-  var params = Cache.concatParams("k", keys);
-  params = params.concat(Cache.concatParams("v", values));
+    var params = Cache.concatParams("k", keys);
+    params = params.concat(Cache.concatParams("v", values));
 
-  params.push(this._cacheNameParam);
+    params.push(this._cacheNameParam);
 
-  this._server.runCommand("putall", params, callback);
+    this._server.runCommand("putall", params, callback);
 }
 
 /**
@@ -121,11 +121,11 @@ Cache.prototype.putAll = function(map, callback) {
  * @param {Cache~onGetAll} callback Called on finish
  */
 Cache.prototype.getAll = function(keys, callback) {
-  var params = Cache.concatParams("k", keys);
+    var params = Cache.concatParams("k", keys);
 
-  params.push(this._cacheNameParam);
+    params.push(this._cacheNameParam);
 
-  this._server.runCommand("getall", params, callback);
+    this._server.runCommand("getall", params, callback);
 }
 
 /**
@@ -136,13 +136,13 @@ Cache.prototype.getAll = function(keys, callback) {
  * @returns List of parameters.
  */
 Cache.concatParams = function(pref, keys) {
-  var temp = []
+    var temp = []
 
-  for (var i = 1; i <= keys.length; ++i) {
-    temp.push(Server.pair(pref + i, keys[i-1]));
-  }
+    for (var i = 1; i <= keys.length; ++i) {
+        temp.push(Server.pair(pref + i, keys[i-1]));
+    }
 
-  return temp;
+    return temp;
 }
 
 exports.Cache = Cache

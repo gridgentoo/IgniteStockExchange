@@ -20,96 +20,95 @@ var TestUtils = require("./test-utils").TestUtils;
 var assert = require("assert");
 
 testComputeAffinityRun = function() {
-  TestUtils.startIgniteNode(onStart.bind(null, computeAffinityRun));
+    TestUtils.startIgniteNode(onStart.bind(null, computeAffinityRun));
 }
 
 testComputeAffinityCall = function() {
-  TestUtils.startIgniteNode(onStart.bind(null, computeAffinityCall));
+    TestUtils.startIgniteNode(onStart.bind(null, computeAffinityCall));
 }
 
 testComputeExecute = function() {
-  TestUtils.startIgniteNode(computeExecute);
+    TestUtils.startIgniteNode(computeExecute);
 }
 
 function onStart(onPut, error, ignite) {
-  var cache = ignite.cache("mycache");
+    var cache = ignite.cache("mycache");
 
-  var params = {}
+    var params = {}
 
-  for (var i = 900; i < 1000; ++i) {
-    params["key" + i] = "val" + i;
-  }
+    for (var i = 900; i < 1000; ++i) {
+        params["key" + i] = "val" + i;
+    }
 
-  cache.putAll(params, onPut.bind(null, ignite))
+    cache.putAll(params, onPut.bind(null, ignite))
 }
 
 function computeAffinityRun(ignite, error) {
-  var comp = ignite.compute();
+    var comp = ignite.compute();
 
-  var f = function () {
-    println("Hello world!");
+    var f = function () {
+        println("Hello world!");
 
-    ignite.hello();
-  }
+        ignite.hello();
+    }
 
-  function onEnd(error) {
-    assert(error == null);
+    function onEnd(error) {
+        assert(error == null);
 
-    TestUtils.testDone();
-  }
+        TestUtils.testDone();
+    }
 
-  comp.affinityRun("mycache", "key999", f, onEnd.bind(null));
+    comp.affinityRun("mycache", "key999", f, onEnd.bind(null));
 }
 
 function computeAffinityCall(ignite, error) {
-  var comp = ignite.compute();
+    var comp = ignite.compute();
 
-  var f = function () {
-    return ignite.hello();
-  }
+    var f = function () {
+        return ignite.hello();
+    }
 
-  function onEnd(err, res) {
-    assert(err == null);
+    function onEnd(err, res) {
+        assert(err == null);
+        assert(res.indexOf("HAPPY") !== -1, "Incorrect result message. [mes=" + res + "].");
 
-    assert(res.indexOf("HAPPY") !== -1, "Incorrect result message. [mes=" + res + "].");
+        TestUtils.testDone();
+    }
 
-    TestUtils.testDone();
-  }
-
-  comp.affinityCall("mycache", "key999", f, onEnd.bind(null));
+    comp.affinityCall("mycache", "key999", f, onEnd.bind(null));
 }
 
 function computeExecute(error, ignite) {
-  var map = function(nodes, arg, emit) {
-    var words = arg.split(" ");
+    var map = function(nodes, arg, emit) {
+        var words = arg.split(" ");
 
-    for (var i = 0; i < words.length; i++) {
-      var f = function (word) {
-        println(">>> Printing " + word);
+        for (var i = 0; i < words.length; i++) {
+            var f = function (word) {
+                println(">>> Printing " + word);
 
-        return word.length;
-      };
+                return word.length;
+            };
 
-      emit(f, [words[i]], nodes[i %  nodes.length]);
+            emit(f, [words[i]], nodes[i %  nodes.length]);
+        }
+    };
+
+    var reduce = function(results) {
+        var sum = 0;
+
+        for (var i = 0; i < results.length; ++i) {
+            sum += parseInt(results[i], 10);
+        }
+
+        return sum;
+    };
+
+    var callback = function(err, res) {
+        assert(err == null, "Get error on compute task. [err=" + err + "].");
+        assert(res === 7, "Result is not correct. [expected=7, value=" + res + "].");
+
+        TestUtils.testDone();
     }
-  };
 
-  var reduce = function(results) {
-    var sum = 0;
-
-    for (var i = 0; i < results.length; ++i) {
-     sum += parseInt(results[i], 10);
-    }
-
-    return sum;
-  };
-
-  var callback = function(err, res) {
-    assert(err == null, "Get error on compute task. [err=" + err + "].");
-    assert(res === 7, "Result is not correct. [expected=7, value=" + res + "].");
-
-    TestUtils.testDone();
-  }
-
-  ignite.compute().execute(map, reduce, "Hi Alice", callback);
+    ignite.compute().execute(map, reduce, "Hi Alice", callback);
 }

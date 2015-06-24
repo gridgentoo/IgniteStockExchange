@@ -39,69 +39,70 @@ function Ignition() {
  * @param {Ignition~onStart} callback Called on finish
  */
 Ignition.start = function(address, secretKey, callback) {
-  var Server = require("./server").Server;
-  var Ignite = require("./ignite").Ignite
+    var Server = require("./server").Server;
+    var Ignite = require("./ignite").Ignite
 
-  var numConn = 0;
+    var numConn = 0;
 
-  for (var addr of address) {
-    var params = addr.split(":");
+    for (var addr of address) {
+        var params = addr.split(":");
 
-    var portsRange = params[1].split("..");
+        var portsRange = params[1].split("..");
 
-    var start;
-    var end;
+        var start;
+        var end;
 
-    if (portsRange.length === 1) {
-       start = parseInt(portsRange[0], 10);
-       end = start;
-    }
-    else if (portsRange.length === 2) {
-      start = parseInt(portsRange[0], 10);
-      end = parseInt(portsRange[1], 10);
-    }
-    if (isNaN(start) || isNaN(end)) {
-      incorrectAddress();
+        if (portsRange.length === 1) {
+            start = parseInt(portsRange[0], 10);
+            end = start;
+        }
+        else if (portsRange.length === 2) {
+            start = parseInt(portsRange[0], 10);
+            end = parseInt(portsRange[1], 10);
+        }
 
-      return;
-    }
+        if (isNaN(start) || isNaN(end)) {
+            incorrectAddress();
 
-    for (var i = start; i <= end; i++) {
-      checkServer(params[0], i, secretKey);
-    }
-  }
+            return;
+        }
 
-  function checkServer(host, port, secretKey) {
-    numConn++;
-
-    var server = new Server(host, port, secretKey);
-
-    server.checkConnection(onConnect.bind(null, server));
-  }
-
-  function incorrectAddress() {
-    callback.call(null, "Incorrect address format.", null);
-
-    callback = null;
-  }
-
-  function onConnect(server, error) {
-    if (!callback) return;
-
-    numConn--;
-
-    if (!error) {
-      callback.call(null, null, new Ignite(server));
-
-      callback = null;
-
-      return;
+        for (var i = start; i <= end; i++) {
+            checkServer(params[0], i, secretKey);
+        }
     }
 
-    if (!numConn) {
-      callback.call(null, "Cannot connect to servers. " + error, null);
+    function checkServer(host, port, secretKey) {
+        numConn++;
+
+        var server = new Server(host, port, secretKey);
+
+        server.checkConnection(onConnect.bind(null, server));
     }
-  }
+
+    function incorrectAddress() {
+        callback.call(null, "Incorrect address format.", null);
+
+        callback = null;
+    }
+
+    function onConnect(server, error) {
+        if (!callback) return;
+
+        numConn--;
+
+        if (!error) {
+            callback.call(null, null, new Ignite(server));
+
+            callback = null;
+
+            return;
+        }
+
+        if (!numConn) {
+            callback.call(null, "Cannot connect to servers. " + error, null);
+        }
+    }
 }
 
 exports.Ignition = Ignition;

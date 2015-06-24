@@ -26,7 +26,7 @@ var Compute = require("./compute").Compute
  * @param {Server} Server
  */
 function Ignite(server) {
-  this._server = server;
+    this._server = server;
 }
 
 /**
@@ -34,7 +34,7 @@ function Ignite(server) {
  * @returns {Server} Server
  */
 Ignite.prototype.server = function() {
-  return this._server;
+    return this._server;
 }
 
 /**
@@ -45,7 +45,7 @@ Ignite.prototype.server = function() {
  * @returns {Cache} Cache
  */
 Ignite.prototype.cache = function(cacheName) {
-  return new Cache(this._server, cacheName);
+    return new Cache(this._server, cacheName);
 }
 
 /**
@@ -55,7 +55,7 @@ Ignite.prototype.cache = function(cacheName) {
  * @returns {Compute} Compute
  */
 Ignite.prototype.compute = function() {
-  return new Compute(this._server);
+    return new Compute(this._server);
 }
 
 exports.Ignite = Ignite;

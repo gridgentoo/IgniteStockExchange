@@ -20,35 +20,35 @@ var TestUtils = require("./test-utils").TestUtils;
 var assert = require("assert");
 
 testStartWithoutKey = function() {
-  TestUtils.startIgniteNode(onIncorrectStart);
+    TestUtils.startIgniteNode(onIncorrectStart);
 }
 
 testStartWithKey = function() {
-  TestUtils.startIgniteNodeWithKey("secret-key", onStart);
+    TestUtils.startIgniteNodeWithKey("secret-key", onStart);
 }
 
 testStartWithIncorrectKey = function() {
-  TestUtils.startIgniteNodeWithKey("secret-key1", onIncorrectStart);
+    TestUtils.startIgniteNodeWithKey("secret-key1", onIncorrectStart);
 }
 
 function onIncorrectStart(error, ignite) {
-  assert(error != null, "Do not get authentication error");
+    assert(error != null, "Do not get authentication error");
 
-  assert(error.indexOf("Authentication failed. Status code 401.") !== -1, "Incorrect error message: " + error);
+    assert(error.indexOf("Authentication failed. Status code 401.") !== -1, "Incorrect error message: " + error);
 
-  TestUtils.testDone();
+    TestUtils.testDone();
 }
 
 function onStart(error, ignite) {
-  assert(error === null, "Get error: " + error);
+    assert(error === null, "Get error: " + error);
 
-  assert(ignite !== null, "Cannot connect. Get null ignite.");
+    assert(ignite !== null, "Cannot connect. Get null ignite.");
 
-  var cache = ignite.cache("mycache");
+    var cache = ignite.cache("mycache");
 
-  assert(cache !== null, "Cache is null.")
+    assert(cache !== null, "Cache is null.")
 
-  cache.put("key", "6", onPut);
+    cache.put("key", "6", onPut);
 }
 
 function onPut(error) {

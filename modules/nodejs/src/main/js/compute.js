@@ -23,7 +23,7 @@ var Server = require("./server").Server;
  * @param {Server} server Server
  */
 function Compute(server) {
-  this._server = server;
+    this._server = server;
 }
 
 /**
@@ -34,8 +34,8 @@ function Compute(server) {
  * @param {noValue} callback Callback
  */
 Compute.prototype.affinityRun = function(cacheName, key, runnable, callback) {
-  this._server.runCommand("affscriptrun", [Server.pair("cacheName", cacheName),
-    Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
+    this._server.runCommand("affscriptrun", [Server.pair("cacheName", cacheName),
+        Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
 }
 
 /**
@@ -46,8 +46,8 @@ Compute.prototype.affinityRun = function(cacheName, key, runnable, callback) {
  * @param {onGet} callback Callback
  */
 Compute.prototype.affinityCall = function(cacheName, key, runnable, callback) {
-  this._server.runCommand("affscriptcall", [Server.pair("cacheName", cacheName),
-    Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
+    this._server.runCommand("affscriptcall", [Server.pair("cacheName", cacheName),
+        Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
 }
 
 /**
@@ -58,13 +58,13 @@ Compute.prototype.affinityCall = function(cacheName, key, runnable, callback) {
  * @param {onGet} callback Callback
  */
 Compute.prototype.execute = function(map, reduce, arg, callback) {
-  var params = [];
+    var params = [];
 
-  params.push(Server.pair("map", this._escape(map)));
-  params.push(Server.pair("reduce", this._escape(reduce)));
-  params.push(Server.pair("arg", this._escape(arg)));
+    params.push(Server.pair("map", this._escape(map)));
+    params.push(Server.pair("reduce", this._escape(reduce)));
+    params.push(Server.pair("arg", this._escape(arg)));
 
-  this._server.runCommand("execscripttask", params, callback);
+    this._server.runCommand("execscripttask", params, callback);
 }
 
 /**
@@ -72,9 +72,9 @@ Compute.prototype.execute = function(map, reduce, arg, callback) {
  * @returns {string} Encoding function
  */
 Compute.prototype._escape = function(f) {
-  var qs = require('querystring');
+    var qs = require('querystring');
 
-  return qs.escape(f.toString());
+    return qs.escape(f.toString());
 }
 
 /**
