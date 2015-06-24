@@ -28,14 +28,11 @@ function Compute(server) {
 
 /**
  * @this {Compute}
- * @param {string} cacheName Cache name
- * @param {string} key Key
  * @param runnable Function without parameters
  * @param {onGet} callback Callback
  */
-Compute.prototype.runScript = function(cacheName, key, runnable, callback) {
-    this._server.runCommand("runscript", [Server.pair("cacheName", cacheName),
-        Server.pair("key", key), Server.pair("func", this._escape(runnable))], callback);
+Compute.prototype.runScript = function(runnable, callback) {
+    this._server.runCommand("runscript", [Server.pair("func", this._escape(runnable))], callback);
 }
 
 /**

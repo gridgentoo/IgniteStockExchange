@@ -25,7 +25,7 @@ public class RestMapReduceScriptRequest extends GridRestRequest {
     private String mapFunc;
 
     /** Function argument. */
-    private String arg;
+    private Object arg;
 
     /** Reduce function. */
     private String reduceFunc;
@@ -61,14 +61,14 @@ public class RestMapReduceScriptRequest extends GridRestRequest {
     /**
      * @param arg Argument.
      */
-    public void argument(String arg) {
+    public void argument(Object arg) {
         this.arg = arg;
     }
 
     /**
      * @return Argument.
      */
-    public String argument() {
+    public Object argument() {
         return arg;
     }
 }

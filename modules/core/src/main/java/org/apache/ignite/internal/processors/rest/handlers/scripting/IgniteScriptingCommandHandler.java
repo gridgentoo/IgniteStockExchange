@@ -129,7 +129,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         private GridKernalContext ctx;
 
         /** Map function argument. */
-        private String arg;
+        private Object arg;
 
         /** Emit results. */
         private IgniteJsEmitResult emitRes;
@@ -140,7 +140,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
          * @param reduceFunc Reduce function.
          * @param ctx Kernal context.
          */
-        public JsTask(String mapFunc, String arg, String reduceFunc, GridKernalContext ctx, IgniteJsEmitResult emitRes) {
+        public JsTask(String mapFunc, Object arg, String reduceFunc, GridKernalContext ctx, IgniteJsEmitResult emitRes) {
             this.mapFunc = mapFunc;
             this.reduceFunc = reduceFunc;
             this.arg = arg;

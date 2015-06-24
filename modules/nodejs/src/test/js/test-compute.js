@@ -61,7 +61,7 @@ function computeRunScript(ignite, error) {
         TestUtils.testDone();
     }
 
-    comp.runScript("mycache", "key999", f, onEnd.bind(null));
+    comp.runScript(f, onEnd.bind(null));
 }
 
 function computeExecute(error, ignite) {
@@ -115,7 +115,7 @@ function computeAllNodeExecute(error, ignite) {
     var reduce = function(results) {};
 
     var callback = function(err, res) {
-        assert(err == null, "Get error on compute task. [err=" + err + "].");
+        assert(err == null, "Get error on compute task [err=" + err + "]");
         TestUtils.testDone();
     }
 
@@ -133,8 +133,8 @@ function computeErrorExecute(error, ignite) {
     var callback = function(err, res) {
         assert(err != null, "Do not get error on compute task.");
 
-        assert(err.indexOf("Function evaluation failed") > -1, "Incorrect error."+
-            "[expected=function evaluation failed, value=" + err + "].");
+        assert(err.indexOf("Function evaluation failed") > -1, "Incorrect error "+
+            "[expected=function evaluation failed, value=" + err + "]");
 
         TestUtils.testDone();
     }
