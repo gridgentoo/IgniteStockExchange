@@ -87,20 +87,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
                 final RestRunScriptRequest req0 = (RestRunScriptRequest) req;
 
-                GridRestResponse res = ctx.grid().compute().call(new IgniteCallable<GridRestResponse>() {
-                    @IgniteInstanceResource
-                    private Ignite ignite;
-
-                    @Override public GridRestResponse call() {
-                        try {
-                            return new GridRestResponse(((IgniteKernal)ignite).
-                                context().scripting().invokeFunction(req0.script()));
-                        }
-                        catch (IgniteCheckedException e) {
-                            return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
-                        }
-                    }
-                });
+                GridRestResponse res = ctx.grid().compute().call(new JsFunctionCallable(req0.script()));
 
                 return new GridFinishedFuture<>(res);
             }
@@ -113,10 +100,10 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
                 final RestMapReduceScriptRequest req0 = (RestMapReduceScriptRequest) req;
 
-                GridRestResponse execRes = ctx.grid().compute().execute(
+                GridRestResponse res = ctx.grid().compute().execute(
                     new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx), null);
 
-                return new GridFinishedFuture<>(execRes);
+                return new GridFinishedFuture<>(res);
             }
         }
 
@@ -166,23 +153,8 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                 for (Object jobMapping : jsMapRes) {
                     List task = (List)jobMapping;
 
-                    final String func = (String)task.get(0);
-                    final Object argv = task.get(1);
-                    ClusterNode node = (ClusterNode)task.get(2);
-
-                    map.put(new ComputeJobAdapter() {
-                        @IgniteInstanceResource
-                        private Ignite ignite;
-
-                        @Override public Object execute() throws IgniteException {
-                            try {
-                                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv);
-                            }
-                            catch (IgniteCheckedException e) {
-                               throw U.convertException(e);
-                            }
-                        }
-                    }, node);
+                    map.put(new JsCallFunctionJob((String)task.get(0), task.get(1)),
+                        (ClusterNode)task.get(2));
                 }
 
                 return map;
@@ -195,7 +167,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         /** {@inheritDoc} */
         @Nullable @Override public GridRestResponse reduce(List<ComputeJobResult> results) {
             try {
-                String[] data = new String[results.size()];
+                Object[] data = new Object[results.size()];
 
                 for (int i = 0; i < results.size(); ++i) {
                     IgniteException err = results.get(i).getException();
@@ -203,10 +175,80 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     if (err != null)
                         return new GridRestResponse(GridRestResponse.STATUS_FAILED, err.getMessage());
 
-                    data[i] = results.get(i).getData().toString();
+                    data[i] = results.get(i).getData();
                 }
 
                 return new GridRestResponse(ctx.scripting().invokeFunction(reduceFunc, (Object)data));
+            }
+            catch (IgniteCheckedException e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Js call function job.
+     */
+    private static class JsCallFunctionJob extends ComputeJobAdapter {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** Function to call. */
+        private String func;
+
+        /** Function argument. */
+        private Object argv;
+
+        /** Ignite instance. */
+        @IgniteInstanceResource
+        private Ignite ignite;
+
+        /**
+         * @param func Function to call.
+         * @param argv Function argument.
+         */
+        public JsCallFunctionJob(String func, Object argv) {
+            this.func = func;
+            this.argv = argv;
+        }
+
+        /** {@inheritDoc} */
+        @Override public Object execute() throws IgniteException {
+            try {
+                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv);
+            }
+            catch (IgniteCheckedException e) {
+                throw U.convertException(e);
+            }
+        }
+    }
+
+    /**
+     * Call java script function.
+     */
+    private static class JsFunctionCallable implements IgniteCallable<GridRestResponse> {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** Function to call. */
+        private String func;
+
+        /** Ignite instance. */
+        @IgniteInstanceResource
+        private Ignite ignite;
+
+        /**
+         * @param func Function to call.
+         */
+        public JsFunctionCallable(String func) {
+            this.func = func;
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() {
+            try {
+                return new GridRestResponse(((IgniteKernal)ignite).
+                    context().scripting().invokeFunction(func));
             }
             catch (IgniteCheckedException e) {
                 return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
