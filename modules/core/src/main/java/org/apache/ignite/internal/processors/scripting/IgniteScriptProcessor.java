@@ -100,7 +100,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @throws IgniteCheckedException If script failed.
      */
     public Object invokeFunction(String src) throws IgniteCheckedException {
-        return invokeFunctionByName("__internalCall", src);
+        return invokeFunction(src, null, null);
     }
 
     /**
@@ -110,7 +110,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @throws IgniteCheckedException If script failed.
      */
     public Object invokeFunction(String src, Object arg) throws IgniteCheckedException {
-        return invokeFunctionByName("__internalCall", src, arg);
+        return invokeFunction(src, arg, null);
     }
 
     /**
@@ -120,28 +120,15 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @throws IgniteCheckedException If script failed.
      */
     public Object invokeFunction(String src, Object arg, Object arg2) throws IgniteCheckedException {
-        return invokeFunctionByName("__internalCall", src, arg, arg2);
-    }
-
-    /**
-     * Invoke function.
-     *
-     * @param nameFunc Function name.
-     * @param args Function arguments.
-     * @return Result of the function.
-     * @throws IgniteCheckedException If script failed.
-     */
-    public Object invokeFunctionByName(String nameFunc, Object... args) throws IgniteCheckedException {
-        Invocable invocable = (Invocable) jsEngine;
-
         try {
-            return invocable.invokeFunction(nameFunc, args);
+            Invocable invocable = (Invocable) jsEngine;
+            return invocable.invokeFunction("__internalCall", src, arg, arg2);
         }
         catch (ScriptException e) {
-            throw new IgniteCheckedException("Function evaluation failed [funcName=" + nameFunc + "].");
+            throw new IgniteCheckedException("Function evaluation failed [funcName=" + src + "].");
         }
         catch (NoSuchMethodException e) {
-            throw new IgniteCheckedException("Cannot find function [funcName=" + nameFunc + "].");
+            throw new IgniteCheckedException("Cannot find function [funcName=" + src + "].");
         }
     }
 }
