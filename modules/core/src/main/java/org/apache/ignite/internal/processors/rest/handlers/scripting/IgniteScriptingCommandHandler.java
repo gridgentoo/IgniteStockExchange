@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.rest.handlers.compute;
+package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
 import org.apache.ignite.*;
 import org.apache.ignite.cluster.*;
@@ -27,6 +27,7 @@ import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
+import org.apache.ignite.lang.*;
 import org.apache.ignite.resources.*;
 import org.jetbrains.annotations.*;
 
@@ -37,14 +38,16 @@ import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
 /**
  * Compute task command handler.
  */
-public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapter {
+public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
-    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(EXECUTE_TASK);
+    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(EXECUTE_TASK,
+        AFFINITY_RUN,
+        AFFINITY_CALL);
 
     /**
      * @param ctx Context.
      */
-    public IgniteComputeTaskCommandHandler(GridKernalContext ctx) {
+    public IgniteScriptingCommandHandler(GridKernalContext ctx) {
         super(ctx);
 
         IgniteScriptProcessor script = ctx.scripting();
@@ -71,16 +74,58 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
     @Override public IgniteInternalFuture<GridRestResponse> handleAsync(GridRestRequest req) {
         assert req != null;
 
-        assert req instanceof RestComputeTaskRequest : "Invalid type of compute task request.";
-
         assert SUPPORTED_COMMANDS.contains(req.command());
 
-        final RestComputeTaskRequest req0 = (RestComputeTaskRequest) req;
+        switch (req.command()) {
+            case AFFINITY_RUN: {
+                assert req instanceof RestComputeRequest : "Invalid type of compute request.";
 
-        Object execRes = ctx.grid().compute().execute(
-            new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx), null);
+                final RestComputeRequest req0 = (RestComputeRequest) req;
 
-        return new GridFinishedFuture<>(new GridRestResponse(execRes));
+                ctx.grid().compute().affinityRun(req0.cacheName(), req0.key(), new IgniteRunnable() {
+                    @IgniteInstanceResource
+                    private Ignite ignite;
+
+                    @Override public void run() {
+                        ((IgniteKernal) ignite).context().scripting().invokeFunction(req0.function());
+                    }
+                });
+
+                return new GridFinishedFuture<>(new GridRestResponse());
+            }
+
+            case AFFINITY_CALL: {
+                assert req instanceof RestComputeRequest : "Invalid type of compute request.";
+
+                final RestComputeRequest req0 = (RestComputeRequest) req;
+
+                Object callRes = ctx.grid().compute().affinityCall(req0.cacheName(), req0.key(), new IgniteCallable<Object>() {
+                    @IgniteInstanceResource
+                    private Ignite ignite;
+
+                    @Override public Object call() {
+                        return ((IgniteKernal) ignite).context().scripting().invokeFunction(req0.function());
+                    }
+                });
+
+                return new GridFinishedFuture<>(new GridRestResponse(callRes));
+            }
+
+            case  EXECUTE_TASK: {
+                assert req instanceof RestComputeTaskRequest : "Invalid type of compute task request.";
+
+                assert SUPPORTED_COMMANDS.contains(req.command());
+
+                final RestComputeTaskRequest req0 = (RestComputeTaskRequest) req;
+
+                Object execRes = ctx.grid().compute().execute(
+                    new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx), null);
+
+                return new GridFinishedFuture<>(new GridRestResponse(execRes));
+            }
+        }
+
+        return new GridFinishedFuture<>();
     }
 
     /**
