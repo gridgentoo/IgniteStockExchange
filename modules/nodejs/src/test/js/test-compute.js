@@ -97,8 +97,9 @@ function computeExecute(error, ignite) {
   var reduce = function(results) {
     var sum = 0;
 
-    for (var i = 0; i < results.length; ++i)
+    for (var i = 0; i < results.length; ++i) {
      sum += parseInt(results[i], 10);
+    }
 
     return sum;
   };

@@ -53,45 +53,68 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
         bind.put("ignite", new IgniteJS());
 
         jsEngine.setBindings(bind, ENGINE_SCOPE);
+
+        String createJSFunction = "function __createJSFunction(mapFunc) {" +
+                "return eval('(function() { return ' + mapFunc.trim() + '})()'); }";
+
+        String internalCall  = "function __internalCall(funcSource) { " +
+                "var func = __createJSFunction(funcSource); " +
+                "var arg = Array.prototype.slice.call(arguments, 0);" +
+                "arg.shift();" +
+                "return func.apply(null, arg);" +
+                "}";
+
+        addEngineFunction(createJSFunction);
+        addEngineFunction(internalCall);
     }
 
     /**
-     * @param script Script.
-     * @param args Arguments.
-     * @return Script result.
-     * @throws ScriptException If script failed.
+     * Add function to scope.
+     *
+     * @param script Function script.
      */
-    public Object runJSFunction(String script, String... args) throws IgniteException {
+    public void addEngineFunction(String script) {
         try {
-            return jsEngine.eval(callJsFunction(script, args));
+            jsEngine.eval(script);
         }
         catch (ScriptException e) {
-            throw new IgniteException("Cannot evaluate javascript function + " + script, e);
+            throw new IgniteException("Script Engine does not work.", e);
         }
     }
 
     /**
-     * @param script Script.
-     * @return Script result.
-     * @throws ScriptException If script failed.
+     * @param source Script source.
+     * @param args Arguments.
+     * @return Result of the function.
      */
-    public Object runJSFunction(String script) throws IgniteException {
-        return runJSFunction(script, new String[]{""});
+    public Object invokeFunction(String source, Object... args) {
+        Object[] newArgs = new Object[args.length + 1];
+
+        newArgs[0] = source;
+
+        System.arraycopy(args, 0, newArgs, 1, args.length);
+
+        return invokeFunctionByName("__internalCall", newArgs);
     }
 
     /**
-     * @param script JS function script.
-     * @param args Arguments.
-     * @return Script that calls function.
+     * Invoke function.
+     *
+     * @param nameFunc Function name.
+     * @param args Function arguments.
+     * @return Result of the function.
      */
-    private String callJsFunction(String script, String[] args) {
-        String callFuncScript = "(" + script + ")(";
+    public Object invokeFunctionByName(String nameFunc, Object... args) {
+        Invocable invocable = (Invocable) jsEngine;
 
-        for (int i = 0; i < args.length; ++i)
-            callFuncScript += args[i] + (i < args.length - 1 ? "," : "");
-
-        callFuncScript += ");";
-
-        return callFuncScript;
+        try {
+            return invocable.invokeFunction(nameFunc, args);
+        }
+        catch (ScriptException e) {
+            throw new IgniteException("Script Engine does not work.", e);
+        }
+        catch (NoSuchMethodException e) {
+            throw new IgniteException("Script Engine does not work.", e);
+        }
     }
 }

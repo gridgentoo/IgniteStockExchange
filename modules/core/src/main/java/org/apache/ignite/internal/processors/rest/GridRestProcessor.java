@@ -247,15 +247,6 @@ public class GridRestProcessor extends GridProcessorAdapter {
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
         if (isRestEnabled()) {
-            // Register handlers.
-            addHandler(new GridCacheCommandHandler(ctx));
-            addHandler(new GridTaskCommandHandler(ctx));
-            addHandler(new GridTopologyCommandHandler(ctx));
-            addHandler(new GridVersionCommandHandler(ctx));
-            addHandler(new DataStructuresCommandHandler(ctx));
-            addHandler(new IgniteComputeCommandHandler(ctx));
-            addHandler(new IgniteComputeTaskCommandHandler(ctx));
-
             // Start protocols.
             startTcpProtocol();
             startHttpProtocol();
@@ -291,6 +282,15 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
             if (log.isDebugEnabled())
                 log.debug("REST processor started.");
+
+            // Register handlers.
+            addHandler(new GridCacheCommandHandler(ctx));
+            addHandler(new GridTaskCommandHandler(ctx));
+            addHandler(new GridTopologyCommandHandler(ctx));
+            addHandler(new GridVersionCommandHandler(ctx));
+            addHandler(new DataStructuresCommandHandler(ctx));
+            addHandler(new IgniteComputeCommandHandler(ctx));
+            addHandler(new IgniteComputeTaskCommandHandler(ctx));
         }
     }
 

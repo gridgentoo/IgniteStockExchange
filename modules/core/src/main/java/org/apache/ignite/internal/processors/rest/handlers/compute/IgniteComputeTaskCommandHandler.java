@@ -24,6 +24,7 @@ import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.request.*;
+import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.resources.*;
@@ -45,6 +46,20 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
      */
     public IgniteComputeTaskCommandHandler(GridKernalContext ctx) {
         super(ctx);
+
+        IgniteScriptProcessor script = ctx.scripting();
+
+        String emitFunction = "function emit(result, f, args, nodeId) {result.push([f.toString(), args, nodeId])}";
+
+        String computeFunction = "function __compute(mapFuncSource, ids, args) {"  +
+            "       var res = [];" +
+            "       var f = __createJSFunction(mapFuncSource);" +
+            "       f(ids, args, emit.bind(null, res)); "  +
+            "       return res;" +
+            "   }";
+
+        script.addEngineFunction(emitFunction);
+        script.addEngineFunction(computeFunction);
     }
 
     /** {@inheritDoc} */
@@ -104,7 +119,13 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
         @Override public Map<? extends ComputeJob, ClusterNode> map(List<ClusterNode> nodes, String arg) {
             Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-            List jsMapRes = (List)ctx.scripting().runJSFunction(wrapMapperFunction(nodes));
+            String[] ids = new String[nodes.size()];
+
+            for (int i = 0; i < ids.length; ++i)
+                ids[i] = nodes.get(i).id().toString();
+
+            List jsMapRes = (List)ctx.scripting().invokeFunctionByName("__compute",
+                mapFunc, ids, this.arg);
 
             for (Object jobMapping : jsMapRes) {
                 List task = (List)jobMapping;
@@ -123,9 +144,9 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
                         String[] argv1 = new String[argv.size()];
 
                         for (int i = 0; i < argv1.length; ++i)
-                            argv1[i] = "\"" + argv.get(i).toString() + "\"";
+                            argv1[i] = argv.get(i).toString();
 
-                        return ctx.scripting().runJSFunction(func, argv1);
+                        return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv1);
                     }
                 }, node);
             }
@@ -135,35 +156,12 @@ public class IgniteComputeTaskCommandHandler extends GridRestCommandHandlerAdapt
 
         /** {@inheritDoc} */
         @Nullable @Override public Object reduce(List<ComputeJobResult> results) {
-            List<Object> data = new ArrayList<>();
+            String[] data = new String[results.size()];
 
-            for (ComputeJobResult res : results)
-                data.add(res.getData());
+            for (int i = 0; i < results.size(); ++i)
+                data[i] = results.get(i).getData().toString();
 
-            return ctx.scripting().runJSFunction(reduceFunc, data.toString());
-        }
-
-        /**
-         * @param nodes Cluster nodes.
-         * @return Script running map function.
-         */
-        private String wrapMapperFunction(List<ClusterNode> nodes) {
-            List<String> ids = new ArrayList<>();
-
-            for (ClusterNode node : nodes)
-                ids.add("\"" + node.id().toString() + "\"");
-
-            String sep = System.getProperty("line.separator");
-
-            return "function () {" + sep +
-                "       var res = [];" + sep +
-                "       var emitFunc = function(f, args, nodeId) {" + sep +
-                "           res.push([f.toString(), args, nodeId])" + sep +
-                "       }" + sep +
-                "       var f = " + mapFunc + ";" + sep +
-                "       f(" + ids + ", " + "\"" + this.arg + "\"" + ", emitFunc.bind(null)" + ");" + sep +
-                "       return res;" + sep +
-                "   }";
+            return ctx.scripting().invokeFunction(reduceFunc, (Object)data);
         }
     }
 }
