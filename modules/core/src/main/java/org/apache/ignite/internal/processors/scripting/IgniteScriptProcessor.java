@@ -84,15 +84,15 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * @param source Script source.
+     * @param src Script src.
      * @param args Arguments.
      * @return Result of the function.
      * @throws IgniteCheckedException If script failed.
      */
-    public Object invokeFunction(String source, Object... args) throws IgniteCheckedException {
+    public Object invokeFunction(String src, Object... args) throws IgniteCheckedException {
         Object[] newArgs = new Object[args.length + 1];
 
-        newArgs[0] = source;
+        newArgs[0] = src;
 
         System.arraycopy(args, 0, newArgs, 1, args.length);
 

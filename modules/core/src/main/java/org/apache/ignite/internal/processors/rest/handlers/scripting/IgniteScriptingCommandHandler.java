@@ -210,8 +210,14 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             try {
                 String[] data = new String[results.size()];
 
-                for (int i = 0; i < results.size(); ++i)
+                for (int i = 0; i < results.size(); ++i) {
+                    IgniteException err = results.get(i).getException();
+
+                    if (err != null)
+                        return new GridRestResponse(GridRestResponse.STATUS_FAILED, err.getMessage());
+
                     data[i] = results.get(i).getData().toString();
+                }
 
                 return new GridRestResponse(ctx.scripting().invokeFunction(reduceFunc, (Object)data));
             }
