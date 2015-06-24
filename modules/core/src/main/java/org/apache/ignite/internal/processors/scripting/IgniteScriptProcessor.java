@@ -57,9 +57,9 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
         String createJSFunction = "function __createJSFunction(mapFunc) {" +
                 "return eval('(function() { return ' + mapFunc.trim() + '})()'); }";
 
-        String internalCall  = "function __internalCall(funcSource, arg) { " +
+        String internalCall  = "function __internalCall(funcSource, arg1, arg2) { " +
             "var func = __createJSFunction(funcSource); " +
-            "return func.apply(null, arg); }";
+            "return func.apply(null, arg1, arg2); }";
 
         addEngineFunction(createJSFunction);
         addEngineFunction(internalCall);
@@ -111,6 +111,16 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      */
     public Object invokeFunction(String src, Object arg) throws IgniteCheckedException {
         return invokeFunctionByName("__internalCall", src, arg);
+    }
+
+    /**
+     * @param src Script src.
+     * @param arg Argument.
+     * @return Result of the function.
+     * @throws IgniteCheckedException If script failed.
+     */
+    public Object invokeFunction(String src, Object arg, Object arg2) throws IgniteCheckedException {
+        return invokeFunctionByName("__internalCall", src, arg, arg2);
     }
 
     /**

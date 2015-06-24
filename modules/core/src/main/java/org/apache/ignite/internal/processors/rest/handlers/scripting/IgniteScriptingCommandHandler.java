@@ -60,13 +60,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             String emitFunction = "function emit(f, args, nodeId) {" +
                 "__emitResult.add(f.toString(), args, nodeId);}";
 
-            String computeFunction = "function __compute(mapFuncSource, ids, args) {"  +
-                "       var f = __createJSFunction(mapFuncSource);" +
-                "       f(ids, args); "  +
-                "   }";
-
             script.addEngineFunction(emitFunction);
-            script.addEngineFunction(computeFunction);
 
             emitRes = new IgniteJsEmitResult();
 
@@ -159,8 +153,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             try {
                 Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-                ctx.scripting().invokeFunctionByName("__compute",
-                    mapFunc, nodes.toArray(new ClusterNode[nodes.size()]), this.arg);
+                ctx.scripting().invokeFunction(mapFunc, nodes.toArray(new ClusterNode[nodes.size()]), this.arg);
 
                 List<T3<Object, Object, Object>> jsMapRes = emitRes.getEmitResult();
 
