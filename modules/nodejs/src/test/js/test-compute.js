@@ -57,7 +57,7 @@ function computeRunScript(ignite, error) {
 }
 
 function computeExecute(error, ignite) {
-    var map = function(nodes, arg, emit) {
+    var map = function(nodes, arg) {
         var words = arg.split(" ");
 
         for (var i = 0; i < words.length; i++) {

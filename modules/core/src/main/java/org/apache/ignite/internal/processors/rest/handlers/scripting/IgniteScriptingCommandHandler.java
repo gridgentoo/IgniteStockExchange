@@ -26,6 +26,7 @@ import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.future.*;
+import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.resources.*;
@@ -44,6 +45,9 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         EXECUTE_MAP_REDUCE_SCRIPT,
         RUN_SCRIPT);
 
+    /** Emit result. */
+    private IgniteJsEmitResult emitRes;
+
     /**
      * @param ctx Context.
      */
@@ -53,17 +57,20 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         try {
             IgniteScriptProcessor script = ctx.scripting();
 
-            String emitFunction = "function emit(result, f, args, nodeId) {result.push([f.toString(), args, nodeId])}";
+            String emitFunction = "function emit(f, args, nodeId) {" +
+                "__emitResult.add(f.toString(), args, nodeId);}";
 
             String computeFunction = "function __compute(mapFuncSource, ids, args) {"  +
-                "       var res = [];" +
                 "       var f = __createJSFunction(mapFuncSource);" +
-                "       f(ids, args, emit.bind(null, res)); "  +
-                "       return res;" +
+                "       f(ids, args); "  +
                 "   }";
 
             script.addEngineFunction(emitFunction);
             script.addEngineFunction(computeFunction);
+
+            emitRes = new IgniteJsEmitResult();
+
+            script.addBinding("__emitResult", emitRes);
         }
         catch (IgniteCheckedException e) {
             ctx.log().error(e.getMessage());
@@ -101,7 +108,8 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                 final RestMapReduceScriptRequest req0 = (RestMapReduceScriptRequest) req;
 
                 GridRestResponse res = ctx.grid().compute().execute(
-                    new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx), null);
+                    new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx, emitRes),
+                    null);
 
                 return new GridFinishedFuture<>(res);
             }
@@ -129,17 +137,21 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         /** Map function argument. */
         private String arg;
 
+        /** Emit results. */
+        private IgniteJsEmitResult emitRes;
+
         /**
          * @param mapFunc Map function.
          * @param arg Map function argument.
          * @param reduceFunc Reduce function.
          * @param ctx Kernal context.
          */
-        public JsTask(String mapFunc, String arg, String reduceFunc, GridKernalContext ctx) {
+        public JsTask(String mapFunc, String arg, String reduceFunc, GridKernalContext ctx, IgniteJsEmitResult emitRes) {
             this.mapFunc = mapFunc;
             this.reduceFunc = reduceFunc;
             this.arg = arg;
             this.ctx = ctx;
+            this.emitRes = emitRes;
         }
 
         /** {@inheritDoc} */
@@ -147,14 +159,15 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             try {
                 Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-                List jsMapRes = (List)ctx.scripting().invokeFunctionByName("__compute",
+                ctx.scripting().invokeFunctionByName("__compute",
                     mapFunc, nodes.toArray(new ClusterNode[nodes.size()]), this.arg);
 
-                for (Object jobMapping : jsMapRes) {
-                    List task = (List)jobMapping;
+                List<T3<Object, Object, Object>> jsMapRes = emitRes.getEmitResult();
 
-                    map.put(new JsCallFunctionJob((String)task.get(0), task.get(1)),
-                        (ClusterNode)task.get(2));
+                for (T3<Object, Object, Object> task : jsMapRes) {
+
+                    map.put(new JsCallFunctionJob((String)task.get1(), task.get2()),
+                        (ClusterNode)task.get3());
                 }
 
                 return map;

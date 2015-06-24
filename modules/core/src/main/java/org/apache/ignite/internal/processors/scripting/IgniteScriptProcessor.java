@@ -84,6 +84,20 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
     }
 
     /**
+     * Add binding.
+     *
+     * @param name Binding name.
+     * @param o Object to bind.
+     */
+    public void addBinding(String name, Object o) {
+        Bindings b = jsEngine.getBindings(ENGINE_SCOPE);
+
+        b.put(name, o);
+
+        jsEngine.setBindings(b, ENGINE_SCOPE);
+    }
+
+    /**
      * @param src Script src.
      * @param args Arguments.
      * @return Result of the function.
