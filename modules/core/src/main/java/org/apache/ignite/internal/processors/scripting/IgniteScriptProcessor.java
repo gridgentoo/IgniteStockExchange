@@ -72,13 +72,14 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * Add function to scope.
      *
      * @param script Function script.
+     * @throws IgniteCheckedException If script failed.
      */
-    public void addEngineFunction(String script) {
+    public void addEngineFunction(String script)  throws IgniteCheckedException {
         try {
             jsEngine.eval(script);
         }
         catch (ScriptException e) {
-            throw new IgniteException("Script Engine does not work.", e);
+            throw new IgniteCheckedException("Script evaluation failed [script=" + script + "].", e);
         }
     }
 
@@ -86,8 +87,9 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @param source Script source.
      * @param args Arguments.
      * @return Result of the function.
+     * @throws IgniteCheckedException If script failed.
      */
-    public Object invokeFunction(String source, Object... args) {
+    public Object invokeFunction(String source, Object... args) throws IgniteCheckedException {
         Object[] newArgs = new Object[args.length + 1];
 
         newArgs[0] = source;
@@ -103,18 +105,19 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @param nameFunc Function name.
      * @param args Function arguments.
      * @return Result of the function.
+     * @throws IgniteCheckedException If script failed.
      */
-    public Object invokeFunctionByName(String nameFunc, Object... args) {
+    public Object invokeFunctionByName(String nameFunc, Object... args) throws IgniteCheckedException {
         Invocable invocable = (Invocable) jsEngine;
 
         try {
             return invocable.invokeFunction(nameFunc, args);
         }
         catch (ScriptException e) {
-            throw new IgniteException("Script Engine does not work.", e);
+            throw new IgniteCheckedException("Function evaluation failed [funcName=" + nameFunc + "].", e);
         }
         catch (NoSuchMethodException e) {
-            throw new IgniteException("Script Engine does not work.", e);
+            throw new IgniteCheckedException("Cannot find function [funcName=" + nameFunc + "].", e);
         }
     }
 }

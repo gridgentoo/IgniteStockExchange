@@ -50,19 +50,24 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
     public IgniteScriptingCommandHandler(GridKernalContext ctx) {
         super(ctx);
 
-        IgniteScriptProcessor script = ctx.scripting();
+        try {
+            IgniteScriptProcessor script = ctx.scripting();
 
-        String emitFunction = "function emit(result, f, args, nodeId) {result.push([f.toString(), args, nodeId])}";
+            String emitFunction = "function emit(result, f, args, nodeId) {result.push([f.toString(), args, nodeId])}";
 
-        String computeFunction = "function __compute(mapFuncSource, ids, args) {"  +
-            "       var res = [];" +
-            "       var f = __createJSFunction(mapFuncSource);" +
-            "       f(ids, args, emit.bind(null, res)); "  +
-            "       return res;" +
-            "   }";
+            String computeFunction = "function __compute(mapFuncSource, ids, args) {"  +
+                "       var res = [];" +
+                "       var f = __createJSFunction(mapFuncSource);" +
+                "       f(ids, args, emit.bind(null, res)); "  +
+                "       return res;" +
+                "   }";
 
-        script.addEngineFunction(emitFunction);
-        script.addEngineFunction(computeFunction);
+            script.addEngineFunction(emitFunction);
+            script.addEngineFunction(computeFunction);
+        }
+        catch (IgniteCheckedException e) {
+            ctx.log().error(e.getMessage());
+        }
     }
 
     /** {@inheritDoc} */
@@ -82,16 +87,22 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
                 final RestRunScriptRequest req0 = (RestRunScriptRequest) req;
 
-                Object callRes = ctx.grid().compute().call(new IgniteCallable<Object>() {
+                GridRestResponse res = ctx.grid().compute().call(new IgniteCallable<GridRestResponse>() {
                     @IgniteInstanceResource
                     private Ignite ignite;
 
-                    @Override public Object call() {
-                        return ((IgniteKernal) ignite).context().scripting().invokeFunction(req0.script());
+                    @Override public GridRestResponse call() {
+                        try {
+                            return new GridRestResponse(((IgniteKernal)ignite).
+                                context().scripting().invokeFunction(req0.script()));
+                        }
+                        catch (IgniteCheckedException e) {
+                            return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+                        }
                     }
                 });
 
-                return new GridFinishedFuture<>(new GridRestResponse(callRes));
+                return new GridFinishedFuture<>(res);
             }
 
             case EXECUTE_MAP_REDUCE_SCRIPT: {
@@ -102,10 +113,10 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
                 final RestMapReduceScriptRequest req0 = (RestMapReduceScriptRequest) req;
 
-                Object execRes = ctx.grid().compute().execute(
+                GridRestResponse execRes = ctx.grid().compute().execute(
                     new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx), null);
 
-                return new GridFinishedFuture<>(new GridRestResponse(execRes));
+                return new GridFinishedFuture<>(execRes);
             }
         }
 
@@ -115,7 +126,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
     /**
      * JS Compute Task.
      */
-    private static class JsTask extends ComputeTaskAdapter<String, Object> {
+    private static class JsTask extends ComputeTaskAdapter<String, GridRestResponse> {
         /** */
         private static final long serialVersionUID = 0L;
 
@@ -146,51 +157,67 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
         /** {@inheritDoc} */
         @Override public Map<? extends ComputeJob, ClusterNode> map(List<ClusterNode> nodes, String arg) {
-            Map<ComputeJob, ClusterNode> map = new HashMap<>();
+            try {
+                Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-            String[] ids = new String[nodes.size()];
+                String[] ids = new String[nodes.size()];
 
-            for (int i = 0; i < ids.length; ++i)
-                ids[i] = nodes.get(i).id().toString();
+                for (int i = 0; i < ids.length; ++i)
+                    ids[i] = nodes.get(i).id().toString();
 
-            List jsMapRes = (List)ctx.scripting().invokeFunctionByName("__compute",
-                mapFunc, ids, this.arg);
+                List jsMapRes = (List)ctx.scripting().invokeFunctionByName("__compute",
+                    mapFunc, ids, this.arg);
 
-            for (Object jobMapping : jsMapRes) {
-                List task = (List)jobMapping;
+                for (Object jobMapping : jsMapRes) {
+                    List task = (List)jobMapping;
 
-                final String func = (String)task.get(0);
-                final List argv = (List)task.get(1);
-                String nodeId = (String)task.get(2);
+                    final String func = (String)task.get(0);
+                    final List argv = (List)task.get(1);
+                    String nodeId = (String)task.get(2);
 
-                ClusterNode node = ctx.grid().cluster().node(UUID.fromString(nodeId));
+                    ClusterNode node = ctx.grid().cluster().node(UUID.fromString(nodeId));
 
-                map.put(new ComputeJobAdapter() {
-                    @IgniteInstanceResource
-                    private Ignite ignite;
+                    map.put(new ComputeJobAdapter() {
+                        @IgniteInstanceResource
+                        private Ignite ignite;
 
-                    @Override public Object execute() throws IgniteException {
-                        String[] argv1 = new String[argv.size()];
+                        @Override public Object execute() throws IgniteException {
+                            try {
+                                String[] argv1 = new String[argv.size()];
 
-                        for (int i = 0; i < argv1.length; ++i)
-                            argv1[i] = argv.get(i).toString();
+                                for (int i = 0; i < argv1.length; ++i)
+                                    argv1[i] = argv.get(i).toString();
 
-                        return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv1);
-                    }
-                }, node);
+
+                                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv1);
+                            }
+                            catch (IgniteCheckedException e) {
+                               throw U.convertException(e);
+                            }
+                        }
+                    }, node);
+                }
+
+                return map;
             }
-
-            return map;
+            catch (IgniteCheckedException e) {
+                throw U.convertException(e);
+            }
         }
 
         /** {@inheritDoc} */
-        @Nullable @Override public Object reduce(List<ComputeJobResult> results) {
-            String[] data = new String[results.size()];
+        @Nullable @Override public GridRestResponse reduce(List<ComputeJobResult> results) {
+            try {
+                String[] data = new String[results.size()];
 
-            for (int i = 0; i < results.size(); ++i)
-                data[i] = results.get(i).getData().toString();
+                for (int i = 0; i < results.size(); ++i)
+                    data[i] = results.get(i).getData().toString();
 
-            return ctx.scripting().invokeFunction(reduceFunc, (Object)data);
+                return new GridRestResponse(ctx.scripting().invokeFunction(reduceFunc, (Object)data));
+            }
+            catch (IgniteCheckedException e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+            }
         }
     }
 }
