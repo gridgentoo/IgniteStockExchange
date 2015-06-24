@@ -86,11 +86,16 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             case RUN_SCRIPT: {
                 assert req instanceof RestRunScriptRequest : "Invalid type of run script request.";
 
-                final RestRunScriptRequest req0 = (RestRunScriptRequest) req;
-
-                GridRestResponse res = ctx.grid().compute().call(new JsFunctionCallable(req0.script()));
-
-                return new GridFinishedFuture<>(res);
+                return ctx.closure().callAsync(new IgniteClosure<String, GridRestResponse>() {
+                    @Override public GridRestResponse apply(String o) {
+                        try {
+                            return new GridRestResponse(ctx.grid().compute().call(new JsFunctionCallable(o)));
+                        }
+                        catch (Exception e) {
+                            return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+                        }
+                    }
+                }, ((RestRunScriptRequest) req).script(), Collections.singleton(ctx.grid().localNode()));
             }
 
             case EXECUTE_MAP_REDUCE_SCRIPT: {
@@ -99,13 +104,18 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
                 assert SUPPORTED_COMMANDS.contains(req.command());
 
-                final RestMapReduceScriptRequest req0 = (RestMapReduceScriptRequest) req;
-
-                GridRestResponse res = ctx.grid().compute().execute(
-                    new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx, emitRes),
-                    null);
-
-                return new GridFinishedFuture<>(res);
+                return ctx.closure().callAsync(new IgniteClosure<RestMapReduceScriptRequest, GridRestResponse>() {
+                    @Override public GridRestResponse apply(RestMapReduceScriptRequest req0) {
+                        try {
+                            return new GridRestResponse(ctx.grid().compute().execute(
+                                new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx, emitRes),
+                                null));
+                        }
+                        catch (Exception e) {
+                            return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+                        }
+                }
+                }, (RestMapReduceScriptRequest)req, Collections.singleton(ctx.grid().localNode()));
             }
         }
 
@@ -115,7 +125,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
     /**
      * JS Compute Task.
      */
-    private static class JsTask extends ComputeTaskAdapter<String, GridRestResponse> {
+    private static class JsTask extends ComputeTaskAdapter<String, Object> {
         /** */
         private static final long serialVersionUID = 0L;
 
@@ -171,7 +181,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         }
 
         /** {@inheritDoc} */
-        @Nullable @Override public GridRestResponse reduce(List<ComputeJobResult> results) {
+        @Nullable @Override public Object reduce(List<ComputeJobResult> results) {
             try {
                 Object[] data = new Object[results.size()];
 
@@ -184,10 +194,10 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     data[i] = results.get(i).getData();
                 }
 
-                return new GridRestResponse(ctx.scripting().invokeFunction(reduceFunc, data));
+                return ctx.scripting().invokeFunction(reduceFunc, data);
             }
             catch (IgniteCheckedException e) {
-                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+                throw U.convertException(e);
             }
         }
     }
@@ -232,7 +242,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
     /**
      * Call java script function.
      */
-    private static class JsFunctionCallable implements IgniteCallable<GridRestResponse> {
+    private static class JsFunctionCallable implements IgniteCallable<Object> {
         /** */
         private static final long serialVersionUID = 0L;
 
@@ -251,13 +261,12 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         }
 
         /** {@inheritDoc} */
-        @Override public GridRestResponse call() {
+        @Override public Object call() {
             try {
-                return new GridRestResponse(((IgniteKernal)ignite).
-                    context().scripting().invokeFunction(func));
+                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func);
             }
             catch (IgniteCheckedException e) {
-                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+                throw U.convertException(e);
             }
         }
     }

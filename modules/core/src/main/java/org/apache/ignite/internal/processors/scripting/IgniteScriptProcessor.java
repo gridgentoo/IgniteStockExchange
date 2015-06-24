@@ -128,7 +128,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
             throw new IgniteCheckedException("Function evaluation failed [funcName=" + src + "].");
         }
         catch (NoSuchMethodException e) {
-            throw new IgniteCheckedException("Cannot find function [funcName=__internalCall].");
+            throw new IgniteCheckedException("Cannot find function [func=__internalCall].");
         }
     }
 }
