@@ -191,7 +191,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     data[i] = results.get(i).getData();
                 }
 
-                return new GridRestResponse(ctx.scripting().invokeFunction(reduceFunc, (Object)data));
+                return new GridRestResponse(ctx.scripting().invokeFunction(reduceFunc, data));
             }
             catch (IgniteCheckedException e) {
                 return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
