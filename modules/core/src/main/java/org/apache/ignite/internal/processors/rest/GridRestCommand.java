@@ -96,14 +96,11 @@ public enum GridRestCommand {
     /** Quit. */
     QUIT("quit"),
 
-    /** Affinity run. */
-    AFFINITY_RUN("affscriptrun"),
+    /** Run script. */
+    RUN_SCRIPT("runscript"),
 
-    /** Affinity call. */
-    AFFINITY_CALL("affscriptcall"),
-
-    /** Execute task. */
-    EXECUTE_TASK("execscripttask");
+    /** Execute map reduce script. */
+    EXECUTE_MAP_REDUCE_SCRIPT("excmapreduce");
 
     /** Enum values. */
     private static final GridRestCommand[] VALS = values();

@@ -19,12 +19,8 @@ var TestUtils = require("./test-utils").TestUtils;
 
 var assert = require("assert");
 
-testComputeAffinityRun = function() {
-    TestUtils.startIgniteNode(onStart.bind(null, computeAffinityRun));
-}
-
-testComputeAffinityCall = function() {
-    TestUtils.startIgniteNode(onStart.bind(null, computeAffinityCall));
+testComputeRunScript = function() {
+    TestUtils.startIgniteNode(onStart.bind(null, computeRunScript));
 }
 
 testComputeExecute = function() {
@@ -43,25 +39,7 @@ function onStart(onPut, error, ignite) {
     cache.putAll(params, onPut.bind(null, ignite))
 }
 
-function computeAffinityRun(ignite, error) {
-    var comp = ignite.compute();
-
-    var f = function () {
-        println("Hello world!");
-
-        ignite.hello();
-    }
-
-    function onEnd(error) {
-        assert(error == null);
-
-        TestUtils.testDone();
-    }
-
-    comp.affinityRun("mycache", "key999", f, onEnd.bind(null));
-}
-
-function computeAffinityCall(ignite, error) {
+function computeRunScript(ignite, error) {
     var comp = ignite.compute();
 
     var f = function () {
@@ -75,7 +53,7 @@ function computeAffinityCall(ignite, error) {
         TestUtils.testDone();
     }
 
-    comp.affinityCall("mycache", "key999", f, onEnd.bind(null));
+    comp.runScript("mycache", "key999", f, onEnd.bind(null));
 }
 
 function computeExecute(error, ignite) {

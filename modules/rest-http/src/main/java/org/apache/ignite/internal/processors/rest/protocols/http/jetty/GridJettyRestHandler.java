@@ -447,21 +447,18 @@ public class GridJettyRestHandler extends AbstractHandler {
                 break;
             }
 
-            case AFFINITY_RUN:
-            case AFFINITY_CALL: {
-                RestComputeRequest restReq0 = new RestComputeRequest();
+            case RUN_SCRIPT: {
+                RestRunScriptRequest restReq0 = new RestRunScriptRequest();
 
-                restReq0.function((String)params.get("func"));
-                restReq0.cacheName((String)params.get("cacheName"));
-                restReq0.key(params.get("key"));
+                restReq0.script((String) params.get("func"));
 
                 restReq = restReq0;
 
                 break;
             }
 
-            case EXECUTE_TASK: {
-                RestComputeTaskRequest restReq0 = new RestComputeTaskRequest();
+            case EXECUTE_MAP_REDUCE_SCRIPT: {
+                RestMapReduceScriptRequest restReq0 = new RestMapReduceScriptRequest();
 
                 restReq0.mapFunction((String) params.get("map"));
                 restReq0.argument((String)params.get("arg"));

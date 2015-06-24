@@ -18,57 +18,23 @@
 package org.apache.ignite.internal.processors.rest.request;
 
 /**
- * Compute request.
+ * Run script request.
  */
-public class RestComputeRequest extends GridRestRequest {
+public class RestRunScriptRequest extends GridRestRequest {
     /** Java script function. */
-    private String func;
-
-    /** Cache name. */
-    private String cacheName;
-
-    /** Key. */
-    private Object key;
+    private String script;
 
     /**
      * @return Java script function.
      */
-    public String function() {
-        return func;
+    public String script() {
+        return script;
     }
 
     /**
-     * @param func Java script function.
+     * @param script Java script function.
      */
-    public void function(String func) {
-        this.func = func;
-    }
-
-    /**
-     * @return Cache name.
-     */
-    public String cacheName() {
-        return cacheName;
-    }
-
-    /**
-     * @param cacheName Cache name.
-     */
-    public void cacheName(String cacheName) {
-        this.cacheName = cacheName;
-    }
-
-    /**
-     * @param key Key.
-     */
-    public void key(Object key) {
-        this.key = key;
-    }
-
-    /**
-     * @return Key.
-     */
-    public Object key() {
-        return key;
+    public void script(String script) {
+        this.script = script;
     }
 }

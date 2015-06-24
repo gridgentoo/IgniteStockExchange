@@ -18,9 +18,9 @@
 package org.apache.ignite.internal.processors.rest.request;
 
 /**
- * Compute task request.
+ * Execute map reduce script request.
  */
-public class RestComputeTaskRequest extends GridRestRequest {
+public class RestMapReduceScriptRequest extends GridRestRequest {
     /** Mapping tasks to nodes. */
     private String mapFunc;
 

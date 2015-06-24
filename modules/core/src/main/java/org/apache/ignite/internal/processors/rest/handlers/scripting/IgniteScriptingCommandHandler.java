@@ -40,9 +40,9 @@ import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
  */
 public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
-    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(EXECUTE_TASK,
-        AFFINITY_RUN,
-        AFFINITY_CALL);
+    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(
+        EXECUTE_MAP_REDUCE_SCRIPT,
+        RUN_SCRIPT);
 
     /**
      * @param ctx Context.
@@ -77,46 +77,30 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         assert SUPPORTED_COMMANDS.contains(req.command());
 
         switch (req.command()) {
-            case AFFINITY_RUN: {
-                assert req instanceof RestComputeRequest : "Invalid type of compute request.";
+            case RUN_SCRIPT: {
+                assert req instanceof RestRunScriptRequest : "Invalid type of run script request.";
 
-                final RestComputeRequest req0 = (RestComputeRequest) req;
+                final RestRunScriptRequest req0 = (RestRunScriptRequest) req;
 
-                ctx.grid().compute().affinityRun(req0.cacheName(), req0.key(), new IgniteRunnable() {
-                    @IgniteInstanceResource
-                    private Ignite ignite;
-
-                    @Override public void run() {
-                        ((IgniteKernal) ignite).context().scripting().invokeFunction(req0.function());
-                    }
-                });
-
-                return new GridFinishedFuture<>(new GridRestResponse());
-            }
-
-            case AFFINITY_CALL: {
-                assert req instanceof RestComputeRequest : "Invalid type of compute request.";
-
-                final RestComputeRequest req0 = (RestComputeRequest) req;
-
-                Object callRes = ctx.grid().compute().affinityCall(req0.cacheName(), req0.key(), new IgniteCallable<Object>() {
+                Object callRes = ctx.grid().compute().call(new IgniteCallable<Object>() {
                     @IgniteInstanceResource
                     private Ignite ignite;
 
                     @Override public Object call() {
-                        return ((IgniteKernal) ignite).context().scripting().invokeFunction(req0.function());
+                        return ((IgniteKernal) ignite).context().scripting().invokeFunction(req0.script());
                     }
                 });
 
                 return new GridFinishedFuture<>(new GridRestResponse(callRes));
             }
 
-            case  EXECUTE_TASK: {
-                assert req instanceof RestComputeTaskRequest : "Invalid type of compute task request.";
+            case EXECUTE_MAP_REDUCE_SCRIPT: {
+                assert req instanceof RestMapReduceScriptRequest :
+                    "Invalid type of execute map reduce script request.";
 
                 assert SUPPORTED_COMMANDS.contains(req.command());
 
-                final RestComputeTaskRequest req0 = (RestComputeTaskRequest) req;
+                final RestMapReduceScriptRequest req0 = (RestMapReduceScriptRequest) req;
 
                 Object execRes = ctx.grid().compute().execute(
                     new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx), null);
