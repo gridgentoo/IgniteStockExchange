@@ -17,6 +17,13 @@
 
 package org.apache.ignite.internal;
 
+import org.apache.ignite.internal.util.typedef.internal.*;
+import org.apache.ignite.testframework.*;
+
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+
 /**
  * Test compute node js.
  */
@@ -50,5 +57,48 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
      */
     public void testComputeExecute() throws Exception {
         runJsScript("testComputeExecute");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testComputeErrorExecute() throws Exception {
+        runJsScript("testComputeErrorExecute");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRestartGrid() throws Exception {
+        final AtomicInteger id = new AtomicInteger(2);
+        IgniteInternalFuture<Long> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {
+            @Override public Object call() throws Exception {
+                ArrayList<Integer> ids = new ArrayList<Integer>();
+
+                for (int i = 0 ; i < 3; ++i) {
+                    int cur = id.getAndIncrement();
+
+                    startGrid(cur);
+
+                    ids.add(cur);
+                }
+
+                for (int i = 0; i < ids.size(); ++i)
+                    stopGrid(ids.get(i));
+
+                return null;
+            }
+        }, 2, "runIgnite");
+
+        while (!fut.isDone())
+            runJsScript("testComputeExecute");
+
+        stopGrid(1);
+
+        U.sleep(500);
+
+        startGrid(1);
+
+        U.sleep(3000);
     }
 }

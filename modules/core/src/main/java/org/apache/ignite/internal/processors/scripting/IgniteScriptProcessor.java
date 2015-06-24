@@ -138,10 +138,10 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
             return invocable.invokeFunction(nameFunc, args);
         }
         catch (ScriptException e) {
-            throw new IgniteCheckedException("Function evaluation failed [funcName=" + nameFunc + "].", e);
+            throw new IgniteCheckedException("Function evaluation failed [funcName=" + nameFunc + "].");
         }
         catch (NoSuchMethodException e) {
-            throw new IgniteCheckedException("Cannot find function [funcName=" + nameFunc + "].", e);
+            throw new IgniteCheckedException("Cannot find function [funcName=" + nameFunc + "].");
         }
     }
 }

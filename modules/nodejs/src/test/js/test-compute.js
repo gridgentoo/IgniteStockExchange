@@ -27,6 +27,10 @@ testComputeExecute = function() {
     TestUtils.startIgniteNode(computeExecute);
 }
 
+testComputeErrorExecute = function() {
+    TestUtils.startIgniteNode(computeErrorExecute);
+}
+
 function onStart(onPut, error, ignite) {
     var cache = ignite.cache("mycache");
 
@@ -89,4 +93,24 @@ function computeExecute(error, ignite) {
     }
 
     ignite.compute().execute(map, reduce, "Hi Alice", callback);
+}
+
+function computeErrorExecute(error, ignite) {
+    var map = function(nodes, arg) {
+        var f = [function (args) {}, function(args){throw "Bad function";}];
+        for (var i = 0; i < nodes.length; i++) {
+            emit(f[i % f.length], "", nodes[i %  nodes.length]);
+        }
+    };
+
+    var callback = function(err, res) {
+        assert(err != null, "Do not get error on compute task.");
+
+        assert(err.indexOf("Function evaluation failed") > -1, "Incorrect error."+
+            "[expected=function evaluation failed, value=" + err + "].");
+
+        TestUtils.testDone();
+    }
+
+    ignite.compute().execute(map, function (args) {}, "Hi Alice", callback);
 }
