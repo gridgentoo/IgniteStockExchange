@@ -59,7 +59,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
 
         String internalCall  = "function __internalCall(funcSource, arg1, arg2) { " +
             "var func = __createJSFunction(funcSource); " +
-            "return func.apply(null, arg1, arg2); }";
+            "return func.apply(null, [arg1, arg2]); }";
 
         addEngineFunction(createJSFunction);
         addEngineFunction(internalCall);
