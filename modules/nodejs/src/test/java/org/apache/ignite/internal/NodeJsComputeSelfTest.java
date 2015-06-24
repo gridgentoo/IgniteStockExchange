@@ -91,7 +91,7 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
         }, 2, "runIgnite");
 
         while (!fut.isDone())
-            runJsScript("testComputeExecute");
+            runJsScript("testComputeAllNodeExecute");
 
         stopGrid(1);
 

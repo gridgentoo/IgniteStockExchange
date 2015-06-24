@@ -31,6 +31,10 @@ testComputeErrorExecute = function() {
     TestUtils.startIgniteNode(computeErrorExecute);
 }
 
+testComputeAllNodeExecute = function() {
+    TestUtils.startIgniteNode(computeAllNodeExecute);
+}
+
 function onStart(onPut, error, ignite) {
     var cache = ignite.cache("mycache");
 
@@ -86,13 +90,36 @@ function computeExecute(error, ignite) {
     };
 
     var callback = function(err, res) {
-        assert(err == null, "Get error on compute task. [err=" + err + "].");
-        assert(res === 7, "Result is not correct. [expected=7, value=" + res + "].");
+        assert(err == null, "Get error on compute task [err=" + err + "]");
+        assert.equal(res, 7);
 
         TestUtils.testDone();
     }
 
     ignite.compute().execute(map, reduce, "Hi Alice", callback);
+}
+
+function computeAllNodeExecute(error, ignite) {
+    var map = function(nodes, arg) {
+        for (var i = 0; i < nodes.length; i++) {
+            var f = function (node) {
+                println(">>> Printing " + node.id().toString());
+
+                return "";
+            };
+
+            emit(f, nodes[i %  nodes.length], nodes[i %  nodes.length]);
+        }
+    };
+
+    var reduce = function(results) {};
+
+    var callback = function(err, res) {
+        assert(err == null, "Get error on compute task. [err=" + err + "].");
+        TestUtils.testDone();
+    }
+
+    ignite.compute().execute(map, reduce, "", callback);
 }
 
 function computeErrorExecute(error, ignite) {
