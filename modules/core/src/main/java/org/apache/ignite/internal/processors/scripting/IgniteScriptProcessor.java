@@ -50,7 +50,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
 
         Bindings bind = jsEngine.createBindings();
 
-        bind.put("ignite", new IgniteJS());
+        bind.put("ignite", ctx.grid());
 
         jsEngine.setBindings(bind, ENGINE_SCOPE);
 
