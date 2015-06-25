@@ -34,7 +34,7 @@ import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
  */
 public class GridVersionCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
-    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(VERSION);
+    private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(VERSION, NAME);
 
     /**
      * @param ctx Context.
@@ -54,6 +54,14 @@ public class GridVersionCommandHandler extends GridRestCommandHandlerAdapter {
 
         assert SUPPORTED_COMMANDS.contains(req.command());
 
-        return new GridFinishedFuture<>(new GridRestResponse(VER_STR));
+        switch (req.command()){
+            case VERSION:
+                return new GridFinishedFuture<>(new GridRestResponse(VER_STR));
+
+            case NAME:
+                return new GridFinishedFuture<>(new GridRestResponse(ctx.gridName()));
+        }
+
+        return new GridFinishedFuture<>();
     }
 }

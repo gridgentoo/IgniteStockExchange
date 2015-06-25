@@ -38,3 +38,20 @@ testIgniteVersion = function() {
 
     TestUtils.startIgniteNode(onStart.bind(null));
 }
+
+testIgniteName = function() {
+    function igniteName(err, res) {
+        assert.equal(err, null);
+        assert(res.indexOf("NodeJsIgniteSelfTest") > -1, "Incorrect ignite name [ver=" + res + "]");
+
+        TestUtils.testDone();
+    }
+
+    function onStart(err, ignite) {
+        assert.equal(err, null);
+
+        ignite.name(igniteName.bind(null));
+    }
+
+    TestUtils.startIgniteNode(onStart.bind(null));
+}

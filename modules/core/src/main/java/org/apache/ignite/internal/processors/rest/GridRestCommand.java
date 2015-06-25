@@ -87,6 +87,9 @@ public enum GridRestCommand {
     /** Version. */
     VERSION("version"),
 
+    /** Name. */
+    NAME("name"),
+
     /** Log. */
     LOG("log"),
 

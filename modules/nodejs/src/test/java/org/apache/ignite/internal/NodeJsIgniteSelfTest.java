@@ -44,4 +44,11 @@ public class NodeJsIgniteSelfTest extends NodeJsAbstractTest {
     public void testIgniteVersion() throws Exception {
         runJsScript("testIgniteVersion");
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testIgniteName() throws Exception {
+        runJsScript("testIgniteName");
+    }
 }

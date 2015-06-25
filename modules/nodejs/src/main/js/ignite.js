@@ -59,9 +59,23 @@ Ignite.prototype.compute = function() {
 }
 
 /**
+ * Ignite version
+ *
+ * @this {Ignite}
  * @param {onGet} callback Result in callback contains string with Ignite version.
  */
 Ignite.prototype.version = function(callback) {
     this._server.runCommand("version", [], callback);
 }
+
+/**
+ * Connected ignite name
+ *
+ * @this {Ignite}
+ * @param {onGet} callback Result in callback contains string with Ignite name.
+ */
+Ignite.prototype.name = function(callback) {
+    this._server.runCommand("name", [], callback);
+}
+
 exports.Ignite = Ignite;
