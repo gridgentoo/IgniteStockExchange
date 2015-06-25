@@ -471,6 +471,11 @@ public class GridJettyRestHandler extends AbstractHandler {
                 break;
             }
 
+            case EXECUTE_SQL_QUERY: {
+                RestSqlQueryRequest restReq0 = new RestSqlQueryRequest();
+
+            }
+
             default:
                 throw new IgniteCheckedException("Invalid command: " + cmd);
         }

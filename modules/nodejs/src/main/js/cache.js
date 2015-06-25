@@ -128,8 +128,15 @@ Cache.prototype.getAll = function(keys, callback) {
     this._server.runCommand("getall", params, callback);
 }
 
-Cache.prototype.query = function(qry, callback) {
-    this._server.runCommand("sqlqry", [Server.pair("qry", qry)])
+/**
+ * Execute sql query
+ *
+ * @param {string} qry Query
+ * @param {string[]} arg Arguments
+ * @param {onGet} callback Callback.
+ */
+Cache.prototype.query = function(qry, arg, callback) {
+    this._server.runCommand("sqlqry", [Server.pair("qry", qry), Server.pair("arg", arg)], callback);
 }
 
 /**
