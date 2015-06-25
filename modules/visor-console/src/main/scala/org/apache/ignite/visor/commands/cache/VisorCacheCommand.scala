@@ -402,10 +402,10 @@ class VisorCacheCommand {
                             X.timeSpan2HMSM(nm.getUpTime),
                             cm.keySize(),
                             (
-                                "Hi: " + cm.hits(),
-                                "Mi: " + cm.misses(),
-                                "Rd: " + cm.reads(),
-                                "Wr: " + cm.writes()
+                                "Hi: " + cm.hits() + cm.offHeapHits() + cm.swapHits(),
+                                "Mi: " + cm.misses() + cm.offHeapMisses() + cm.swapMisses(),
+                                "Rd: " + cm.reads() + cm.offHeapReads() + cm.swapReads(),
+                                "Wr: " + cm.writes() + cm.offHeapWrites() + cm.swapWrites()
                             )
                         )
                     }
@@ -551,10 +551,10 @@ class VisorCacheCommand {
         assert(arg != null)
 
         val sorted = arg.trim match {
-            case "hi" => data.toSeq.sortBy(_._2.hits)
-            case "mi" => data.toSeq.sortBy(_._2.misses)
-            case "rd" => data.toSeq.sortBy(_._2.reads)
-            case "wr" => data.toSeq.sortBy(_._2.writes)
+            case "hi" => data.toSeq.sortBy({ case (_, m) => m.hits() + m.offHeapHits() + m.swapHits() })
+            case "mi" => data.toSeq.sortBy({ case (_, m) => m.misses() + m.offHeapMisses() + m.swapMisses() })
+            case "rd" => data.toSeq.sortBy({ case (_, m) => m.reads() + m.offHeapReads() + m.swapReads() })
+            case "wr" => data.toSeq.sortBy({ case (_, m) => m.writes() + m.offHeapWrites() + m.swapWrites() })
             case "cn" => data.toSeq.sortBy(_._1)
 
             case _ =>

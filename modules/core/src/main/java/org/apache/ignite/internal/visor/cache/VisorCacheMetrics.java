@@ -47,11 +47,28 @@ public class VisorCacheMetrics implements Serializable {
     /** Number of non-{@code null} values in the cache. */
     private int size;
 
+    /** Number of primary entries stored in off-heap memory. */
+    private long offHeapPrimarySize;
+
+    /** Number of backup entries stored in off-heap memory. */
+    private long offHeapBackupSize;
+
+    /** Size of swap. */
+    private long swapSize;
+
     /** Gets number of keys in the cache, possibly with {@code null} values. */
     private int keySize;
 
+//    private int swapKeys;
+
     /** Total number of reads of the owning entity (either cache or entry). */
     private long reads;
+
+    /** The total number of get requests to the off-heap memory. */
+    private long offHeapReads;
+
+    /** The total number of get requests to the swap. */
+    private long swapReads;
 
     /** The mean time to execute gets. */
     private float avgReadTime;
@@ -59,11 +76,29 @@ public class VisorCacheMetrics implements Serializable {
     /** Total number of writes of the owning entity (either cache or entry). */
     private long writes;
 
+    /** Total number of writes of the owning entity (either cache or entry) from the off-heap memory. */
+    private long offHeapWrites;
+
+    /** Total number of writes of the owning entity (either cache or entry) from the swap. */
+    private long swapWrites;
+
     /** Total number of hits for the owning entity (either cache or entry). */
     private long hits;
 
+    /** The number of get requests that were satisfied by the off-heap memory. */
+    private long offHeapHits;
+
+    /** The number of get requests that were satisfied by the swap. */
+    private long swapHits;
+
     /** Total number of misses for the owning entity (either cache or entry). */
     private long misses;
+
+    /** A miss is a get request that is not satisfied by off-heap memory. */
+    private long offHeapMisses;
+
+    /** A miss is a get request that is not satisfied by swap. */
+    private long swapMisses;
 
     /** Total number of transaction commits. */
     private long txCommits;
@@ -80,17 +115,32 @@ public class VisorCacheMetrics implements Serializable {
     /** The total number of puts to the cache. */
     private long puts;
 
+    /** The total number of put requests to the off-heap memory. */
+    private long offHeapPuts;
+
+    /** The total number of put requests to the swap. */
+    private long swapPuts;
+
     /** The mean time to execute puts. */
     private float avgPutTime;
 
     /** The total number of removals from the cache. */
     private long removals;
 
+    /** The total number of removals from the off-heap memory. This does not include evictions. */
+    private long offHeapRemovals;
+
+    /** The total number of removals from the swap. */
+    private long swapRemovals;
+
     /** The mean time to execute removes. */
     private float avgRemovalTime;
 
     /** The total number of evictions from the cache. */
     private long evictions;
+
+    /** The total number of evictions from the off-heap memory. */
+    private long offHeapEvictions;
 
     /** Reads per second. */
     private int readsPerSec;
@@ -184,12 +234,23 @@ public class VisorCacheMetrics implements Serializable {
         CacheMetrics m = c.metrics();
 
         cm.size = m.getSize();
+        cm.offHeapPrimarySize = m.getOffHeapPrimaryEntriesCount();
+        cm.offHeapBackupSize = m.getOffHeapBackupEntriesCount();
+        cm.swapSize = m.getSwapSize();
         cm.keySize = m.getKeySize();
 
         cm.reads = m.getCacheGets();
+        cm.offHeapReads = m.getOffHeapGets();
+        cm.swapReads = m.getSwapGets();
         cm.writes = m.getCachePuts() + m.getCacheRemovals();
+        cm.offHeapWrites = m.getOffHeapPuts() + m.getOffHeapRemovals();
+        cm.swapWrites = m.getSwapPuts() + m.getSwapRemovals();
         cm.hits = m.getCacheHits();
+        cm.offHeapHits = m.getOffHeapHits();
+        cm.swapHits = m.getOffHeapHits();
         cm.misses = m.getCacheMisses();
+        cm.offHeapMisses = m.getOffHeapMisses();
+        cm.swapMisses = m.getSwapMisses();
 
         cm.txCommits = m.getCacheTxCommits();
         cm.txRollbacks = m.getCacheTxRollbacks();
@@ -198,8 +259,13 @@ public class VisorCacheMetrics implements Serializable {
         cm.avgTxRollbackTime = m.getAverageTxRollbackTime();
 
         cm.puts = m.getCachePuts();
+        cm.offHeapPuts = m.getOffHeapPuts();
+        cm.swapPuts = m.getSwapPuts();
         cm.removals = m.getCacheRemovals();
+        cm.offHeapRemovals = m.getOffHeapRemovals();
+        cm.swapRemovals = m.getSwapRemovals();
         cm.evictions = m.getCacheEvictions();
+        cm.offHeapEvictions = m.getOffHeapEvictions();
 
         cm.avgReadTime = m.getAverageGetTime();
         cm.avgPutTime = m.getAveragePutTime();
@@ -261,6 +327,20 @@ public class VisorCacheMetrics implements Serializable {
     }
 
     /**
+     * @return The total number of get requests to the off-heap memory.
+     */
+    public long offHeapReads() {
+        return offHeapReads;
+    }
+
+    /**
+     * @return The total number of get requests to the swap.
+     */
+    public long swapReads() {
+        return swapReads;
+    }
+
+    /**
      * @return The mean time to execute gets
      */
     public float avgReadTime() {
@@ -275,6 +355,20 @@ public class VisorCacheMetrics implements Serializable {
     }
 
     /**
+     * @return Total number of writes of the owning entity (either cache or entry) from the off-heap memory.
+     */
+    public long offHeapWrites() {
+        return offHeapWrites;
+    }
+
+    /**
+     * @return Total number of writes of the owning entity (either cache or entry) from the swap.
+     */
+    public long swapWrites() {
+        return swapWrites;
+    }
+
+    /**
      * @return Total number of hits for the owning entity (either cache or entry).
      */
     public long hits() {
@@ -282,10 +376,38 @@ public class VisorCacheMetrics implements Serializable {
     }
 
     /**
+     * @return The number of get requests that were satisfied by the off-heap memory.
+     */
+    public long offHeapHits() {
+        return offHeapHits;
+    }
+
+    /**
+     * @return The number of get requests that were satisfied by the swap.
+     */
+    public long swapHits() {
+        return swapHits;
+    }
+
+    /**
      * @return Total number of misses for the owning entity (either cache or entry).
      */
     public long misses() {
         return misses;
+    }
+
+    /**
+     * @return A miss is a get request that is not satisfied by off-heap memory.
+     */
+    public long offHeapMisses() {
+        return offHeapMisses;
+    }
+
+    /**
+     * @return A miss is a get request that is not satisfied by swap.
+     */
+    public long swapMisses() {
+        return swapMisses;
     }
 
     /**
@@ -317,6 +439,20 @@ public class VisorCacheMetrics implements Serializable {
     }
 
     /**
+     * @return The total number of put requests to the off-heap memory.
+     */
+    public long offHeapPuts() {
+        return offHeapPuts;
+    }
+
+    /**
+     * @return The total number of put requests to the swap.
+     */
+    public long swapPuts() {
+        return swapPuts;
+    }
+
+    /**
      * @return The mean time to execute puts.
      */
     public float avgPutTime() {
@@ -331,6 +467,20 @@ public class VisorCacheMetrics implements Serializable {
     }
 
     /**
+     * @return The total number of removals from the off-heap memory. This does not include evictions.
+     */
+    public long offHeapRemovals() {
+        return offHeapRemovals;
+    }
+
+    /**
+     * @return The total number of removals from the swap.
+     */
+    public long swapRemovals() {
+        return swapRemovals;
+    }
+
+    /**
      * @return The mean time to execute removes.
      */
     public float avgRemovalTime() {
@@ -342,6 +492,13 @@ public class VisorCacheMetrics implements Serializable {
      */
     public long evictions() {
         return evictions;
+    }
+
+    /**
+     * @return The total number of evictions from the off-heap memory.
+     */
+    public long offHeapEvictions() {
+        return offHeapEvictions;
     }
 
     /**
@@ -391,6 +548,27 @@ public class VisorCacheMetrics implements Serializable {
      */
     public int size() {
         return size;
+    }
+
+    /**
+     * @return Number of primary entries stored in off-heap memory.
+     */
+    public long offHeapPrimarySize() {
+        return offHeapPrimarySize;
+    }
+
+    /**
+     * @return Number of backup entries stored in off-heap memory.
+     */
+    public long offHeapBackupSize() {
+        return offHeapBackupSize;
+    }
+
+    /**
+     * @return Size of swap.
+     */
+    public long swapSize() {
+        return swapSize;
     }
 
     /**
