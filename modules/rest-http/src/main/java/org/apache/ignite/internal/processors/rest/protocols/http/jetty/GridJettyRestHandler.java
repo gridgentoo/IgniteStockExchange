@@ -474,6 +474,12 @@ public class GridJettyRestHandler extends AbstractHandler {
             case EXECUTE_SQL_QUERY: {
                 RestSqlQueryRequest restReq0 = new RestSqlQueryRequest();
 
+                restReq0.sqlQuery((String)params.get("qry"));
+                restReq0.arguments((Object[]) params.get("arg"));
+
+                restReq = restReq0;
+
+                break;
             }
 
             default:
