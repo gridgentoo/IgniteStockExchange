@@ -62,8 +62,22 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void testComputeErrorExecute() throws Exception {
-        runJsScript("testComputeErrorExecute");
+    public void testComputeFuncWithErrorExecute() throws Exception {
+        runJsScript("testComputeFuncWithErrorExecute");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testComputeIncorrectFuncExecute() throws Exception {
+        runJsScript("testComputeIncorrectFuncExecute");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testComputeIncorrectMapExecute() throws Exception {
+        runJsScript("testComputeIncorrectMapExecute");
     }
 
     /**

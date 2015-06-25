@@ -27,10 +27,6 @@ testComputeExecute = function() {
     TestUtils.startIgniteNode(computeExecute);
 }
 
-testComputeErrorExecute = function() {
-    TestUtils.startIgniteNode(computeErrorExecute);
-}
-
 testComputeAllNodeExecute = function() {
     TestUtils.startIgniteNode(computeAllNodeExecute);
 }
@@ -123,22 +119,62 @@ function computeAllNodeExecute(error, ignite) {
     ignite.compute().execute(map, reduce, "", callback);
 }
 
-function computeErrorExecute(error, ignite) {
+testComputeFuncWithErrorExecute = function() {
     var map = function(nodes, arg) {
-        var f = [function (args) {}, function(args){throw "Bad function";}];
+        var f = function(args){throw "Bad function";};
+
         for (var i = 0; i < nodes.length; i++) {
-            emit(f[i % f.length], "", nodes[i %  nodes.length]);
+            emit(f, "", nodes[i %  nodes.length]);
         }
     };
 
-    var callback = function(err, res) {
-        assert(err != null, "Do not get error on compute task.");
+    testComputeWithErrors(map);
+}
 
-        assert(err.indexOf("Function evaluation failed") > -1, "Incorrect error "+
-            "[expected=function evaluation failed, value=" + err + "]");
+testComputeIncorrectFuncExecute = function() {
+    var map = function(nodes, arg) {
+        var f = function() {
+            prin("hi");
+        };
 
-        TestUtils.testDone();
+        for (var i = 0; i < nodes.length; i++) {
+            emit(f, "", nodes[i %  nodes.length]);
+        }
+    };
+
+    testComputeWithErrors(map);
+}
+
+testComputeIncorrectMapExecute = function() {
+    var map = function(nodes, arg) {
+        var f = function() {
+            print("hi");
+        };
+
+        for (i = 0; i < nodes.length; i++) {
+            emit(f, "", nodes[a %  nodes.length]);
+        }
+    };
+
+    testComputeWithErrors(map);
+}
+
+function testComputeWithErrors(map) {
+    function computeErrorExecute(error, ignite) {
+        var callback = function(err, res) {
+            assert(err != null, "Do not get error on compute task.");
+
+            console.log("ERROR on Compute: "  + err);
+            console.log("End of ERROR.");
+
+            assert(err.indexOf("Function evaluation failed") > -1, "Incorrect error "+
+                "[expected=function evaluation failed, value=" + err + "]");
+
+            TestUtils.testDone();
+        }
+
+        ignite.compute().execute(map, function (args) {}, "Hi Alice", callback);
     }
 
-    ignite.compute().execute(map, function (args) {}, "Hi Alice", callback);
+    TestUtils.startIgniteNode(computeErrorExecute);
 }
