@@ -47,12 +47,12 @@ function computeRunScript(ignite, error) {
     var comp = ignite.compute();
 
     var f = function (args) {
-        return args + " " + ignite.hello();
+        return args + " " + ignite.name();
     }
 
     function onEnd(err, res) {
         assert(err == null);
-        assert(res.indexOf("HAPPY") !== -1, "Incorrect result message. [mes=" + res + "].");
+        assert(res.indexOf("NodeJsComputeSelfTest") !== -1, "Incorrect result message. [mes=" + res + "].");
         assert(res.indexOf("GridGain") !== -1, "Incorrect result message. [mes=" + res + "].");
 
         TestUtils.testDone();
