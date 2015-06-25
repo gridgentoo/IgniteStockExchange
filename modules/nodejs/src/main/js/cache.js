@@ -128,6 +128,10 @@ Cache.prototype.getAll = function(keys, callback) {
     this._server.runCommand("getall", params, callback);
 }
 
+Cache.prototype.query = function(qry, callback) {
+    this._server.runCommand("sqlqry", [Server.pair("qry", qry)])
+}
+
 /**
  * Concatenate all parameters
  *
