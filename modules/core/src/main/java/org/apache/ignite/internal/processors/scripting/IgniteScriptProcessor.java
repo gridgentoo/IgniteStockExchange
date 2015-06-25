@@ -100,7 +100,12 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
      * @throws IgniteCheckedException If script failed.
      */
     public Object invokeFunction(String src) throws IgniteCheckedException {
-        return invokeFunction(src, null, null);
+        try {
+            return jsEngine.eval("(" + src + ")()");
+        }
+        catch (ScriptException e) {
+            throw new IgniteCheckedException("Function evaluation failed [funcName=" + src + "].");
+        }
     }
 
     /**
