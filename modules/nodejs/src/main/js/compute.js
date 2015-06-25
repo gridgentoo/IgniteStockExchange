@@ -29,10 +29,12 @@ function Compute(server) {
 /**
  * @this {Compute}
  * @param runnable Function without parameters
+ * @param args Function arguments
  * @param {onGet} callback Callback
  */
-Compute.prototype.runScript = function(runnable, callback) {
-    this._server.runCommand("runscript", [Server.pair("func", this._escape(runnable))], callback);
+Compute.prototype.runScript = function(runnable, args, callback) {
+    this._server.runCommand("runscript", [Server.pair("func", this._escape(runnable)),
+        Server.pair("arg", this._escape(args))], callback);
 }
 
 /**

@@ -24,6 +24,9 @@ public class RestRunScriptRequest extends GridRestRequest {
     /** Java script function. */
     private String script;
 
+    /** Function arguments. */
+    private Object arg;
+
     /**
      * @return Java script function.
      */
@@ -36,5 +39,19 @@ public class RestRunScriptRequest extends GridRestRequest {
      */
     public void script(String script) {
         this.script = script;
+    }
+
+    /**
+     * @return Function argument.
+     */
+    public Object argument() {
+        return arg;
+    }
+
+    /**
+     * @param arg Function argument.
+     */
+    public void argument(Object arg) {
+        this.arg = arg;
     }
 }

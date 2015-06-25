@@ -50,18 +50,19 @@ function onStart(onPut, error, ignite) {
 function computeRunScript(ignite, error) {
     var comp = ignite.compute();
 
-    var f = function () {
-        return ignite.hello();
+    var f = function (args) {
+        return args + " " + ignite.hello();
     }
 
     function onEnd(err, res) {
         assert(err == null);
         assert(res.indexOf("HAPPY") !== -1, "Incorrect result message. [mes=" + res + "].");
+        assert(res.indexOf("GridGain") !== -1, "Incorrect result message. [mes=" + res + "].");
 
         TestUtils.testDone();
     }
 
-    comp.runScript(f, onEnd.bind(null));
+    comp.runScript(f, "GridGain", onEnd.bind(null));
 }
 
 function computeExecute(error, ignite) {

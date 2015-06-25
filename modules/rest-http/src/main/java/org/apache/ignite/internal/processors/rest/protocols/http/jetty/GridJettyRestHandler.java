@@ -450,7 +450,8 @@ public class GridJettyRestHandler extends AbstractHandler {
             case RUN_SCRIPT: {
                 RestRunScriptRequest restReq0 = new RestRunScriptRequest();
 
-                restReq0.script((String) params.get("func"));
+                restReq0.script((String)params.get("func"));
+                restReq0.argument(params.get("arg"));
 
                 restReq = restReq0;
 

@@ -86,16 +86,17 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             case RUN_SCRIPT: {
                 assert req instanceof RestRunScriptRequest : "Invalid type of run script request.";
 
-                return ctx.closure().callAsync(new IgniteClosure<String, GridRestResponse>() {
-                    @Override public GridRestResponse apply(String o) {
+                return ctx.closure().callAsync(new IgniteClosure<RestRunScriptRequest, GridRestResponse>() {
+                    @Override public GridRestResponse apply(RestRunScriptRequest req) {
                         try {
-                            return new GridRestResponse(ctx.grid().compute().call(new JsFunctionCallable(o)));
+                            return new GridRestResponse(ctx.grid().compute().call(
+                                new JsFunctionCallable(req.script(), req.argument())));
                         }
                         catch (Exception e) {
                             return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
                         }
                     }
-                }, ((RestRunScriptRequest) req).script(), Collections.singleton(ctx.grid().localNode()));
+                }, (RestRunScriptRequest)req, Collections.singleton(ctx.grid().localNode()));
             }
 
             case EXECUTE_MAP_REDUCE_SCRIPT: {
@@ -249,21 +250,26 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         /** Function to call. */
         private String func;
 
+        /** Function argument. */
+        private Object arg;
+
         /** Ignite instance. */
         @IgniteInstanceResource
         private Ignite ignite;
 
         /**
          * @param func Function to call.
+         * @param arg Function argument.
          */
-        public JsFunctionCallable(String func) {
+        public JsFunctionCallable(String func, Object arg) {
             this.func = func;
+            this.arg = arg;
         }
 
         /** {@inheritDoc} */
         @Override public Object call() {
             try {
-                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func);
+                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, arg);
             }
             catch (IgniteCheckedException e) {
                 throw U.convertException(e);
