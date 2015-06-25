@@ -51,4 +51,11 @@ public class NodeJsIgniteSelfTest extends NodeJsAbstractTest {
     public void testIgniteName() throws Exception {
         runJsScript("testIgniteName");
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testCluster() throws Exception {
+        runJsScript("testCluster");
+    }
 }

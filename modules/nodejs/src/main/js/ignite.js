@@ -16,7 +16,9 @@
  */
 
 var Cache = require("./cache").Cache;
-var Compute = require("./compute").Compute
+var Compute = require("./compute").Compute;
+var ClusterNode = require("./cluster-node").ClusterNode;
+var Server = require("./server").Server;
 
 /**
  * Create an instance of Ignite
@@ -76,6 +78,37 @@ Ignite.prototype.version = function(callback) {
  */
 Ignite.prototype.name = function(callback) {
     this._server.runCommand("name", [], callback);
+}
+
+/**
+ * @this {Ignite}
+ * @param {onGet} callback Result in callback contains list of ClusterNodes
+ */
+Ignite.prototype.cluster = function(callback) {
+    function onTop(callback, err, res) {
+        if (err) {
+            callback.call(null, err, null);
+
+            return;
+        }
+
+        if (!res || res.length == 0) {
+            callback.call(null, "Empty topology cluster.", null);
+
+            return;
+        }
+
+        var nodes = [];
+
+        for (var node of res) {
+            nodes.push(new ClusterNode(node.nodeId, node.attributes));
+        }
+
+        callback.call(null, null, nodes);
+    }
+
+    this._server.runCommand("top", [Server.pair("attr", "true"), Server.pair("mtr", "false")],
+        onTop.bind(null, callback));
 }
 
 exports.Ignite = Ignite;

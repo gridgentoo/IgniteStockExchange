@@ -55,3 +55,27 @@ testIgniteName = function() {
 
     TestUtils.startIgniteNode(onStart.bind(null));
 }
+
+testCluster = function() {
+    function igniteCluster(err, res) {
+        assert.equal(err, null);
+        assert(res.length > 0);
+
+        assert(res[0].nodeId() !== null)
+
+        var attrs = res[0].attributes();
+
+        assert(attrs !== null);
+        assert(attrs["os.version"] !== null, "Not correct node attributes [attr=" + res[0].attributes() + "]");
+
+        TestUtils.testDone();
+    }
+
+    function onStart(err, ignite) {
+        assert.equal(err, null);
+
+        ignite.cluster(igniteCluster.bind(null));
+    }
+
+    TestUtils.startIgniteNode(onStart.bind(null));
+}
