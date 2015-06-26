@@ -22,8 +22,9 @@
 function SqlQuery(sql) {
     this._sql = sql;
     this._arg = [];
-    this._pageSz = 0;
+    this._pageSz = 1;
     this._endFunc = function(res) {console.log("Empty end function is called [res=" + res + "]")};
+    this._pageFunc = function(res) {console.log("Empty page function is called [res=" + res + "]")}
     this._errFunc = function(err) {console.log("Empty error function is called [err=" + err + "]")}
 }
 
@@ -31,6 +32,10 @@ SqlQuery.prototype.on = function(code, f) {
     switch(code) {
         case "end":
             this._endFunc = f;
+
+            break;
+        case "page":
+            this._pageFunc = f;
 
             break;
         case "error" :
@@ -48,6 +53,10 @@ SqlQuery.prototype.end = function(res) {
 
 SqlQuery.prototype.error = function(err) {
     return this._errFunc(err);
+}
+
+SqlQuery.prototype.page = function(res) {
+    return this._pageFunc(res);
 }
 
 SqlQuery.prototype.query = function() {

@@ -33,6 +33,9 @@ public class RestSqlQueryRequest extends GridRestRequest {
     /** Cache name. */
     private String cacheName;
 
+    /** Query id. */
+    private Long qryId;
+
     /**
      * @param sqlQry Sql query.
      */
@@ -87,5 +90,19 @@ public class RestSqlQueryRequest extends GridRestRequest {
      */
     public String cacheName() {
         return cacheName;
+    }
+
+    /**
+     * @param id Query id.
+     */
+    public void queryId(Long id) {
+        this.qryId = id;
+    }
+
+    /**
+     * @return Query id.
+     */
+    public Long queryId() {
+        return qryId;
     }
 }

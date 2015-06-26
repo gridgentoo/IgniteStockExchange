@@ -134,21 +134,33 @@ Cache.prototype.getAll = function(keys, callback) {
  * @param {SqlQuery} qry Query
  */
 Cache.prototype.query = function(qry) {
-    function onQuery(qry, error, res) {
+    function onQueryExecute(qry, error, res) {
         if (error) {
             qry.error(error);
 
             return;
         }
 
-        qry.end(res);
+        qry.page(res["items"]);
+
+        if (res["last"]) {
+            qry.end();
+        }
+        else {
+            this._server.runCommand("qryfetch", [
+                Server.pair("cacheName", this._cacheName),
+                Server.pair("qryId", res.queryId),
+                Server.pair("psz", qry.pageSize())],
+                onQueryExecute.bind(this, qry, res["queryId"]));
+        }
     }
 
     this._server.runCommand("qryexecute", [
         Server.pair("cacheName", this._cacheName),
         Server.pair("qry", qry.query()),
         Server.pair("arg", qry.arguments()),
-        Server.pair("psz", qry.pageSize())], onQuery.bind(null, qry));
+        Server.pair("psz", qry.pageSize())],
+        onQueryExecute.bind(this, qry));
 }
 
 /**

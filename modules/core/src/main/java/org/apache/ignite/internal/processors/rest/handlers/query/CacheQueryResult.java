@@ -38,70 +38,57 @@ public class CacheQueryResult implements Externalizable {
     /** Last flag. */
     private boolean last;
 
-    /** Node ID. */
-    private UUID nodeId;
-
     /**
      * @return Query ID.
      */
-    public long queryId() {
+    public long getQueryId() {
         return qryId;
     }
 
     /**
      * @param qryId Query ID.
      */
-    public void queryId(long qryId) {
+    public void setQueryId(long qryId) {
         this.qryId = qryId;
     }
 
     /**
      * @return Items.
      */
-    public Collection<?> items() {
+    public Collection<?> getItems() {
         return items;
     }
 
     /**
      * @param items Items.
      */
-    public void items(Collection<?> items) {
+    public void setItems(Collection<?> items) {
         this.items = items;
     }
 
     /**
      * @return Last flag.
      */
-    public boolean last() {
+    public boolean getLast() {
         return last;
     }
 
     /**
      * @param last Last flag.
      */
-    public void last(boolean last) {
+    public void setLast(boolean last) {
         this.last = last;
     }
 
-    /**
-     * @return Node ID.
-     */
-    public UUID nodeId() {
-        return nodeId;
-    }
-
-    /**
-     * @param nodeId Node ID.
-     */
-    public void nodeId(UUID nodeId) {
-        this.nodeId = nodeId;
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return S.toString(CacheQueryResult.class, this);
     }
 
     /** {@inheritDoc} */
     @Override public void writeExternal(ObjectOutput out) throws IOException {
         out.writeBoolean(last);
         out.writeLong(qryId);
-        U.writeUuid(out, nodeId);
         U.writeCollection(out, items);
     }
 
@@ -109,7 +96,6 @@ public class CacheQueryResult implements Externalizable {
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         last = in.readBoolean();
         qryId = in.readLong();
-        nodeId = U.readUuid(in);
         items = U.readCollection(in);
     }
 }

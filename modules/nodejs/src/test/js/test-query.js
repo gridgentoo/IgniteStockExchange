@@ -28,21 +28,25 @@ testSqlQuery = function() {
 
         var qry = new SqlQuery("select * from String");
 
-        qry.on("error", function(err) {
-                console.log("!!!!!!!!!!!!Error: " + err);
+        var fullRes = [];
 
+        qry.on("error", function(err) {
                 TestUtils.testFails();
             });
 
-        qry.on("end", function(res) {
-                assert(res.length, 1, "Result length is not correct" +
-                    "[expected=1, val = " + res.length + "]");
+        qry.on("page", function(res) {
+            fullRes = fullRes.concat(res);
+        });
 
-                assert(res[0]["key"] === "key0", "Result value for key is not correct "+
-                    "[expected=key0, real=" + res[0]["key"] + "]");
+        qry.on("end", function() {
+                assert(fullRes.length, 1, "Result length is not correct" +
+                    "[expected=1, val = " + fullRes.length + "]");
 
-                assert(res[0]["value"] === "val0", "Result value for key is not correct "+
-                    "[expected=val0, real=" + res[0]["value"] + "]");
+                assert(fullRes[0]["key"] === "key0", "Result value for key is not correct "+
+                    "[expected=key0, real=" + fullRes[0]["key"] + "]");
+
+                assert(fullRes[0]["value"] === "val0", "Result value for key is not correct "+
+                    "[expected=val0, real=" + fullRes[0]["value"] + "]");
 
                 TestUtils.testDone();
             });
