@@ -144,7 +144,7 @@ Cache.prototype.query = function(qry) {
         qry.end(res);
     }
 
-    this._server.runCommand("sqlqry", [
+    this._server.runCommand("qryexecute", [
         Server.pair("cacheName", this._cacheName),
         Server.pair("qry", qry.query()),
         Server.pair("arg", qry.arguments()),

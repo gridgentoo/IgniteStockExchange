@@ -106,7 +106,10 @@ public enum GridRestCommand {
     EXECUTE_MAP_REDUCE_SCRIPT("excmapreduce"),
 
     /** Execute sql query. */
-    EXECUTE_SQL_QUERY("sqlqry");
+    EXECUTE_SQL_QUERY("qryexecute"),
+
+    /** Fetch query results. */
+    FETCH_SQL_QUERY("qryfetch");
 
     /** Enum values. */
     private static final GridRestCommand[] VALS = values();
