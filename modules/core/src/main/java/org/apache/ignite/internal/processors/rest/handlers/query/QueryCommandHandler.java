@@ -70,7 +70,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                             List<Cache.Entry<String, String>> res = cache.query(qry).getAll();
 
-                            return new GridRestResponse("Page size " + res);
+                            return new GridRestResponse(res);
                         }
                         catch (Exception e) {
                             return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());

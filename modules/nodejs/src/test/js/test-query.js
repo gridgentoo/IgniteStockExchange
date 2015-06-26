@@ -35,7 +35,14 @@ testSqlQuery = function() {
             });
 
         qry.on("end", function(res) {
-                console.log("!!!!!!!!!!!Result: " + res);
+                assert(res.length, 1, "Result length is not correct" +
+                    "[expected=1, val = " + res.length + "]");
+
+                assert(res[0]["key"] === "key0", "Result value for key is not correct "+
+                    "[expected=key0, real=" + res[0]["key"] + "]");
+
+                assert(res[0]["value"] === "val0", "Result value for key is not correct "+
+                    "[expected=val0, real=" + res[0]["value"] + "]");
 
                 TestUtils.testDone();
             });
@@ -46,7 +53,7 @@ testSqlQuery = function() {
     function put(error, ignite) {
         assert(error == null, "error on put [err=" + error + "]");
 
-        ignite.cache("mycache").put("key", "val", sqlQuery.bind(null, ignite))
+        ignite.cache("mycache").put("key0", "val0", sqlQuery.bind(null, ignite))
     }
 
     TestUtils.startIgniteNode(put);
