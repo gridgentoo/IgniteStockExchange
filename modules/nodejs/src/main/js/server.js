@@ -87,33 +87,37 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
         });
 
         response.on('end', function () {
-        if (response.statusCode !== 200) {
-            if (response.statusCode === 401) {
-                callback.call(null, "Authentication failed. Status code 401.");
+            console.log("END " + response);
+            console.log("End status code " + response.statusCode);
+            console.log("Full response " + fullResponseString);
+
+            if (response.statusCode !== 200) {
+                if (response.statusCode === 401) {
+                    callback.call(null, "Authentication failed. Status code 401.");
+                }
+                else {
+                    callback.call(null, "Request failed. Status code " + response.statusCode);
+                }
+
+                return;
+            }
+
+            var igniteResponse;
+
+            try {
+                igniteResponse = JSON.parse(fullResponseString);
+            }
+            catch (e) {
+                callback.call(null, e, null);
+                return;
+            }
+
+            if (igniteResponse.successStatus) {
+                callback.call(null, igniteResponse.error, null)
             }
             else {
-                callback.call(null, "Request failed. Status code " + response.statusCode);
+                callback.call(null, null, igniteResponse.response);
             }
-
-            return;
-        }
-
-        var igniteResponse;
-
-        try {
-            igniteResponse = JSON.parse(fullResponseString);
-        }
-        catch (e) {
-            callback.call(null, e, null);
-            return;
-        }
-
-        if (igniteResponse.successStatus) {
-            callback.call(null, igniteResponse.error, null)
-        }
-        else {
-            callback.call(null, null, igniteResponse.response);
-        }
         });
     }
 
@@ -144,7 +148,7 @@ Server.prototype.checkConnection = function(callback) {
  * @returns Pair of strings
  */
 Server.pair = function(key, value) {
-    return {key: key, value: value}
+    return {key: Server._escape(key), value: Server._escape(value)}
 }
 
 /**
@@ -173,6 +177,16 @@ Server.prototype._signature = function() {
     var key = loadTimeInMS + ":" + hash;
 
     return {"X-Signature" : key};
+}
+
+/**
+ * @param {noValue} f Function
+ * @returns {string} Encoding function
+ */
+Server._escape = function(f) {
+    var qs = require('querystring');
+
+    return qs.escape(f.toString());
 }
 
 exports.Server = Server;

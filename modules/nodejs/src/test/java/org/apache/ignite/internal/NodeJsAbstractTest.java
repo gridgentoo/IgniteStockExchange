@@ -87,6 +87,7 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
 
         ccfg.setName(CACHE_NAME);
         ccfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+        ccfg.setIndexedTypes(String.class, String.class);
 
         return ccfg;
     }

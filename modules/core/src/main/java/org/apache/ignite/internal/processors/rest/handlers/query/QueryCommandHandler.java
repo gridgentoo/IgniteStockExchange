@@ -17,6 +17,8 @@
 
 package org.apache.ignite.internal.processors.rest.handlers.query;
 
+import org.apache.ignite.*;
+import org.apache.ignite.cache.query.*;
 import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
@@ -25,6 +27,7 @@ import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
 
+import javax.cache.*;
 import java.util.*;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
@@ -59,9 +62,15 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
                 assert req instanceof RestSqlQueryRequest : "Invalid type of query request.";
 
                 return ctx.closure().callAsync(new IgniteClosure<RestSqlQueryRequest, GridRestResponse>() {
-                    @Override public GridRestResponse apply(RestSqlQueryRequest req) {
+                    @Override public GridRestResponse apply(RestSqlQueryRequest req0) {
                         try {
-                            return new GridRestResponse(); //TODO
+                            SqlQuery<String, String> qry = new SqlQuery(String.class, req0.sqlQuery());
+
+                            IgniteCache<Object, Object> cache = ctx.grid().cache(req0.cacheName());
+
+                            List<Cache.Entry<String, String>> res = cache.query(qry).getAll();
+
+                            return new GridRestResponse("Page size " + res);
                         }
                         catch (Exception e) {
                             return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());

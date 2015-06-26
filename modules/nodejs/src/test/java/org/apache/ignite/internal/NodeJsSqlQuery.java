@@ -15,11 +15,33 @@
  * limitations under the License.
  */
 
-module.exports = {
-    Cache : require('./cache.js').Cache,
-    Ignition : require('./ignition.js').Ignition,
-    Server : require('./server.js').Server,
-    Ignite : require('./ignite.js').Ignite,
-    Compute : require('./compute.js').Compute,
-    SqlQuery : require('./sql-query.js').SqlQuery
+package org.apache.ignite.internal;
+
+/**
+ * Node js sql query test.
+ */
+public class NodeJsSqlQuery  extends NodeJsAbstractTest {
+    /**
+     * Constructor.
+     */
+    public NodeJsSqlQuery() {
+        super("test-query.js");
+    }
+
+    /** {@inheritDoc} */
+    @Override protected void beforeTestsStarted() throws Exception {
+        startGrid(0);
+    }
+
+    /** {@inheritDoc} */
+    @Override protected void afterTestsStopped() throws Exception {
+        stopAllGrids();
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testSqlQuery() throws Exception {
+        runJsScript("testSqlQuery");
+    }
 }

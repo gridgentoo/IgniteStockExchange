@@ -33,8 +33,8 @@ function Compute(server) {
  * @param {onGet} callback Callback
  */
 Compute.prototype.runScript = function(runnable, args, callback) {
-    this._server.runCommand("runscript", [Server.pair("func", this._escape(runnable)),
-        Server.pair("arg", this._escape(args))], callback);
+    this._server.runCommand("runscript", [Server.pair("func", runnable),
+        Server.pair("arg", args)], callback);
 }
 
 /**
@@ -47,21 +47,11 @@ Compute.prototype.runScript = function(runnable, args, callback) {
 Compute.prototype.execute = function(map, reduce, arg, callback) {
     var params = [];
 
-    params.push(Server.pair("map", this._escape(map)));
-    params.push(Server.pair("reduce", this._escape(reduce)));
-    params.push(Server.pair("arg", this._escape(arg)));
+    params.push(Server.pair("map", map));
+    params.push(Server.pair("reduce", reduce));
+    params.push(Server.pair("arg", arg));
 
     this._server.runCommand("excmapreduce", params, callback);
-}
-
-/**
- * @param {noValue} f Function
- * @returns {string} Encoding function
- */
-Compute.prototype._escape = function(f) {
-    var qs = require('querystring');
-
-    return qs.escape(f.toString());
 }
 
 /**

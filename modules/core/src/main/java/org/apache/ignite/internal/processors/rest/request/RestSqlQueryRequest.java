@@ -25,7 +25,13 @@ public class RestSqlQueryRequest extends GridRestRequest {
     private String sqlQry;
 
     /** Sql query arguments. */
-    private Object[] args;
+    private Object args;
+
+    /** Page size. */
+    private Integer pageSz;
+
+    /** Cache name. */
+    private String cacheName;
 
     /**
      * @param sqlQry Sql query.
@@ -44,14 +50,42 @@ public class RestSqlQueryRequest extends GridRestRequest {
     /**
      * @param args Sql query arguments.
      */
-    public void arguments(Object[] args) {
+    public void arguments(Object args) {
         this.args = args;
     }
 
     /**
      * @return Sql query arguments.
      */
-    public Object[] arguments() {
+    public Object arguments() {
         return args;
+    }
+
+    /**
+     * @param pageSz Page size.
+     */
+    public void pageSize(Integer pageSz) {
+        this.pageSz = pageSz;
+    }
+
+    /**
+     * @return Page size.
+     */
+    public int pageSize() {
+        return pageSz;
+    }
+
+    /**
+     * @param cacheName Cache name.
+     */
+    public void cacheName(String cacheName) {
+        this.cacheName = cacheName;
+    }
+
+    /**
+     * @return Cache name.
+     */
+    public String cacheName() {
+        return cacheName;
     }
 }

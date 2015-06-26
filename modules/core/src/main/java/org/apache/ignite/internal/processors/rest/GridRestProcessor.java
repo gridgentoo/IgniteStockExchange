@@ -24,6 +24,7 @@ import org.apache.ignite.internal.processors.*;
 import org.apache.ignite.internal.processors.rest.client.message.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.handlers.cache.*;
+import org.apache.ignite.internal.processors.rest.handlers.query.*;
 import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 import org.apache.ignite.internal.processors.rest.handlers.datastructures.*;
 import org.apache.ignite.internal.processors.rest.handlers.task.*;
@@ -290,6 +291,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
             addHandler(new GridVersionCommandHandler(ctx));
             addHandler(new DataStructuresCommandHandler(ctx));
             addHandler(new IgniteScriptingCommandHandler(ctx));
+            addHandler(new QueryCommandHandler(ctx));
         }
     }
 

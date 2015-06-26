@@ -131,12 +131,24 @@ Cache.prototype.getAll = function(keys, callback) {
 /**
  * Execute sql query
  *
- * @param {string} qry Query
- * @param {string[]} arg Arguments
- * @param {onGet} callback Callback.
+ * @param {SqlQuery} qry Query
  */
-Cache.prototype.query = function(qry, arg, callback) {
-    this._server.runCommand("sqlqry", [Server.pair("qry", qry), Server.pair("arg", arg)], callback);
+Cache.prototype.query = function(qry) {
+    function onQuery(qry, error, res) {
+        if (error) {
+            qry.error(error);
+
+            return;
+        }
+
+        qry.end(res);
+    }
+
+    this._server.runCommand("sqlqry", [
+        Server.pair("cacheName", this._cacheName),
+        Server.pair("qry", qry.query()),
+        Server.pair("arg", qry.arguments()),
+        Server.pair("psz", qry.pageSize())], onQuery.bind(null, qry));
 }
 
 /**
