@@ -25,10 +25,10 @@ import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
 
 import javax.cache.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
 
@@ -61,25 +61,46 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
             case EXECUTE_SQL_QUERY: {
                 assert req instanceof RestSqlQueryRequest : "Invalid type of query request.";
 
-                return ctx.closure().callAsync(new IgniteClosure<RestSqlQueryRequest, GridRestResponse>() {
-                    @Override public GridRestResponse apply(RestSqlQueryRequest req0) {
-                        try {
-                            SqlQuery<String, String> qry = new SqlQuery(String.class, req0.sqlQuery());
-
-                            IgniteCache<Object, Object> cache = ctx.grid().cache(req0.cacheName());
-
-                            List<Cache.Entry<String, String>> res = cache.query(qry).getAll();
-
-                            return new GridRestResponse(res);
-                        }
-                        catch (Exception e) {
-                            return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
-                        }
-                    }
-                }, (RestSqlQueryRequest)req, Collections.singleton(ctx.grid().localNode()));
+                return ctx.closure().callLocalSafe(new ExecuteQueryCallable(ctx, (RestSqlQueryRequest)req),false);
             }
         }
 
         return new GridFinishedFuture<>();
+    }
+
+    /**
+     * Execute query callable.
+     */
+    private static class ExecuteQueryCallable implements Callable<GridRestResponse> {
+        /** Kernal context. */
+        private GridKernalContext ctx;
+
+        /** Execute query request. */
+        private RestSqlQueryRequest req;
+
+        /**
+         * @param ctx Kernal context.
+         * @param req Execute query request.
+         */
+        public ExecuteQueryCallable(GridKernalContext ctx, RestSqlQueryRequest req) {
+            this.ctx = ctx;
+            this.req = req;
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() throws Exception {
+            try {
+                SqlQuery<String, String> qry = new SqlQuery(String.class, req.sqlQuery());
+
+                IgniteCache<Object, Object> cache = ctx.grid().cache(req.cacheName());
+
+                List<Cache.Entry<String, String>> res = cache.query(qry).getAll();
+
+                return new GridRestResponse(res);
+            }
+            catch (Exception e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+            }
+        }
     }
 }
