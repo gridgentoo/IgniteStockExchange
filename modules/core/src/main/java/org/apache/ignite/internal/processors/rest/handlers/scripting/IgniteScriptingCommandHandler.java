@@ -33,6 +33,7 @@ import org.apache.ignite.resources.*;
 import org.jetbrains.annotations.*;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
 
@@ -86,37 +87,15 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             case RUN_SCRIPT: {
                 assert req instanceof RestRunScriptRequest : "Invalid type of run script request.";
 
-                return ctx.closure().callAsync(new IgniteClosure<RestRunScriptRequest, GridRestResponse>() {
-                    @Override public GridRestResponse apply(RestRunScriptRequest req) {
-                        try {
-                            return new GridRestResponse(ctx.grid().compute().call(
-                                new JsFunctionCallable(req.script(), req.argument())));
-                        }
-                        catch (Exception e) {
-                            return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
-                        }
-                    }
-                }, (RestRunScriptRequest)req, Collections.singleton(ctx.grid().localNode()));
+                return ctx.closure().callLocalSafe(new RunScriptCallable(ctx, (RestRunScriptRequest) req), false);
             }
 
             case EXECUTE_MAP_REDUCE_SCRIPT: {
                 assert req instanceof RestMapReduceScriptRequest :
                     "Invalid type of execute map reduce script request.";
 
-                assert SUPPORTED_COMMANDS.contains(req.command());
-
-                return ctx.closure().callAsync(new IgniteClosure<RestMapReduceScriptRequest, GridRestResponse>() {
-                    @Override public GridRestResponse apply(RestMapReduceScriptRequest req0) {
-                        try {
-                            return new GridRestResponse(ctx.grid().compute().execute(
-                                new JsTask(req0.mapFunction(), req0.argument(), req0.reduceFunction(), ctx, emitRes),
-                                null));
-                        }
-                        catch (Exception e) {
-                            return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
-                        }
-                }
-                }, (RestMapReduceScriptRequest)req, Collections.singleton(ctx.grid().localNode()));
+                return ctx.closure().callLocalSafe(
+                    new MapReduceCallable(ctx, (RestMapReduceScriptRequest)req, emitRes));
             }
         }
 
@@ -273,6 +252,74 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             }
             catch (IgniteCheckedException e) {
                 throw U.convertException(e);
+            }
+        }
+    }
+
+    /**
+     * Run script callable.
+     */
+    private static class RunScriptCallable implements Callable<GridRestResponse> {
+        /** Kernal context. */
+        private GridKernalContext ctx;
+
+        /** Run script request. */
+        private RestRunScriptRequest req;
+
+        /**
+         * @param ctx Kernal context.
+         * @param req Run script request.
+         */
+        public RunScriptCallable(GridKernalContext ctx, RestRunScriptRequest req) {
+            this.ctx = ctx;
+            this.req = req;
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() throws Exception {
+            try {
+                return new GridRestResponse(ctx.grid().compute().call(
+                    new JsFunctionCallable(req.script(), req.argument())));
+            }
+            catch (Exception e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Map reduce callable.
+     */
+    private static class MapReduceCallable implements Callable<GridRestResponse> {
+        /** Kernal context. */
+        private GridKernalContext ctx;
+
+        /** Run script request. */
+        private RestMapReduceScriptRequest req;
+
+        /** Emit results. */
+        IgniteJsEmitResult emitRes;
+
+        /**
+         * @param ctx Kernal context.
+         * @param req Run script request.
+         * @param emitRes Emit function results.
+         */
+        public MapReduceCallable(GridKernalContext ctx, RestMapReduceScriptRequest req,IgniteJsEmitResult emitRes) {
+            this.ctx = ctx;
+            this.req = req;
+            this.emitRes = emitRes;
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() throws Exception {
+            try {
+                return new GridRestResponse(ctx.grid().compute().execute(
+                    new JsTask(req.mapFunction(), req.argument(), req.reduceFunction(), ctx, emitRes),
+                    null));
+            }
+            catch (Exception e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
             }
         }
     }
