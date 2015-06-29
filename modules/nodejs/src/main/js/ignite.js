@@ -19,6 +19,7 @@ var Cache = require("./cache").Cache;
 var Compute = require("./compute").Compute;
 var ClusterNode = require("./cluster-node").ClusterNode;
 var Server = require("./server").Server;
+var Command = require("./server").Command;
 
 /**
  * Create an instance of Ignite
@@ -67,7 +68,7 @@ Ignite.prototype.compute = function() {
  * @param {onGet} callback Result in callback contains string with Ignite version.
  */
 Ignite.prototype.version = function(callback) {
-    this._server.runCommand("version", [], callback);
+    this._server.runCommand(new Command("version"), callback);
 }
 
 /**
@@ -77,7 +78,7 @@ Ignite.prototype.version = function(callback) {
  * @param {onGet} callback Result in callback contains string with Ignite name.
  */
 Ignite.prototype.name = function(callback) {
-    this._server.runCommand("name", [], callback);
+    this._server.runCommand(new Command("name"), callback);
 }
 
 /**
@@ -107,7 +108,7 @@ Ignite.prototype.cluster = function(callback) {
         callback.call(null, null, nodes);
     }
 
-    this._server.runCommand("top", [Server.pair("attr", "true"), Server.pair("mtr", "false")],
+    this._server.runCommand(new Command("top").addParam("attr", "true").addParam("mtr", "false"),
         onTop.bind(null, callback));
 }
 

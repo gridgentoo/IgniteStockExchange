@@ -16,6 +16,7 @@
  */
 
 var Server = require("./server").Server;
+var Command = require("./server").Command;
 var SqlFieldsQuery = require("./sql-fields-query").SqlFieldsQuery
 var SqlQuery = require("./sql-query").SqlQuery
 
@@ -30,7 +31,6 @@ var SqlQuery = require("./sql-query").SqlQuery
 function Cache(server, cacheName) {
     this._server = server;
     this._cacheName = cacheName;
-    this._cacheNameParam = Server.pair("cacheName", this._cacheName);
 }
 
 /**
@@ -41,7 +41,7 @@ function Cache(server, cacheName) {
  * @param {onGet} callback Called on finish
  */
 Cache.prototype.get = function(key, callback) {
-    this._server.runCommand("get", [this._cacheNameParam, Server.pair("key", key)], callback);
+    this._server.runCommand(this._createCommand("get").addParam("key", key), callback);
 };
 
 /**
@@ -53,7 +53,7 @@ Cache.prototype.get = function(key, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.put = function(key, value, callback) {
-    this._server.runCommand("put", [this._cacheNameParam, Server.pair("key", key), Server.pair("val", value)],
+    this._server.runCommand(this._createCommand("put").addParam("key", key).addParam("val", value),
         callback);
 }
 
@@ -65,7 +65,7 @@ Cache.prototype.put = function(key, value, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.remove = function(key, callback) {
-    this._server.runCommand("rmv", [this._cacheNameParam, Server.pair("key", key)], callback);
+    this._server.runCommand(this._createCommand("rmv").addParam("key", key), callback);
 }
 
 /**
@@ -76,11 +76,7 @@ Cache.prototype.remove = function(key, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.removeAll = function(keys, callback) {
-    var params = [this._cacheNameParam];
-
-    params = params.concat(Cache.concatParams("k", keys));
-
-    this._server.runCommand("rmvall", params, callback);
+    this._server.runCommand(this._createCommand("rmvall").addParams("k", keys), callback);
 }
 
 /**
@@ -99,12 +95,7 @@ Cache.prototype.putAll = function(map, callback) {
         values.push(map[key]);
     }
 
-    var params = Cache.concatParams("k", keys);
-    params = params.concat(Cache.concatParams("v", values));
-
-    params.push(this._cacheNameParam);
-
-    this._server.runCommand("putall", params, callback);
+    this._server.runCommand(this._createCommand("putall").addParams("k", keys).addParams("v", values), callback);
 }
 
 /**
@@ -115,9 +106,7 @@ Cache.prototype.putAll = function(map, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.postPutAll = function(map, callback) {
-    var params = [this._cacheNameParam];
-
-    this._server.runCommand("putall2", params, callback, JSON.stringify(map));
+    this._server.runCommand(this._createCommand("putall2").setPostData(JSON.stringify(map)), callback);
 }
 
 /**
@@ -136,11 +125,7 @@ Cache.prototype.postPutAll = function(map, callback) {
  * @param {Cache~onGetAll} callback Called on finish
  */
 Cache.prototype.getAll = function(keys, callback) {
-    var params = Cache.concatParams("k", keys);
-
-    params.push(this._cacheNameParam);
-
-    this._server.runCommand("getall", params, callback);
+    this._server.runCommand(this._createCommand("getall").addParams("k", keys), callback);
 }
 
 /**
@@ -167,11 +152,9 @@ Cache.prototype.query = function(qry) {
             qry.end();
         }
         else {
-            this._server.runCommand("qryfetch", [
-                Server.pair("cacheName", this._cacheName),
-                Server.pair("qryId", res.queryId),
-                Server.pair("psz", qry.pageSize())],
-                onQueryExecute.bind(this, qry));
+            var command = this._createCommand("qryfetch");
+            command.addParam("qryId", res.queryId).addParam("psz", qry.pageSize());
+            this._server.runCommand(command, onQueryExecute.bind(this, qry));
         }
     }
 
@@ -184,63 +167,36 @@ Cache.prototype.query = function(qry) {
 }
 
 Cache.prototype._sqlFieldsQuery = function(qry, onQueryExecute) {
-    var params = [Server.pair("cacheName", this._cacheName),
-        Server.pair("qry", qry.query()),
-        Server.pair("psz", qry.pageSize())];
+    var command = this._createQueryCommand("qryfieldsexecute", qry);
+    command.addParams("arg", qry.arguments());
 
-    params = params.concat(this._sqlArguments(qry.arguments()));
-
-    this._server.runCommand("qryfieldsexecute", params,
-        onQueryExecute.bind(this, qry));
-}
-
-Cache.prototype._sqlArguments = function(args) {
-    var res = [];
-    console.log("ARGS=" + args);
-
-    for (var i = 1; i <= args.length; i++) {
-        res.push(Server.pair("arg" + i, args[i - 1]));
-    }
-
-    return res;
+    this._server.runCommand(command, onQueryExecute.bind(this, qry));
 }
 
 Cache.prototype._sqlQuery = function(qry, onQueryExecute) {
-    var params = [Server.pair("cacheName", this._cacheName),
-        Server.pair("qry", qry.query()),
-        Server.pair("psz", qry.pageSize())]
 
-    params = params.concat(this._sqlArguments(qry.arguments()));
-
-    if (qry.returnType() != null) {
-        params.push(Server.pair("type", qry.returnType()));
-    }
-    else {
+    if (qry.returnType() == null) {
         qry.error("No type for sql query.");
         qry.end();
-
         return;
     }
 
-    this._server.runCommand("qryexecute", params,
-        onQueryExecute.bind(this, qry));
+    var command = this._createQueryCommand("qryexecute", qry);
+    command.addParams("arg", qry.arguments());
+    command.addParam("type", qry.returnType());
+
+    this._server.runCommand(command, onQueryExecute.bind(this, qry));
 }
 
-/**
- * Concatenate all parameters
- *
- * @param {string} pref Prefix
- * @param {string[]} keys Keys
- * @returns List of parameters.
- */
-Cache.concatParams = function(pref, keys) {
-    var temp = []
+Cache.prototype._createCommand = function(name) {
+    var command = new Command(name);
+    return command.addParam("cacheName", this._cacheName);
+}
 
-    for (var i = 1; i <= keys.length; ++i) {
-        temp.push(Server.pair(pref + i, keys[i-1]));
-    }
-
-    return temp;
+Cache.prototype._createQueryCommand = function(name, qry) {
+    var command = this._createCommand(name);
+    command.addParam("qry", qry.query());
+    return command.addParam("psz", qry.pageSize());
 }
 
 exports.Cache = Cache

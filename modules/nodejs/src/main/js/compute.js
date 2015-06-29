@@ -16,6 +16,7 @@
  */
 
 var Server = require("./server").Server;
+var Command = require("./server").Command;
 
 /**
  * @constructor
@@ -33,8 +34,7 @@ function Compute(server) {
  * @param {onGet} callback Callback
  */
 Compute.prototype.runScript = function(runnable, args, callback) {
-    this._server.runCommand("runscript", [Server.pair("func", runnable),
-        Server.pair("arg", args)], callback);
+    this._server.runCommand(new Command("runscript").addParam("func", runnable).addParam("arg", args), callback);
 }
 
 /**
@@ -45,13 +45,13 @@ Compute.prototype.runScript = function(runnable, args, callback) {
  * @param {onGet} callback Callback
  */
 Compute.prototype.execute = function(map, reduce, arg, callback) {
-    var params = [];
+    var command = new Command("excmapreduce");
 
-    params.push(Server.pair("map", map));
-    params.push(Server.pair("reduce", reduce));
-    params.push(Server.pair("arg", arg));
+    command.addParam("map", map);
+    command.addParam("reduce", reduce);
+    command.addParam("arg", arg);
 
-    this._server.runCommand("excmapreduce", params, callback);
+    this._server.runCommand(command, callback);
 }
 
 /**

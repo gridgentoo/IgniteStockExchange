@@ -61,27 +61,23 @@ Server.prototype.host = function() {
  * @param params Parameters for command.
  * @param {onGet} Called on finish
  */
-Server.prototype.runCommand = function(cmdName, params, callback, postData) {
-    var paramsString = "";
+Server.prototype.runCommand = function(cmd, callback) {
 
-    for (var p of params) {
-        paramsString += "&" + p.key + "=" + p.value;
-    }
-
-    var requestQry = "cmd=" + cmdName + paramsString;
+    var requestQry = "cmd=" + cmd.name() + cmd.paramsString();
 
     var http = require('http');
 
     var options = {
         host: this._host,
         port: this._port,
-        method : postData ? "POST" : "GET",
+        method : cmd._method(),
         path: "/ignite?" + requestQry,
         headers: this._signature()
     };
 
-    if (postData)
-        options.headers['Content-Length'] = postData.length;
+    if (cmd._isPost()) {
+        options.headers['Content-Length'] = cmd.postData().length;
+    }
 
     function streamCallback(response) {
         var fullResponseString = '';
@@ -129,9 +125,9 @@ Server.prototype.runCommand = function(cmdName, params, callback, postData) {
 
     request.on('error', callback);
 
-    if (postData)
-        request.write(postData);
-
+    if (cmd._isPost()) {
+        request.write(cmd.postData());
+    }
     request.end();
 }
 
@@ -142,18 +138,7 @@ Server.prototype.runCommand = function(cmdName, params, callback, postData) {
  * @param {onGet} callback Called on finish
  */
 Server.prototype.checkConnection = function(callback) {
-    this.runCommand("version", [], callback);
-}
-
-/**
- * Returns pair for runCommand
- *
- * @param {string} key Key
- * @param {string} value Value
- * @returns Pair of strings
- */
-Server.pair = function(key, value) {
-    return {key: Server._escape(key), value: Server._escape(value)}
+    this.runCommand(new Command("version"), callback);
 }
 
 /**
@@ -194,4 +179,52 @@ Server._escape = function(f) {
     return qs.escape(f.toString());
 }
 
+function Command(name) {
+    this._name = name;
+    this._params = [];
+}
+
+Command.prototype.addParam = function(key, value) {
+    this._params.push({key: key, value: value});
+    return this;
+}
+
+Command.prototype.addParams = function(prefix, params) {
+    for (var i = 1; i <= params.length; ++i) {
+        this.addParam(prefix + i, params[i - 1]);
+    }
+    return this;
+}
+
+Command.prototype.setPostData = function(postData) {
+    this._postData = postData;
+    return this;
+}
+
+Command.prototype.postData = function() {
+    return this._postData;
+}
+
+Command.prototype._method = function() {
+    return this._isPost()? "POST" : "GET";
+}
+
+Command.prototype._isPost = function() {
+    return !!this._postData;
+}
+
+Command.prototype.name = function() {
+    return this._name;
+}
+
+Command.prototype.paramsString = function() {
+    var paramsString = "";
+
+    for (var p of this._params) {
+        paramsString += "&" + Server._escape(p.key) + "=" + Server._escape(p.value);
+    }
+    return paramsString;
+}
+
 exports.Server = Server;
+exports.Command = Command;
