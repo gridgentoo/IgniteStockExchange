@@ -38,6 +38,7 @@ import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
 public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(EXECUTE_SQL_QUERY,
+        EXECUTE_SQL_FIELDS_QUERY,
         FETCH_SQL_QUERY);
 
     /** Query ID sequence. */
@@ -66,7 +67,8 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         assert SUPPORTED_COMMANDS.contains(req.command());
 
         switch (req.command()) {
-            case EXECUTE_SQL_QUERY: {
+            case EXECUTE_SQL_QUERY:
+            case EXECUTE_SQL_FIELDS_QUERY: {
                 assert req instanceof RestSqlQueryRequest : "Invalid type of query request.";
 
                 return ctx.closure().callLocalSafe(
@@ -114,7 +116,12 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public GridRestResponse call() throws Exception {
             try {
-                SqlQuery<String, String> qry = new SqlQuery(req.typeName(), req.sqlQuery());
+                Query qry;
+
+                if (req.typeName() != null)
+                    qry = new SqlQuery(req.typeName(), req.sqlQuery());
+                else
+                    qry = new SqlFieldsQuery(req.sqlQuery());
 
                 Iterator<Cache.Entry<String, String>> cur =
                     ctx.grid().cache(req.cacheName()).query(qry).iterator();
@@ -123,7 +130,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                 curs.put(qryId, cur);
 
-                List<Cache.Entry<String, String>> res = new ArrayList<>();
+                List res = new ArrayList<>();
 
                 CacheQueryResult response = new CacheQueryResult();
 

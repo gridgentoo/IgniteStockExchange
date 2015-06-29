@@ -83,10 +83,12 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
         var fullResponseString = '';
 
         response.on('data', function (chunk) {
+            console.log("data:" + chunk);
             fullResponseString += chunk;
         });
 
         response.on('end', function () {
+            console.log("fullResponseString:" + fullResponseString);
             if (response.statusCode !== 200) {
                 if (response.statusCode === 401) {
                     callback.call(null, "Authentication failed. Status code 401.");
@@ -102,9 +104,11 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
 
             try {
                 igniteResponse = JSON.parse(fullResponseString);
+                console.log("igniteResponse:" + igniteResponse);
             }
             catch (e) {
                 callback.call(null, e, null);
+
                 return;
             }
 
@@ -112,6 +116,7 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
                 callback.call(null, igniteResponse.error, null)
             }
             else {
+                console.log("igniteResponse.response:" + igniteResponse.response);
                 callback.call(null, null, igniteResponse.response);
             }
         });

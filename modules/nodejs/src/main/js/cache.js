@@ -16,6 +16,8 @@
  */
 
 var Server = require("./server").Server;
+var SqlFieldsQuery = require("./sql-fields-query").SqlFieldsQuery
+var SqlQuery = require("./sql-query").SqlQuery
 
 /**
  * Creates an instance of Cache
@@ -135,11 +137,16 @@ Cache.prototype.getAll = function(keys, callback) {
  */
 Cache.prototype.query = function(qry) {
     function onQueryExecute(qry, error, res) {
-        if (error) {
+        if (error !== null) {
             qry.error(error);
+            qry.end();
 
             return;
         }
+        console.log("Qry: " + qry.type());
+
+        console.log("Error: " + error);
+        console.log("Result: " + res);
 
         qry.page(res["items"]);
 
@@ -155,6 +162,25 @@ Cache.prototype.query = function(qry) {
         }
     }
 
+    if (qry.type() === "Sql") {
+        this._sqlQuery(qry, onQueryExecute);
+    }
+    else {
+        this._sqlFieldsQuery(qry, onQueryExecute);
+    }
+}
+
+Cache.prototype._sqlFieldsQuery = function(qry, onQueryExecute) {
+    var params = [Server.pair("cacheName", this._cacheName),
+        Server.pair("qry", qry.query()),
+        Server.pair("arg", qry.arguments()),
+        Server.pair("psz", qry.pageSize())];
+
+    this._server.runCommand("qryfieldsexecute", params,
+        onQueryExecute.bind(this, qry));
+}
+
+Cache.prototype._sqlQuery = function(qry, onQueryExecute) {
     var params = [Server.pair("cacheName", this._cacheName),
         Server.pair("qry", qry.query()),
         Server.pair("arg", qry.arguments()),

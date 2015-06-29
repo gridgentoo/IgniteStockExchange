@@ -21,6 +21,7 @@ var assert = require("assert");
 
 var Ignite = require(TestUtils.scriptPath());
 var SqlQuery = Ignite.SqlQuery;
+var SqlFieldsQuery = Ignite.SqlFieldsQuery;
 
 testSqlQuery = function() {
     function sqlQuery(ignite, error) {
@@ -63,4 +64,42 @@ testSqlQuery = function() {
     }
 
     TestUtils.startIgniteNode(put);
+}
+
+testSqlFieldsQuery = function() {
+    function sqlFieldsQuery(error, ignite) {
+        assert(error == null, "error on sqlfields query [err=" + error + "]");
+
+        var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
+
+        var fullRes = [];
+
+        qry.on("error", function(err) {
+                TestUtils.testFails();
+            });
+
+        qry.on("page", function(res) {
+            console.log("PAGE: " + res);
+            fullRes = fullRes.concat(res);
+        });
+
+        qry.on("end", function() {
+                console.log("END=" + fullRes);
+
+                assert(fullRes.length, 1, "Result length is not correct" +
+                    "[expected=1, val = " + fullRes.length + "]");
+
+                assert(fullRes[0]["key"] === "key0", "Result value for key is not correct "+
+                    "[expected=key0, real=" + fullRes[0]["key"] + "]");
+
+                assert(fullRes[0]["value"] === "val0", "Result value for key is not correct "+
+                    "[expected=val0, real=" + fullRes[0]["value"] + "]");
+
+                TestUtils.testDone();
+            });
+
+        ignite.cache("person").query(qry);
+    }
+
+    TestUtils.startIgniteNode(sqlFieldsQuery.bind(null));
 }

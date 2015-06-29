@@ -108,6 +108,9 @@ public enum GridRestCommand {
     /** Execute sql query. */
     EXECUTE_SQL_QUERY("qryexecute"),
 
+    /** Execute sql fields query. */
+    EXECUTE_SQL_FIELDS_QUERY("qryfieldsexecute"),
+
     /** Fetch query results. */
     FETCH_SQL_QUERY("qryfetch");
 
