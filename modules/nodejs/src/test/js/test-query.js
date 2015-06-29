@@ -79,7 +79,7 @@ testSqlFieldsQuery = function() {
             });
 
         qry.on("page", function(res) {
-            console.log("PAGE  : " + res);
+            console.log("PAGE   : " + res);
             fullRes = fullRes.concat(res);
         });
 
