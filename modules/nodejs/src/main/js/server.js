@@ -61,7 +61,7 @@ Server.prototype.host = function() {
  * @param params Parameters for command.
  * @param {onGet} Called on finish
  */
-Server.prototype.runCommand = function(cmdName, params, callback) {
+Server.prototype.runCommand = function(cmdName, params, callback, postData) {
     var paramsString = "";
 
     for (var p of params) {
@@ -75,9 +75,13 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
     var options = {
         host: this._host,
         port: this._port,
+        method : postData ? "POST" : "GET",
         path: "/ignite?" + requestQry,
         headers: this._signature()
     };
+
+    if (postData)
+        options.headers['Content-Length'] = postData.length;
 
     function streamCallback(response) {
         var fullResponseString = '';
@@ -124,6 +128,9 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
     request.setTimeout(5000, callback.bind(null, "Request timeout: >5 sec"));
 
     request.on('error', callback);
+
+    if (postData)
+        request.write(postData);
 
     request.end();
 }

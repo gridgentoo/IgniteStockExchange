@@ -108,6 +108,19 @@ Cache.prototype.putAll = function(map, callback) {
 }
 
 /**
+ * Put keys to cache
+ *
+ * @this {Cache}
+ * @param {Object.<string, string>} map collection of entries to put in the cache
+ * @param {noValue} callback Called on finish
+ */
+Cache.prototype.postPutAll = function(map, callback) {
+    var params = [this._cacheNameParam];
+
+    this._server.runCommand("putall2", params, callback, JSON.stringify(map));
+}
+
+/**
  * Callback for cache get
  *
  * @callback Cache~onGetAll

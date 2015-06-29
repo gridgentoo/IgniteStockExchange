@@ -341,6 +341,40 @@ public class GridJettyRestHandler extends AbstractHandler {
                 break;
             }
 
+            case CACHE_PUT_ALL2: {
+                StringBuilder builder = new StringBuilder();
+
+                Scanner reader = null;
+
+                try {
+                    reader = new Scanner(req.getReader());
+                } catch (IOException e) {
+                    throw new IgniteCheckedException(e);
+                }
+
+                while (reader.hasNext())
+                    builder.append(reader.next() + "\n");
+
+                JSONObject o = JSONObject.fromObject(builder.toString());
+
+                GridRestCacheRequest restReq0 = new GridRestCacheRequest();
+
+                String cacheName = (String) params.get("cacheName");
+
+                restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+
+                Map<Object, Object> map = U.newHashMap(o.keySet().size());
+
+                for (Object k : o.keySet())
+                    map.put(k, o.get(k));
+
+                restReq0.values(map);
+
+                restReq = restReq0;
+
+                break;
+            }
+
             case CACHE_GET:
             case CACHE_GET_ALL:
             case CACHE_PUT:

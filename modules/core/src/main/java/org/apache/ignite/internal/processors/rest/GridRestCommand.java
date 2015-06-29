@@ -45,6 +45,9 @@ public enum GridRestCommand {
     /** Store several values in cache. */
     CACHE_PUT_ALL("putall"),
 
+    /** Store several values in cache. */
+    CACHE_PUT_ALL2("putall2"),
+
     /** Remove value from cache. */
     CACHE_REMOVE("rmv"),
 
