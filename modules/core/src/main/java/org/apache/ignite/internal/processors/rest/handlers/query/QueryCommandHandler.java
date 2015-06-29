@@ -118,10 +118,16 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
             try {
                 Query qry;
 
-                if (req.typeName() != null)
+                if (req.typeName() != null) {
                     qry = new SqlQuery(req.typeName(), req.sqlQuery());
-                else
+
+                    ((SqlQuery)qry).setArgs(req.arguments());
+                }
+                else {
                     qry = new SqlFieldsQuery(req.sqlQuery());
+
+                    ((SqlFieldsQuery)qry).setArgs(req.arguments());
+                }
 
                 Iterator<Cache.Entry<String, String>> cur =
                     ctx.grid().cache(req.cacheName()).query(qry).iterator();

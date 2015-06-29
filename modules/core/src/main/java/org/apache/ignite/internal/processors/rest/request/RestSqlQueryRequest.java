@@ -25,7 +25,7 @@ public class RestSqlQueryRequest extends GridRestRequest {
     private String sqlQry;
 
     /** Sql query arguments. */
-    private Object args;
+    private Object[] args;
 
     /** Page size. */
     private Integer pageSz;
@@ -56,14 +56,14 @@ public class RestSqlQueryRequest extends GridRestRequest {
     /**
      * @param args Sql query arguments.
      */
-    public void arguments(Object args) {
+    public void arguments(Object[] args) {
         this.args = args;
     }
 
     /**
      * @return Sql query arguments.
      */
-    public Object arguments() {
+    public Object[] arguments() {
         return args;
     }
 

@@ -79,21 +79,52 @@ testSqlFieldsQuery = function() {
             });
 
         qry.on("page", function(res) {
-            console.log("PAGE   : " + res);
             fullRes = fullRes.concat(res);
         });
 
         qry.on("end", function() {
-                console.log("END=" + fullRes);
-
                 assert(fullRes.length, 1, "Result length is not correct" +
                     "[expected=1, val = " + fullRes.length + "]");
 
-                assert(fullRes[0]["key"] === "key0", "Result value for key is not correct "+
-                    "[expected=key0, real=" + fullRes[0]["key"] + "]");
+                assert(fullRes[0].indexOf("Jane Doe") > -1,
+                    "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
 
-                assert(fullRes[0]["value"] === "val0", "Result value for key is not correct "+
-                    "[expected=val0, real=" + fullRes[0]["value"] + "]");
+                TestUtils.testDone();
+            });
+
+        ignite.cache("person").query(qry);
+    }
+
+    TestUtils.startIgniteNode(sqlFieldsQuery.bind(null));
+}
+
+testSqlQueryWithParams = function() {
+    function sqlFieldsQuery(error, ignite) {
+        assert(error == null, "error on sql query [err=" + error + "]");
+
+        var qry = new SqlQuery("salary > ? and salary <= ?");
+
+        qry.setReturnType("Person");
+
+        qry.setArguments([1000, 2000]);
+
+        var fullRes = [];
+
+        qry.on("error", function(err) {
+                TestUtils.testFails();
+            });
+
+        qry.on("page", function(res) {
+            fullRes = fullRes.concat(res);
+        });
+
+        qry.on("end", function() {
+                //TODO:
+                assert(fullRes.length, 1, "Result length is not correct" +
+                    "[expected=1, val = " + fullRes.length + "]");
+
+                assert(fullRes[0].indexOf("Jane Doe") > -1,
+                    "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
 
                 TestUtils.testDone();
             });

@@ -28,11 +28,11 @@ import java.util.*;
 /**
  * Node js sql query test.
  */
-public class NodeJsSqlQuery  extends NodeJsAbstractTest {
+public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
     /**
      * Constructor.
      */
-    public NodeJsSqlQuery() {
+    public NodeJsSqlQuerySelfTest() {
         super("test-query.js");
     }
 
@@ -57,7 +57,24 @@ public class NodeJsSqlQuery  extends NodeJsAbstractTest {
      * @throws Exception If failed.
      */
     public void testSqlFieldsQuery() throws Exception {
+        initCache();
 
+        runJsScript("testSqlFieldsQuery");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testSqlQueryWithParams() throws Exception {
+        initCache();
+
+        runJsScript("testSqlQueryWithParams");
+    }
+
+    /**
+     * Init cache.
+     */
+    private void initCache() {
         CacheConfiguration<UUID, Organization> orgCacheCfg = new CacheConfiguration<>("organization");
         orgCacheCfg.setIndexedTypes(UUID.class, Organization.class);
 
@@ -83,8 +100,6 @@ public class NodeJsSqlQuery  extends NodeJsAbstractTest {
         personCache.put(p2.key(), p2);
         personCache.put(p3.key(), p3);
         personCache.put(p4.key(), p4);
-
-        runJsScript("testSqlFieldsQuery");
     }
 
     /**

@@ -83,7 +83,6 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
         var fullResponseString = '';
 
         response.on('data', function (chunk) {
-            console.log("data:" + chunk);
             fullResponseString += chunk;
         });
 
@@ -104,7 +103,6 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
 
             try {
                 igniteResponse = JSON.parse(fullResponseString);
-                console.log("igniteResponse:" + igniteResponse);
             }
             catch (e) {
                 callback.call(null, e, null);
@@ -116,7 +114,6 @@ Server.prototype.runCommand = function(cmdName, params, callback) {
                 callback.call(null, igniteResponse.error, null)
             }
             else {
-                console.log("igniteResponse.response:" + igniteResponse.response);
                 callback.call(null, null, igniteResponse.response);
             }
         });

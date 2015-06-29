@@ -158,7 +158,7 @@ Cache.prototype.query = function(qry) {
                 Server.pair("cacheName", this._cacheName),
                 Server.pair("qryId", res.queryId),
                 Server.pair("psz", qry.pageSize())],
-                onQueryExecute.bind(this, qry, res["queryId"]));
+                onQueryExecute.bind(this, qry));
         }
     }
 
@@ -173,18 +173,31 @@ Cache.prototype.query = function(qry) {
 Cache.prototype._sqlFieldsQuery = function(qry, onQueryExecute) {
     var params = [Server.pair("cacheName", this._cacheName),
         Server.pair("qry", qry.query()),
-        Server.pair("arg", qry.arguments()),
         Server.pair("psz", qry.pageSize())];
+
+    params = params.concat(this._sqlArguments(qry.arguments()));
 
     this._server.runCommand("qryfieldsexecute", params,
         onQueryExecute.bind(this, qry));
 }
 
+Cache.prototype._sqlArguments = function(args) {
+    var res = [];
+    console.log("ARGS=" + args);
+
+    for (var i = 1; i <= args.length; i++) {
+        res.push(Server.pair("arg" + i, args[i - 1]));
+    }
+
+    return res;
+}
+
 Cache.prototype._sqlQuery = function(qry, onQueryExecute) {
     var params = [Server.pair("cacheName", this._cacheName),
         Server.pair("qry", qry.query()),
-        Server.pair("arg", qry.arguments()),
         Server.pair("psz", qry.pageSize())]
+
+    params = params.concat(this._sqlArguments(qry.arguments()));
 
     if (qry.returnType() != null) {
         params.push(Server.pair("type", qry.returnType()));
