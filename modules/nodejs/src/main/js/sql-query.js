@@ -23,11 +23,19 @@ function SqlQuery(sql) {
     this._sql = sql;
     this._arg = [];
     this._pageSz = 1;
+    this._type = null;
     this._endFunc = function(res) {console.log("Empty end function is called [res=" + res + "]")};
     this._pageFunc = function(res) {console.log("Empty page function is called [res=" + res + "]")}
     this._errFunc = function(err) {console.log("Empty error function is called [err=" + err + "]")}
 }
 
+/**
+ * Set the callbacks for query events.
+ *
+ * @this {SqlQuery}
+ * @param {string} code Function code could be "end", "page", "error"
+ * @param function Functions "error" and "page" are one argument functions and "end" is function without arguments.
+ */
 SqlQuery.prototype.on = function(code, f) {
     switch(code) {
         case "end":
@@ -47,28 +55,99 @@ SqlQuery.prototype.on = function(code, f) {
     }
 }
 
+/**
+ * @this {SqlQuery}
+ * @param res Query result
+ */
 SqlQuery.prototype.end = function(res) {
-    return this._endFunc(res);
+    this._endFunc(res);
 }
 
+/**
+ * @this {SqlQuery}
+ * @param err Query error
+ */
 SqlQuery.prototype.error = function(err) {
-    return this._errFunc(err);
+    this._errFunc(err);
 }
 
+/**
+ * @this {SqlQuery}
+ * @param res Query data
+ */
 SqlQuery.prototype.page = function(res) {
-    return this._pageFunc(res);
+    this._pageFunc(res);
 }
 
+/**
+ * @this {SqlQuery}
+ * @param {int} pageSz Page size.
+ */
+SqlQuery.prototype.setPageSize = function(pageSz) {
+    this._pageSize = pageSz;
+}
+
+/**
+ * @this {SqlQuery}
+ * @param args Arguments
+ */
+SqlQuery.prototype.setArguments = function(args) {
+    this._arg = args;
+}
+
+/**
+ * @this {SqlQuery}
+ * @param type Return class name
+ */
+SqlQuery.prototype.setReturnType = function(type) {
+    this._type = type;
+}
+
+/**
+ * @this {SqlQuery}
+ * @returns Sql query
+ */
 SqlQuery.prototype.query = function() {
     return this._sql;
 }
 
+/**
+ * @this {SqlQuery}
+ * @returns arguments
+ */
 SqlQuery.prototype.arguments = function() {
     return this._arg;
 }
 
+/**
+ * @this {SqlQuery}
+ * @returns pageSize
+ */
 SqlQuery.prototype.pageSize = function() {
     return this._pageSz;
+}
+
+/**
+ * @this {SqlQuery}
+ * @returns Return class name
+ */
+SqlQuery.prototype.returnType = function() {
+    return this._type;
+}
+
+/**
+ * @this {SqlQuery}
+ * @returns "Sql"
+ */
+SqlQuery.prototype.type = function() {
+    return SqlQuery.type();
+}
+
+/**
+ * @returns "Sql"
+ */
+SqlQuery.type = function() {
+    return "Sql"
 }
 
 exports.SqlQuery = SqlQuery;

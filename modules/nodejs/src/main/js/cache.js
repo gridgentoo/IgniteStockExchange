@@ -155,11 +155,22 @@ Cache.prototype.query = function(qry) {
         }
     }
 
-    this._server.runCommand("qryexecute", [
-        Server.pair("cacheName", this._cacheName),
+    var params = [Server.pair("cacheName", this._cacheName),
         Server.pair("qry", qry.query()),
         Server.pair("arg", qry.arguments()),
-        Server.pair("psz", qry.pageSize())],
+        Server.pair("psz", qry.pageSize())]
+
+    if (qry.returnType() != null) {
+        params.push(Server.pair("type", qry.returnType()));
+    }
+    else {
+        qry.error("No type for sql query.");
+        qry.end();
+
+        return;
+    }
+
+    this._server.runCommand("qryexecute", params,
         onQueryExecute.bind(this, qry));
 }
 

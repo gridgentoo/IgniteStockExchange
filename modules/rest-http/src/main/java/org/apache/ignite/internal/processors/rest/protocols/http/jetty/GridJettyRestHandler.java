@@ -476,6 +476,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.sqlQuery((String)params.get("qry"));
                 restReq0.arguments(params.get("arg"));
+                restReq0.typeName((String)params.get("type"));
                 restReq0.pageSize(Integer.parseInt((String) params.get("psz")));
                 restReq0.cacheName((String)params.get("cacheName"));
 

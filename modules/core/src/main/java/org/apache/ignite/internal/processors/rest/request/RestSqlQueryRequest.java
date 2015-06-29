@@ -36,6 +36,9 @@ public class RestSqlQueryRequest extends GridRestRequest {
     /** Query id. */
     private Long qryId;
 
+    /** Query type name. */
+    private String typeName;
+
     /**
      * @param sqlQry Sql query.
      */
@@ -104,5 +107,19 @@ public class RestSqlQueryRequest extends GridRestRequest {
      */
     public Long queryId() {
         return qryId;
+    }
+
+    /**
+     * @param typeName Query type name.
+     */
+    public void typeName(String typeName) {
+        this.typeName = typeName;
+    }
+
+    /**
+     * @return Query type name.
+     */
+    public String typeName() {
+        return typeName;
     }
 }

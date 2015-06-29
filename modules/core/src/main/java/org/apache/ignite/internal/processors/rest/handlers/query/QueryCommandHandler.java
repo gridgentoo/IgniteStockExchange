@@ -114,7 +114,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public GridRestResponse call() throws Exception {
             try {
-                SqlQuery<String, String> qry = new SqlQuery(String.class, req.sqlQuery());
+                SqlQuery<String, String> qry = new SqlQuery(req.typeName(), req.sqlQuery());
 
                 Iterator<Cache.Entry<String, String>> cur =
                     ctx.grid().cache(req.cacheName()).query(qry).iterator();

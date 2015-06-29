@@ -28,6 +28,8 @@ testSqlQuery = function() {
 
         var qry = new SqlQuery("select * from String");
 
+        qry.setReturnType("String");
+
         var fullRes = [];
 
         qry.on("error", function(err) {

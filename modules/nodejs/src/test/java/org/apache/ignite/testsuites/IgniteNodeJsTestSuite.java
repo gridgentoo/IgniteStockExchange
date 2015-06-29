@@ -36,6 +36,7 @@ public class IgniteNodeJsTestSuite extends TestSuite {
         suite.addTest(new TestSuite(NodeJsSecretKeySelfTest.class));
         suite.addTest(new TestSuite(NodeJsComputeSelfTest.class));
         suite.addTest(new TestSuite(NodeJsIgniteSelfTest.class));
+        suite.addTest(new TestSuite(NodeJsSqlQuery.class));
 
         return suite;
     }
