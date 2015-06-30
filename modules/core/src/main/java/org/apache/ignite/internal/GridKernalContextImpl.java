@@ -911,7 +911,7 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
 
     /** {@inheritDoc} */
     @Override public boolean clientNode() {
-        return cfg.isClientMode();
+        return cfg.isClientMode() || cfg.isDaemon();
     }
 
     /** {@inheritDoc} */
