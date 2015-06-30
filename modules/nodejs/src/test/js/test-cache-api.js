@@ -36,12 +36,18 @@ testPutAllGetAll = function() {
 }
 
 testPutAllObjectGetAll = function() {
+    var params = {}
     var key1 = {"name" : "Ann"};
     var key2 = {"name" : "Paul"};
     var val1 = {"age" : 12, "books" : ["1", "Book"]};
     var val2 = {"age" : 13, "books" : ["1", "Book"]};
 
-    startTest("mycache", {trace: [putAll, getAll], entry: {key1 : val1, key2 : val2}});
+    params["k1"] = key1;
+    params["k2"] = key2;
+    params["val1"] = val1;
+    params["val2"] = val2;
+
+    startTest("mycache", {trace: [putAll, getAll], entry: params});
 }
 
 testRemoveAll = function() {
