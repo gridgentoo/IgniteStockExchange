@@ -106,7 +106,7 @@ Cache.prototype.putAll = function(map, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.postPutAll = function(map, callback) {
-    this._server.runCommand(this._createCommand("putall2").setPostData(JSON.stringify(map)), callback);
+    this._server.runCommand(this._createCommand("putall").setPostData(JSON.stringify(map)), callback);
 }
 
 /**

@@ -67,12 +67,18 @@ Server.prototype.runCommand = function(cmd, callback) {
 
     var http = require('http');
 
+    var commHeaders = this._signature();
+
+    if (cmd._isPost()) {
+        commHeaders["JSONObject"] = "true";
+    }
+
     var options = {
         host: this._host,
         port: this._port,
         method : cmd._method(),
         path: "/ignite?" + requestQry,
-        headers: this._signature()
+        headers: commHeaders
     };
 
     if (cmd._isPost()) {
@@ -149,7 +155,7 @@ Server.prototype.checkConnection = function(callback) {
  */
 Server.prototype._signature = function() {
     if (!this._secretKey) {
-        return "";
+        return {};
     }
 
     var loadTimeInMS = Date.now();

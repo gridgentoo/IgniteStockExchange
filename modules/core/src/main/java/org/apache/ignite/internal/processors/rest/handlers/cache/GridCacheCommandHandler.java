@@ -58,7 +58,6 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_PUT,
         CACHE_ADD,
         CACHE_PUT_ALL,
-        CACHE_PUT_ALL2,
         CACHE_REMOVE,
         CACHE_REMOVE_ALL,
         CACHE_REPLACE,
@@ -191,7 +190,6 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                     break;
                 }
 
-                case CACHE_PUT_ALL2:
                 case CACHE_PUT_ALL: {
                     Map<Object, Object> map = req0.values();
 

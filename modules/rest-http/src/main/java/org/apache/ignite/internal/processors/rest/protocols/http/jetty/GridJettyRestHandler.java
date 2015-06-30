@@ -323,8 +323,7 @@ public class GridJettyRestHandler extends AbstractHandler {
      * @throws IgniteCheckedException If creation failed.
      */
     @Nullable private GridRestRequest createRequest(GridRestCommand cmd,
-        Map<String, Object> params,
-        ServletRequest req) throws IgniteCheckedException {
+        Map<String, Object> params, HttpServletRequest req) throws IgniteCheckedException {
         GridRestRequest restReq;
 
         switch (cmd) {
@@ -335,40 +334,6 @@ public class GridJettyRestHandler extends AbstractHandler {
                 restReq0.key(params.get("key"));
                 restReq0.initial(longValue("init", params, null));
                 restReq0.delta(longValue("delta", params, null));
-
-                restReq = restReq0;
-
-                break;
-            }
-
-            case CACHE_PUT_ALL2: {
-                StringBuilder builder = new StringBuilder();
-
-                Scanner reader = null;
-
-                try {
-                    reader = new Scanner(req.getReader());
-                } catch (IOException e) {
-                    throw new IgniteCheckedException(e);
-                }
-
-                while (reader.hasNext())
-                    builder.append(reader.next() + "\n");
-
-                JSONObject o = JSONObject.fromObject(builder.toString());
-
-                GridRestCacheRequest restReq0 = new GridRestCacheRequest();
-
-                String cacheName = (String) params.get("cacheName");
-
-                restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
-
-                Map<Object, Object> map = U.newHashMap(o.keySet().size());
-
-                for (Object k : o.keySet())
-                    map.put(k, o.get(k));
-
-                restReq0.values(map);
 
                 restReq = restReq0;
 
@@ -391,35 +356,66 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 String cacheName = (String)params.get("cacheName");
 
-                restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
-                restReq0.key(params.get("key"));
-                restReq0.value(params.get("val"));
-                restReq0.value2(params.get("val2"));
+                if (req.getHeader("JSONObject") != null) {
+                    if (cmd == CACHE_PUT_ALL) {
+                        StringBuilder builder = new StringBuilder();
 
-                Object val1 = params.get("val1");
+                        Scanner reader = null;
 
-                if (val1 != null)
-                    restReq0.value(val1);
+                        try {
+                            reader = new Scanner(req.getReader());
+                        }
+                        catch (IOException e) {
+                            throw new IgniteCheckedException(e);
+                        }
 
-                restReq0.cacheFlags(intValue("cacheFlags", params, 0));
-                restReq0.ttl(longValue("exp", params, null));
+                        while (reader.hasNext())
+                            builder.append(reader.next() + "\n");
 
-                if (cmd == CACHE_GET_ALL || cmd == CACHE_PUT_ALL || cmd == CACHE_REMOVE_ALL) {
-                    List<Object> keys = values("k", params);
-                    List<Object> vals = values("v", params);
+                        JSONObject o = JSONObject.fromObject(builder.toString());
 
-                    if (keys.size() < vals.size())
-                        throw new IgniteCheckedException("Number of keys must be greater or equals to number of values.");
+                        restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
 
-                    Map<Object, Object> map = U.newHashMap(keys.size());
+                        Map<Object, Object> map = U.newHashMap(o.keySet().size());
 
-                    Iterator<Object> keyIt = keys.iterator();
-                    Iterator<Object> valIt = vals.iterator();
+                        for (Object k : o.keySet())
+                            map.put(k, o.get(k));
 
-                    while (keyIt.hasNext())
-                        map.put(keyIt.next(), valIt.hasNext() ? valIt.next() : null);
+                        restReq0.values(map);
+                    }
+                }
+                else {
 
-                    restReq0.values(map);
+                    restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+                    restReq0.key(params.get("key"));
+                    restReq0.value(params.get("val"));
+                    restReq0.value2(params.get("val2"));
+
+                    Object val1 = params.get("val1");
+
+                    if (val1 != null)
+                        restReq0.value(val1);
+
+                    restReq0.cacheFlags(intValue("cacheFlags", params, 0));
+                    restReq0.ttl(longValue("exp", params, null));
+
+                    if (cmd == CACHE_GET_ALL || cmd == CACHE_PUT_ALL || cmd == CACHE_REMOVE_ALL) {
+                        List<Object> keys = values("k", params);
+                        List<Object> vals = values("v", params);
+
+                        if (keys.size() < vals.size())
+                            throw new IgniteCheckedException("Number of keys must be greater or equals to number of values.");
+
+                        Map<Object, Object> map = U.newHashMap(keys.size());
+
+                        Iterator<Object> keyIt = keys.iterator();
+                        Iterator<Object> valIt = vals.iterator();
+
+                        while (keyIt.hasNext())
+                            map.put(keyIt.next(), valIt.hasNext() ? valIt.next() : null);
+
+                        restReq0.values(map);
+                    }
                 }
 
                 restReq = restReq0;
