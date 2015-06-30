@@ -84,11 +84,4 @@ public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     public void testPutAllGetAll() throws Exception {
         runJsScript("testPutAllGetAll");
     }
-
-    /**
-     * @throws Exception If failed.
-     */
-    public void testPostPutAllGetAll() throws Exception {
-        runJsScript("testPostPutAllGetAll");
-    }
 }

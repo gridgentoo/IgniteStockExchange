@@ -35,10 +35,6 @@ testPutAllGetAll = function() {
     startTest("mycache", {trace: [putAll, getAll], entry: {"key1": "val1", "key2" : "val2"}});
 }
 
-testPostPutAllGetAll = function() {
-    startTest("mycache", {trace: [postPutAll, getAll], entry: {"key1": "val1", "key2" : "val2"}});
-}
-
 testRemoveAll = function() {
     startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: {"key1": "val1", "key2" : "val2"}});
 }

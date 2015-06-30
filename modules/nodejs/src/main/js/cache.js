@@ -87,25 +87,6 @@ Cache.prototype.removeAll = function(keys, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.putAll = function(map, callback) {
-    var keys = Object.keys(map);
-
-    var values = [];
-
-    for (var key of keys) {
-        values.push(map[key]);
-    }
-
-    this._server.runCommand(this._createCommand("putall").addParams("k", keys).addParams("v", values), callback);
-}
-
-/**
- * Put keys to cache
- *
- * @this {Cache}
- * @param {Object.<string, string>} map collection of entries to put in the cache
- * @param {noValue} callback Called on finish
- */
-Cache.prototype.postPutAll = function(map, callback) {
     this._server.runCommand(this._createCommand("putall").setPostData(JSON.stringify(map)), callback);
 }
 
