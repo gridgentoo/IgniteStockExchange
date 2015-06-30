@@ -129,7 +129,9 @@ Cache.prototype.query = function(qry) {
         }
         else {
             var command = this._createCommand("qryfetch");
+
             command.addParam("qryId", res.queryId).addParam("psz", qry.pageSize());
+
             this._server.runCommand(command, onQueryExecute.bind(this, qry));
         }
     }
@@ -144,7 +146,8 @@ Cache.prototype.query = function(qry) {
 
 Cache.prototype._sqlFieldsQuery = function(qry, onQueryExecute) {
     var command = this._createQueryCommand("qryfieldsexecute", qry);
-    command.addParams("arg", qry.arguments());
+
+    command.setPostData(JSON.stringify({"arg" : qry.arguments()}));
 
     this._server.runCommand(command, onQueryExecute.bind(this, qry));
 }
@@ -158,8 +161,10 @@ Cache.prototype._sqlQuery = function(qry, onQueryExecute) {
     }
 
     var command = this._createQueryCommand("qryexecute", qry);
-    command.addParams("arg", qry.arguments());
+
     command.addParam("type", qry.returnType());
+
+    command.setPostData(JSON.stringify({"arg" : qry.arguments()}));
 
     this._server.runCommand(command, onQueryExecute.bind(this, qry));
 }

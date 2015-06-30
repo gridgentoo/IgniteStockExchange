@@ -110,24 +110,28 @@ testSqlQueryWithParams = function() {
         var fullRes = [];
 
         qry.on("page", function(res) {
+            console.log("!!!!!Page:" + res);
+            console.log("!!!!!Page2:" + res);
+
             fullRes = fullRes.concat(res);
         });
 
         qry.on("end", function(err) {
-                assert(err === null, "Error on query [err=" + err + "].");
+            console.log("RES:" + fullRes);
 
-                //TODO:
-                assert(fullRes.length, 1, "Result length is not correct" +
-                    "[expected=1, val = " + fullRes.length + "]");
+            assert(err === null, "Error on query [err=" + err + "].");
 
-                assert(fullRes[0].indexOf("Jane Doe") > -1,
-                    "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
+            //TODO:
+            assert(fullRes.length, 2, "Result length is not correct" +
+                "[expected=1, val = " + fullRes.length + "]");
 
-                TestUtils.testDone();
-            });
+            assert(fullRes[0].indexOf("Jane Doe") > -1,
+                "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
+
+            TestUtils.testDone();
+        });
 
         ignite.cache("person").query(qry);
     }
 
-    TestUtils.startIgniteNode(sqlFieldsQuery.bind(null));
-}
+    TestUtils.startIgniteN

@@ -75,44 +75,29 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
      * Init cache.
      */
     private void initCache() {
-        CacheConfiguration<UUID, Organization> orgCacheCfg = new CacheConfiguration<>("organization");
-        orgCacheCfg.setIndexedTypes(UUID.class, Organization.class);
+        CacheConfiguration<UUID, Person> personCacheCfg = new CacheConfiguration<>("person");
+        personCacheCfg.setIndexedTypes(UUID.class, Person.class);
 
-        CacheConfiguration<AffinityKey<UUID>, Person> personCacheCfg = new CacheConfiguration<>("person");
-        personCacheCfg.setIndexedTypes(AffinityKey.class, Person.class);
+        IgniteCache<UUID, Person> personCache = grid(0).getOrCreateCache(personCacheCfg);
 
-        IgniteCache<UUID, Organization> orgCache = grid(0).getOrCreateCache(orgCacheCfg);
+        Person p1 = new Person("John", "Doe", 2000);
+        Person p2 = new Person("Jane", "Doe", 1000);
+        Person p3 = new Person("John", "Smith", 1000);
+        Person p4 = new Person("Jane", "Smith", 2000);
 
-        Organization org1 = new Organization("ApacheIgnite");
-        Organization org2 = new Organization("Other");
-
-        orgCache.put(org1.id, org1);
-        orgCache.put(org2.id, org2);
-
-        IgniteCache<AffinityKey<UUID>, Person> personCache = grid(0).getOrCreateCache(personCacheCfg);
-
-        Person p1 = new Person(org1, "John", "Doe", 2000);
-        Person p2 = new Person(org1, "Jane", "Doe", 1000);
-        Person p3 = new Person(org2, "John", "Smith", 1000);
-        Person p4 = new Person(org2, "Jane", "Smith", 2000);
-
-        personCache.put(p1.key(), p1);
-        personCache.put(p2.key(), p2);
-        personCache.put(p3.key(), p3);
-        personCache.put(p4.key(), p4);
+        personCache.put(p4.getId(), p1);
+        personCache.put(p4.getId(), p2);
+        personCache.put(p4.getId(), p3);
+        personCache.put(p4.getId(), p4);
     }
 
     /**
      * Person class.
      */
-    private static class Person implements Serializable {
+    public static class Person implements Serializable {
         /** Person ID (indexed). */
         @QuerySqlField(index = true)
         private UUID id;
-
-        /** Organization ID (indexed). */
-        @QuerySqlField(index = true)
-        private UUID orgId;
 
         /** First name (not-indexed). */
         @QuerySqlField
@@ -126,55 +111,50 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
         @QuerySqlField(index = true)
         private double salary;
 
-        /** Custom cache key to guarantee that person is always collocated with its organization. */
-        private transient AffinityKey<UUID> key;
-
         /**
-         * @param org Organization.
          * @param firstName First name.
          * @param lastName Last name.
          * @param salary Salary.
          */
-        Person(Organization org, String firstName, String lastName, double salary) {
+        Person( String firstName, String lastName, double salary) {
             id = UUID.randomUUID();
-
-            orgId = org.id;
 
             this.firstName = firstName;
             this.lastName = lastName;
             this.salary = salary;
         }
 
-        /**
-         * @return Custom affinity key to guarantee that person is always collocated with organization.
-         */
-        public AffinityKey<UUID> key() {
-            if (key == null)
-                key = new AffinityKey<>(id, orgId);
-
-            return key;
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
         }
-    }
 
-    /**
-     * Organization class.
-     */
-    private static class Organization implements Serializable {
-        /** Organization ID (indexed). */
-        @QuerySqlField(index = true)
-        private UUID id;
+        public String getFirstName() {
+            return firstName;
+        }
 
-        /** Organization name (indexed). */
-        @QuerySqlField(index = true)
-        private String name;
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
+        }
 
-        /**
-         * @param name Organization name.
-         */
-        Organization(String name) {
-            id = UUID.randomUUID();
+        public String getLastName() {
+            return lastName;
+        }
 
-            this.name = name;
+        public void setId(UUID id) {
+            this.id = id;
+        }
+
+        public void setSalary(double salary) {
+            this.salary = salary;
+        }
+
+        public double getSalary() {
+
+            return salary;
+        }
+
+        public UUID getId() {
+            return id;
         }
     }
 }

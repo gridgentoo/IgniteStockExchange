@@ -67,22 +67,17 @@ Server.prototype.runCommand = function(cmd, callback) {
 
     var http = require('http');
 
-    var commHeaders = this._signature();
-
-    if (cmd._isPost()) {
-        commHeaders["JSONObject"] = "true";
-    }
-
     var options = {
         host: this._host,
         port: this._port,
         method : cmd._method(),
         path: "/ignite?" + requestQry,
-        headers: commHeaders
+        headers: this._signature()
     };
 
     if (cmd._isPost()) {
         options.headers['Content-Length'] = cmd.postData().length;
+        options.headers['JSONObject'] = "true";
     }
 
     function streamCallback(response) {
@@ -134,6 +129,7 @@ Server.prototype.runCommand = function(cmd, callback) {
     if (cmd._isPost()) {
         request.write(cmd.postData());
     }
+
     request.end();
 }
 
@@ -155,7 +151,7 @@ Server.prototype.checkConnection = function(callback) {
  */
 Server.prototype._signature = function() {
     if (!this._secretKey) {
-        return {};
+        return "";
     }
 
     var loadTimeInMS = Date.now();

@@ -45,7 +45,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
     private static final AtomicLong qryIdGen = new AtomicLong();
 
     /** Current queries. */
-    private final ConcurrentHashMap<Long, Iterator<Cache.Entry<String, String>>> curs =
+    private final ConcurrentHashMap<Long, Iterator<Cache.Entry<Object, Object>>> curs =
         new ConcurrentHashMap<>();
 
     /**
@@ -100,14 +100,14 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         private RestSqlQueryRequest req;
 
         /** Queries cursors. */
-        private ConcurrentHashMap<Long, Iterator<Cache.Entry<String, String>>> curs;
+        private ConcurrentHashMap<Long, Iterator<Cache.Entry<Object, Object>>> curs;
 
         /**
          * @param ctx Kernal context.
          * @param req Execute query request.
          */
         public ExecuteQueryCallable(GridKernalContext ctx, RestSqlQueryRequest req,
-            ConcurrentHashMap<Long, Iterator<Cache.Entry<String, String>>> curs) {
+            ConcurrentHashMap<Long, Iterator<Cache.Entry<Object, Object>>> curs) {
             this.ctx = ctx;
             this.req = req;
             this.curs = curs;
@@ -129,7 +129,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
                     ((SqlFieldsQuery)qry).setArgs(req.arguments());
                 }
 
-                Iterator<Cache.Entry<String, String>> cur =
+                Iterator<Cache.Entry<Object, Object>> cur =
                     ctx.grid().cache(req.cacheName()).query(qry).iterator();
 
                 long qryId = qryIdGen.getAndIncrement();
@@ -140,8 +140,9 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                 CacheQueryResult response = new CacheQueryResult();
 
-                for (int i = 0; i < req.pageSize() && cur.hasNext(); ++i)
+                for (int i = 0; i < req.pageSize() && cur.hasNext(); ++i) {
                     res.add(cur.next());
+                }
 
                 response.setItems(res);
 
@@ -174,14 +175,14 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         private RestSqlQueryRequest req;
 
         /** Queries cursors. */
-        private ConcurrentHashMap<Long, Iterator<Cache.Entry<String, String>>> curs;
+        private ConcurrentHashMap<Long, Iterator<Cache.Entry<Object, Object>>> curs;
 
         /**
          * @param ctx Kernal context.
          * @param req Execute query request.
          */
         public FetchQueryCallable(GridKernalContext ctx, RestSqlQueryRequest req,
-            ConcurrentHashMap<Long, Iterator<Cache.Entry<String, String>>> curs) {
+            ConcurrentHashMap<Long, Iterator<Cache.Entry<Object, Object>>> curs) {
             this.ctx = ctx;
             this.req = req;
             this.curs = curs;
@@ -190,19 +191,19 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public GridRestResponse call() throws Exception {
             try {
-                Iterator<Cache.Entry<String, String>> cur = curs.get(req.queryId());
+                Iterator<Cache.Entry<Object, Object>> cur = curs.get(req.queryId());
 
                 if (cur == null)
                     return new GridRestResponse(GridRestResponse.STATUS_FAILED,
                         "Cannot find query [qryId=" + req.queryId() + "]");
 
-                List<Cache.Entry<String, String>> res = new ArrayList<>();
+                List res = new ArrayList<>();
 
                 CacheQueryResult response = new CacheQueryResult();
 
-                for (int i = 0; i < req.pageSize() && cur.hasNext(); ++i)
+                for (int i = 0; i < req.pageSize() && cur.hasNext(); ++i) {
                     res.add(cur.next());
-
+                }
                 response.setItems(res);
 
                 response.setLast(!cur.hasNext());
