@@ -25,17 +25,16 @@ function SqlFieldsQuery(sql) {
     this._arg = [];
     this._pageSz = 1;
     this._type = null;
-    this._endFunc = function(res) {console.log("Empty end function is called [res=" + res + "]")};
+    this._endFunc = function(err) {console.log("Empty end function is called [err=" + err + "]")};
     this._pageFunc = function(res) {console.log("Empty page function is called [res=" + res + "]")}
-    this._errFunc = function(err) {console.log("Empty error function is called [err=" + err + "]")}
 }
 
 /**
  * Set the callbacks for query events.
  *
  * @this {SqlFieldsQuery}
- * @param {string} code Function code could be "end", "page", "error"
- * @param function Functions "error" and "page" are one argument functions and "end" is function without arguments.
+ * @param {string} code Function code could be "end", "page"
+ * @param function Functions "end" and "page" are one argument functions.
  */
 SqlFieldsQuery.prototype.on = function(code, f) {
     switch(code) {
@@ -47,10 +46,6 @@ SqlFieldsQuery.prototype.on = function(code, f) {
             this._pageFunc = f;
 
             break;
-        case "error" :
-            this._errFunc = f;
-
-            break;
         default :
             throw "Sql do not have method " + code;
     }
@@ -60,16 +55,8 @@ SqlFieldsQuery.prototype.on = function(code, f) {
  * @this {SqlFieldsQuery}
  * @param res Query result
  */
-SqlFieldsQuery.prototype.end = function(res) {
-    this._endFunc(res);
-}
-
-/**
- * @this {SqlFieldsQuery}
- * @param err Query error
- */
-SqlFieldsQuery.prototype.error = function(err) {
-    this._errFunc(err);
+SqlFieldsQuery.prototype.end = function(err) {
+    this._endFunc(err);
 }
 
 /**

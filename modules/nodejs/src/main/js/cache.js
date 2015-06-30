@@ -136,20 +136,15 @@ Cache.prototype.getAll = function(keys, callback) {
 Cache.prototype.query = function(qry) {
     function onQueryExecute(qry, error, res) {
         if (error !== null) {
-            qry.error(error);
-            qry.end();
+            qry.end(error);
 
             return;
         }
-        console.log("Qry: " + qry.type());
-
-        console.log("Error: " + error);
-        console.log("Result: " + res);
 
         qry.page(res["items"]);
 
         if (res["last"]) {
-            qry.end();
+            qry.end(null);
         }
         else {
             var command = this._createCommand("qryfetch");

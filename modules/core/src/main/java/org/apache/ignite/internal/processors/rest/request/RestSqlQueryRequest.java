@@ -28,7 +28,7 @@ public class RestSqlQueryRequest extends GridRestRequest {
     private Object[] args;
 
     /** Page size. */
-    private Integer pageSz;
+    private Integer pageSize;
 
     /** Cache name. */
     private String cacheName;
@@ -68,17 +68,17 @@ public class RestSqlQueryRequest extends GridRestRequest {
     }
 
     /**
-     * @param pageSz Page size.
+     * @param pageSize Page size.
      */
-    public void pageSize(Integer pageSz) {
-        this.pageSz = pageSz;
+    public void pageSize(Integer pageSize) {
+        this.pageSize = pageSize;
     }
 
     /**
      * @return Page size.
      */
     public int pageSize() {
-        return pageSz;
+        return pageSize;
     }
 
     /**

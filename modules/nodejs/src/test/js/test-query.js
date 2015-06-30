@@ -33,26 +33,24 @@ testSqlQuery = function() {
 
         var fullRes = [];
 
-        qry.on("error", function(err) {
-                TestUtils.testFails();
-            });
-
         qry.on("page", function(res) {
             fullRes = fullRes.concat(res);
         });
 
-        qry.on("end", function() {
-                assert(fullRes.length, 1, "Result length is not correct" +
-                    "[expected=1, val = " + fullRes.length + "]");
+        qry.on("end", function(err) {
+            assert(err === null, "Error on query [err=" + err + "].");
 
-                assert(fullRes[0]["key"] === "key0", "Result value for key is not correct "+
-                    "[expected=key0, real=" + fullRes[0]["key"] + "]");
+            assert(fullRes.length, 1, "Result length is not correct" +
+                "[expected=1, val = " + fullRes.length + "]");
 
-                assert(fullRes[0]["value"] === "val0", "Result value for key is not correct "+
-                    "[expected=val0, real=" + fullRes[0]["value"] + "]");
+            assert(fullRes[0]["key"] === "key0", "Result value for key is not correct "+
+                "[expected=key0, real=" + fullRes[0]["key"] + "]");
 
-                TestUtils.testDone();
-            });
+            assert(fullRes[0]["value"] === "val0", "Result value for key is not correct "+
+                "[expected=val0, real=" + fullRes[0]["value"] + "]");
+
+            TestUtils.testDone();
+        });
 
         ignite.cache("mycache").query(qry);
     }
@@ -74,23 +72,24 @@ testSqlFieldsQuery = function() {
 
         var fullRes = [];
 
-        qry.on("error", function(err) {
-                TestUtils.testFails();
-            });
-
         qry.on("page", function(res) {
+            console.log("PAGE:" + res);
             fullRes = fullRes.concat(res);
         });
 
-        qry.on("end", function() {
-                assert(fullRes.length, 1, "Result length is not correct" +
-                    "[expected=1, val = " + fullRes.length + "]");
+        qry.on("end", function(err) {
+            assert(err === null, "Error on query [err=" + err + "].");
 
-                assert(fullRes[0].indexOf("Jane Doe") > -1,
-                    "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
+            assert(fullRes.length, 4, "Result length is not correct" +
+                "[expected=1, val = " + fullRes.length + "]");
 
-                TestUtils.testDone();
-            });
+            fullRes.sort();
+
+            assert(fullRes[0].indexOf("Jane Doe") > -1,
+                "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
+
+            TestUtils.testDone();
+        });
 
         ignite.cache("person").query(qry);
     }
@@ -110,15 +109,13 @@ testSqlQueryWithParams = function() {
 
         var fullRes = [];
 
-        qry.on("error", function(err) {
-                TestUtils.testFails();
-            });
-
         qry.on("page", function(res) {
             fullRes = fullRes.concat(res);
         });
 
-        qry.on("end", function() {
+        qry.on("end", function(err) {
+                assert(err === null, "Error on query [err=" + err + "].");
+
                 //TODO:
                 assert(fullRes.length, 1, "Result length is not correct" +
                     "[expected=1, val = " + fullRes.length + "]");
