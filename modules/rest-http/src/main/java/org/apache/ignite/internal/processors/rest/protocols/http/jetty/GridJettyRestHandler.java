@@ -358,28 +358,28 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (req.getHeader("JSONObject") != null) {
                     if (cmd == CACHE_PUT_ALL) {
-                        StringBuilder builder = new StringBuilder();
+                        JSONObject o =parseRequest(req);
 
-                        Scanner reader = null;
-
-                        try {
-                            reader = new Scanner(req.getReader());
-                        }
-                        catch (IOException e) {
-                            throw new IgniteCheckedException(e);
-                        }
-
-                        while (reader.hasNext())
-                            builder.append(reader.next() + "\n");
-
-                        JSONObject o = JSONObject.fromObject(builder.toString());
-
-                        restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+                        int i = 1;
 
                         Map<Object, Object> map = U.newHashMap(o.keySet().size());
 
-                        for (Object k : o.keySet())
-                            map.put(k, o.get(k));
+                        while (o.get("k" + i) != null) {
+                            Object key = o.get("k" + i);
+
+                            Object val = o.get("val" + i);
+
+                            if (key instanceof JSONObject)
+                                key = new JSONCacheObject((JSONObject)key);
+
+                            if (val instanceof JSONObject)
+                                val = new JSONCacheObject((JSONObject)val);
+
+                            map.put(key, val);
+                            i++;
+                        }
+
+                        restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
 
                         restReq0.values(map);
                     }
@@ -731,5 +731,28 @@ public class GridJettyRestHandler extends AbstractHandler {
             return ((String[])obj)[0];
 
         return null;
+    }
+
+    /**
+     * @param req Request.
+     * @return JSON object.
+     * @throws IgniteCheckedException If failed.
+     */
+    private JSONObject parseRequest(HttpServletRequest req) throws IgniteCheckedException{
+        StringBuilder builder = new StringBuilder();
+
+        Scanner reader = null;
+
+        try {
+            reader = new Scanner(req.getReader());
+        }
+        catch (IOException e) {
+            throw new IgniteCheckedException(e);
+        }
+
+        while (reader.hasNext())
+            builder.append(reader.next() + "\n");
+
+        return JSONObject.fromObject(builder.toString());
     }
 }

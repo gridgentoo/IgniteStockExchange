@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.scripting;
+package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
+
+import net.sf.json.*;
 
 import java.util.*;
 
@@ -24,13 +26,44 @@ import java.util.*;
  */
 public class JSONCacheObject {
     /** Fields map. */
-    private Map<String, Object> fields = new HashMap<>();
+    private Map<Object, Object> fields = new HashMap<>();
+
+    public JSONCacheObject() {
+
+    }
+
+    public JSONCacheObject(JSONObject o) {
+        for (Object key : o.keySet())
+            addField(toSimpleObject(key), toSimpleObject(o.get(key)));
+    }
+
+    private Object toSimpleObject(Object o) {
+        if (o instanceof JSONObject) {
+            JSONObject o1 = (JSONObject)o;
+            JSONCacheObject res = new JSONCacheObject();
+
+            for (Object key : o1.keySet())
+                res.addField(toSimpleObject(key), toSimpleObject(o1.get(key)));
+
+            return res;
+        }
+        else if (o instanceof JSONArray) {
+            JSONArray o1 = (JSONArray) o;
+            List<Object> val = new ArrayList<>();
+            for (Object v : o1)
+                val.add(toSimpleObject(v));
+
+            return val;
+        }
+
+        return o;
+    }
 
     /**
      * @param key Field name.
      * @param val Field value.
      */
-    public void addField(String key, Object val) {
+    public void addField(Object key, Object val) {
         fields.put(key, val);
     }
 
@@ -38,14 +71,14 @@ public class JSONCacheObject {
      * @param key Field name.
      * @return Field value.
      */
-    public Object getField(String key) {
+    public Object getField(Object key) {
         return fields.get(key);
     }
 
     /**
      * @return Fields key set.
      */
-    public Set<String> keys() {
+    public Set<Object> keys() {
         return fields.keySet();
     }
 
@@ -65,7 +98,7 @@ public class JSONCacheObject {
         if (fields.size() != obj0.fields.size())
             return false;
 
-        for (String key : obj0.keys()) {
+        for (Object key : obj0.keys()) {
             if (!fields.containsKey(key))
                 return false;
 
