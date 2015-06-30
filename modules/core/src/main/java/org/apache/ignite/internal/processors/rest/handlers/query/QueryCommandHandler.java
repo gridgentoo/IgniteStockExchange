@@ -190,11 +190,11 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public GridRestResponse call() throws Exception {
             try {
-                if (curs.contains(req.queryId()))
+                Iterator<Cache.Entry<String, String>> cur = curs.get(req.queryId());
+
+                if (cur == null)
                     return new GridRestResponse(GridRestResponse.STATUS_FAILED,
                         "Cannot find query [qryId=" + req.queryId() + "]");
-
-                Iterator<Cache.Entry<String, String>> cur = curs.get(req.queryId());
 
                 List<Cache.Entry<String, String>> res = new ArrayList<>();
 
@@ -215,6 +215,8 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
                 return new GridRestResponse(response);
             }
             catch (Exception e) {
+                curs.remove(req.queryId());
+
                 return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
             }
         }
