@@ -32,6 +32,14 @@ public class JSONCacheObject {
 
     }
 
+    public void setFields(Map<Object, Object> fields) {
+        this.fields = fields;
+    }
+
+    public Map<Object, Object> getFields() {
+        return fields;
+    }
+
     public JSONCacheObject(JSONObject o) {
         for (Object key : o.keySet())
             addField(toSimpleObject(key), toSimpleObject(o.get(key)));

@@ -17,6 +17,7 @@
 
 module.exports = {
     Cache : require('./cache.js').Cache,
+    Entry : require('./cache.js').Entry,
     Ignition : require('./ignition.js').Ignition,
     Server : require('./server.js').Server,
     Ignite : require('./ignite.js').Ignite,

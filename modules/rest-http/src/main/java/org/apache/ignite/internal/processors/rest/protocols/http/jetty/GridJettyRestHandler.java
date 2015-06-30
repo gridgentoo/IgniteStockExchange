@@ -291,6 +291,8 @@ public class GridJettyRestHandler extends AbstractHandler {
         JSON json;
 
         try {
+            createResponse(cmd, cmdRes);
+
             json = JSONSerializer.toJSON(cmdRes, cfg);
         }
         catch (JSONException e) {
@@ -310,6 +312,54 @@ public class GridJettyRestHandler extends AbstractHandler {
         }
         catch (IOException e) {
             U.error(log, "Failed to send HTTP response: " + json.toString(2), e);
+        }
+    }
+
+    private void createResponse(GridRestCommand cmd, GridRestResponse cmdRes) {
+        if (cmd == CACHE_GET_ALL) {
+            if (cmdRes.getResponse() == null) {
+                return;
+            }
+
+            Map o = (Map)cmdRes.getResponse();
+
+            List<RestEntry> res = new ArrayList<>();
+
+            for (Object k : o.keySet())
+                res.add(new RestEntry(k, o.get(k)));
+
+            cmdRes.setResponse(res);
+        }
+    }
+
+    public static class RestEntry {
+        private Object key;
+        private Object value;
+        public RestEntry(Object key, Object value) {
+            if (key instanceof JSONCacheObject)
+                this.key = ((JSONCacheObject)key).getFields();
+            else
+                this.key = key;
+
+            if (value instanceof JSONCacheObject)
+                this.value = ((JSONCacheObject)value).getFields();
+            else
+                this.value = value;
+        }
+        public Object getKey() {
+            return key;
+        }
+
+        public void setKey(Object key) {
+            this.key = key;
+        }
+
+        public Object getValue() {
+            return value;
+        }
+
+        public void setValue(Object value) {
+            this.value = value;
         }
     }
 
@@ -357,35 +407,48 @@ public class GridJettyRestHandler extends AbstractHandler {
                 String cacheName = (String)params.get("cacheName");
 
                 if (req.getHeader("JSONObject") != null) {
+                    JSONObject o = parseRequest(req);
+
+                    Map<Object, Object> map = U.newHashMap(o.keySet().size());
+
                     if (cmd == CACHE_PUT_ALL) {
-                        JSONObject o =parseRequest(req);
+                        List entries = (List)o.get("entries");
 
-                        int i = 1;
+                        for (Object entry : entries) {
+                            JSONCacheObject cacheEntry = new JSONCacheObject((JSONObject)entry);
 
-                        Map<Object, Object> map = U.newHashMap(o.keySet().size());
-
-                        while (o.get("k" + i) != null) {
-                            Object key = o.get("k" + i);
-
-                            Object val = o.get("val" + i);
-
-                            if (key instanceof JSONObject)
-                                key = new JSONCacheObject((JSONObject)key);
-
-                            if (val instanceof JSONObject)
-                                val = new JSONCacheObject((JSONObject)val);
+                            Object key = cacheEntry.getField("_key");
+                            Object val = cacheEntry.getField("_val");
 
                             map.put(key, val);
-                            i++;
                         }
 
                         restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
 
                         restReq0.values(map);
                     }
+                    else if (cmd == CACHE_GET_ALL || cmd == CACHE_REMOVE_ALL) {
+                        JSONCacheObject cacheObj = new JSONCacheObject(o);
+
+                        List keys = (List)cacheObj.getField("keys");
+
+                        for (Object key : keys)
+                            map.put(key, null);
+
+                        restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+
+                        restReq0.values(map);
+                    }
+                    else if (cmd == CACHE_GET || cmd == CACHE_PUT || cmd == CACHE_REMOVE) {
+                        JSONCacheObject cacheObj = new JSONCacheObject(o);
+
+                        restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+
+                        restReq0.key(cacheObj.getField("key"));
+                        restReq0.value(cacheObj.getField("val"));
+                    }
                 }
                 else {
-
                     restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
                     restReq0.key(params.get("key"));
                     restReq0.value(params.get("val"));

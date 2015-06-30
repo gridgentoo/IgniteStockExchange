@@ -17,45 +17,71 @@
 
 var TestUtils = require("./test-utils").TestUtils;
 
+var Ignite = require(TestUtils.scriptPath());
+var Entry = Ignite.Entry;
+
 var assert = require("assert");
 
 testPutGet = function() {
-    startTest("mycache", {trace: [put, getExist], entry: "6"});
+    startTest("mycache", {trace: [put, getExist], entry: ["key" , "6"]});
 }
 
 testRemove = function() {
-    startTest("mycache", {trace: [put, getExist, remove, getNonExist], entry: "6"});
+    startTest("mycache", {trace: [put, getExist, remove, getNonExist], entry: ["key" , "6"]});
 }
 
 testRemoveNoKey = function() {
-    startTest("mycache", {trace: [remove, getNonExist], entry: "6"});
+    startTest("mycache", {trace: [remove, getNonExist], entry: ["key" , "6"]});
 }
 
 testPutAllGetAll = function() {
-    startTest("mycache", {trace: [putAll, getAll], entry: {"key1": "val1", "key2" : "val2"}});
+    entries = [];
+
+    entries.push(new Entry("key1", "val1"));
+    entries.push(new Entry("key2", "val2"));
+
+    startTest("mycache", {trace: [putAll, getAll], entry: entries});
 }
 
 testPutAllObjectGetAll = function() {
-    var params = {}
+    entries = [];
+
     var key1 = {"name" : "Ann"};
     var key2 = {"name" : "Paul"};
     var val1 = {"age" : 12, "books" : ["1", "Book"]};
     var val2 = {"age" : 13, "books" : ["1", "Book"]};
 
-    params["k1"] = key1;
-    params["k2"] = key2;
-    params["val1"] = val1;
-    params["val2"] = val2;
+    entries.push(new Entry(key1, val1));
+    entries.push(new Entry(key2, val2));
 
-    startTest("mycache", {trace: [putAll, getAll], entry: params});
+    startTest("mycache", {trace: [putAll, getAll], entry: entries});
+}
+
+testRemoveAllObjectGetAll = function() {
+    entries = [];
+
+    var key1 = {"name" : "Ann"};
+    var key2 = {"name" : "Paul"};
+    var val1 = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = {"age" : 13, "books" : ["1", "Book"]};
+
+    entries.push(new Entry(key1, val1));
+    entries.push(new Entry(key2, val2));
+
+    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: entries});
 }
 
 testRemoveAll = function() {
-    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: {"key1": "val1", "key2" : "val2"}});
+    entries = [];
+
+    entries.push(new Entry("key1", "val1"));
+    entries.push(new Entry("key2", "val2"));
+
+    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: entries});
 }
 
 testIncorrectCacheName = function() {
-    startTest("mycache1", {trace: [incorrectPut], entry: "6"});
+    startTest("mycache1", {trace: [incorrectPut], entry: ["key", "6"]});
 }
 
 function startTest(cacheName, testDescription) {
@@ -77,25 +103,27 @@ function onStart(cacheName, testDescription, error, ignite) {
 }
 
 function put(cache, entry, next) {
-    cache.put("key", entry, next);
+    cache.put(entry[0], entry[1], next);
 }
 
 function getExist(cache, entry, next) {
-    cache.get("key", onGet);
+    var key = Object.keys(entry)[0];
+
+    cache.get(entry[0], onGet);
 
     function onGet(error, value) {
         assert(!error);
-        assert(value === entry);
+        assert(value === entry[1]);
         next();
     }
 }
 
 function remove(cache, entry, next) {
-    cache.remove("key", next);
+    cache.remove(entry[0], next);
 }
 
 function getNonExist(cache, entry, next) {
-    cache.get("key", onGet);
+    cache.get(entry[0], onGet);
 
     function onGet(error, value) {
         assert(!error);
@@ -109,21 +137,47 @@ function putAll(cache, entries, next) {
 }
 
 function getAll(cache, entries, next) {
-    cache.getAll(Object.keys(entries), onGetAll);
+    var keys = []
+
+    for (var entry of entries) {
+        keys.push(entry.key());
+    }
+
+    cache.getAll(keys, onGetAll.bind(null, keys));
+
     var expected = entries;
 
-    function onGetAll(error, values) {
+    function onGetAll(keys, error, values) {
         assert(!error, error);
 
-        var keys = Object.keys(expected);
+        assert(values.length === keys.length, "Values length is incorrect "
+            + "[expected=" + keys.length + ", real=" + values.length + "]");
 
         for (var i = 0; i < keys.length; ++i) {
             var key = keys[i];
 
-            assert(!!values[key], "Cannot find key. [key=" + key + "].");
+            var foundVal = null;
 
-            TestUtils.compareObject(expected[key], values[key]);
+            for (var j = 0; j < values.length; ++j) {
+                if (TestUtils.compareObject(key, values[j].key())) {
+                    foundVal = values[j];
+                }
+            }
+
+            var foundExp = null;
+
+            for (var j = 0; j < expected.length; ++j) {
+                if (TestUtils.compareObject(key, expected[j].key())) {
+                    foundExp = expected[j];
+                }
+            }
+
+            assert(foundVal !== null, "Cannot find key. [key=" + key + "].");
+            assert(foundExp !== null, "Cannot find key. [key=" + key + "].");
+
+            assert(TestUtils.compareObject(foundExp, foundVal), "Incorrect value");
         }
+
         next();
     }
 }
@@ -144,7 +198,7 @@ function getNone(cache, entries, next) {
 }
 
 function incorrectPut(cache, entry, next) {
-    cache.put("key", entry, callback);
+    cache.put(entry[0], entry[1], callback);
 
     function callback(error) {
         assert(!!error, "Do not get error for not exist cache");

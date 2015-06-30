@@ -41,7 +41,9 @@ function Cache(server, cacheName) {
  * @param {onGet} callback Called on finish
  */
 Cache.prototype.get = function(key, callback) {
-    this._server.runCommand(this._createCommand("get").addParam("key", key), callback);
+    this._server.runCommand(this._createCommand("get").
+        setPostData(JSON.stringify({"key": key})),
+        callback);
 };
 
 /**
@@ -53,7 +55,8 @@ Cache.prototype.get = function(key, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.put = function(key, value, callback) {
-    this._server.runCommand(this._createCommand("put").addParam("key", key).addParam("val", value),
+    this._server.runCommand(this._createCommand("put").
+        setPostData(JSON.stringify({"key": key, "val" : value})),
         callback);
 }
 
@@ -65,7 +68,9 @@ Cache.prototype.put = function(key, value, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.remove = function(key, callback) {
-    this._server.runCommand(this._createCommand("rmv").addParam("key", key), callback);
+    this._server.runCommand(this._createCommand("rmv").
+        setPostData(JSON.stringify({"key": key})),
+        callback);
 }
 
 /**
@@ -76,18 +81,21 @@ Cache.prototype.remove = function(key, callback) {
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.removeAll = function(keys, callback) {
-    this._server.runCommand(this._createCommand("rmvall").addParams("k", keys), callback);
+    this._server.runCommand(this._createCommand("rmvall").
+        setPostData(JSON.stringify({"keys" : keys})),
+        callback);
 }
 
 /**
  * Put keys to cache
  *
  * @this {Cache}
- * @param {Object.<string, string>} map collection of entries to put in the cache
+ * @param {Entry[]} List of entries to put in the cache
  * @param {noValue} callback Called on finish
  */
-Cache.prototype.putAll = function(map, callback) {
-    this._server.runCommand(this._createCommand("putall").setPostData(JSON.stringify(map)), callback);
+Cache.prototype.putAll = function(entries, callback) {
+    this._server.runCommand(this._createCommand("putall").setPostData(
+        JSON.stringify({"entries" : entries})), callback);
 }
 
 /**
@@ -106,7 +114,25 @@ Cache.prototype.putAll = function(map, callback) {
  * @param {Cache~onGetAll} callback Called on finish
  */
 Cache.prototype.getAll = function(keys, callback) {
-    this._server.runCommand(this._createCommand("getall").addParams("k", keys), callback);
+    function onGetAll(callback, err, res) {
+        if (err) {
+            callback.call(null, err, null);
+
+            return;
+        }
+
+        var result = [];
+
+        for (var key of res) {
+            result.push(new Entry(key["key"], key["value"]));
+        }
+
+        callback.call(null, null, result);
+    }
+
+    this._server.runCommand(this._createCommand("getall").setPostData(
+        JSON.stringify({"keys" : keys})),
+        onGetAll.bind(null, callback));
 }
 
 /**
@@ -182,4 +208,31 @@ Cache.prototype._createQueryCommand = function(name, qry) {
     return command.addParam("psz", qry.pageSize());
 }
 
+/**
+ * @this{Entry}
+ * @param key Key
+ * @param val Value
+ */
+function Entry(key, val) {
+    this._key = key;
+    this._val = val;
+}
+
+/**
+ * @this{Entry}
+ * @returns Key
+  */
+Entry.prototype.key = function() {
+    return this._key;
+}
+
+/**
+ * @this{Entry}
+ * @returns Value
+ */
+Entry.prototype.val = function() {
+    return this._val;
+}
+
 exports.Cache = Cache
+exports.Entry = Entry
