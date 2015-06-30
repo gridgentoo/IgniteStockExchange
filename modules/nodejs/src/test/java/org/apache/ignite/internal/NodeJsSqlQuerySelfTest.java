@@ -18,12 +18,11 @@
 package org.apache.ignite.internal;
 
 import org.apache.ignite.*;
-import org.apache.ignite.cache.affinity.*;
+import org.apache.ignite.cache.query.*;
 import org.apache.ignite.cache.query.annotations.*;
 import org.apache.ignite.configuration.*;
 
 import java.io.*;
-import java.util.*;
 
 /**
  * Node js sql query test.
@@ -75,29 +74,40 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
      * Init cache.
      */
     private void initCache() {
-        CacheConfiguration<UUID, Person> personCacheCfg = new CacheConfiguration<>("person");
-        personCacheCfg.setIndexedTypes(UUID.class, Person.class);
+        CacheConfiguration<Integer, Person> personCacheCfg = new CacheConfiguration<>("person");
+        personCacheCfg.setIndexedTypes(Integer.class, Person.class);
 
-        IgniteCache<UUID, Person> personCache = grid(0).getOrCreateCache(personCacheCfg);
+        IgniteCache<Integer, Person> personCache = grid(0).getOrCreateCache(personCacheCfg);
+
+        personCache.clear();
 
         Person p1 = new Person("John", "Doe", 2000);
         Person p2 = new Person("Jane", "Doe", 1000);
         Person p3 = new Person("John", "Smith", 1000);
         Person p4 = new Person("Jane", "Smith", 2000);
 
-        personCache.put(p4.getId(), p1);
-        personCache.put(p4.getId(), p2);
-        personCache.put(p4.getId(), p3);
+        personCache.put(p1.getId(), p1);
+        personCache.put(p2.getId(), p2);
+        personCache.put(p3.getId(), p3);
         personCache.put(p4.getId(), p4);
+
+        SqlQuery qry = new SqlQuery(Person.class, "salary > ? and salary <= ?");
+
+        qry.setArgs(1000, 2000);
+
+        assertEquals(2, personCache.query(qry).getAll().size());
     }
 
     /**
      * Person class.
      */
     public static class Person implements Serializable {
+        /** Person id. */
+        private static int PERSON_ID = 0;
+
         /** Person ID (indexed). */
         @QuerySqlField(index = true)
-        private UUID id;
+        private Integer id;
 
         /** First name (not-indexed). */
         @QuerySqlField
@@ -116,44 +126,68 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
          * @param lastName Last name.
          * @param salary Salary.
          */
-        Person( String firstName, String lastName, double salary) {
-            id = UUID.randomUUID();
+        Person(String firstName, String lastName, double salary) {
+            id = PERSON_ID++;
 
             this.firstName = firstName;
             this.lastName = lastName;
             this.salary = salary;
         }
 
+        /**
+         * @param firstName First name.
+         */
         public void setFirstName(String firstName) {
             this.firstName = firstName;
         }
 
+        /**
+         * @return First name.
+         */
         public String getFirstName() {
             return firstName;
         }
 
+        /**
+         * @param lastName Last name.
+         */
         public void setLastName(String lastName) {
             this.lastName = lastName;
         }
 
+        /**
+         * @return Last name.
+         */
         public String getLastName() {
             return lastName;
         }
 
-        public void setId(UUID id) {
+        /**
+         * @param id Id.
+         */
+        public void setId(Integer id) {
             this.id = id;
         }
 
+        /**
+         * @param salary Salary.
+         */
         public void setSalary(double salary) {
             this.salary = salary;
         }
 
+        /**
+         * @return Salary.
+         */
         public double getSalary() {
 
             return salary;
         }
 
-        public UUID getId() {
+        /**
+         * @return Id.
+         */
+        public Integer getId() {
             return id;
         }
     }

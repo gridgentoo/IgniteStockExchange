@@ -522,10 +522,8 @@ public class GridJettyRestHandler extends AbstractHandler {
                     builder.append(reader.next() + "\n");
 
                 JSONObject o = JSONObject.fromObject(builder.toString());
-                System.out.println("ARGUMENTS " + o.get("arg"));
 
                 List<Object> args = (List<Object>)o.get("arg");
-
                 restReq0.arguments(args.toArray());
 
                 restReq0.typeName((String)params.get("type"));

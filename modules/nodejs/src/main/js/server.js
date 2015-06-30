@@ -151,7 +151,7 @@ Server.prototype.checkConnection = function(callback) {
  */
 Server.prototype._signature = function() {
     if (!this._secretKey) {
-        return "";
+        return {};
     }
 
     var loadTimeInMS = Date.now();

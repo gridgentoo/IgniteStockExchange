@@ -40,7 +40,7 @@ testSqlQuery = function() {
         qry.on("end", function(err) {
             assert(err === null, "Error on query [err=" + err + "].");
 
-            assert(fullRes.length, 1, "Result length is not correct" +
+            assert(fullRes.length === 1, "Result length is not correct" +
                 "[expected=1, val = " + fullRes.length + "]");
 
             assert(fullRes[0]["key"] === "key0", "Result value for key is not correct "+
@@ -80,7 +80,7 @@ testSqlFieldsQuery = function() {
         qry.on("end", function(err) {
             assert(err === null, "Error on query [err=" + err + "].");
 
-            assert(fullRes.length, 4, "Result length is not correct" +
+            assert(fullRes.length === 4, "Result length is not correct" +
                 "[expected=1, val = " + fullRes.length + "]");
 
             fullRes.sort();
@@ -98,7 +98,7 @@ testSqlFieldsQuery = function() {
 }
 
 testSqlQueryWithParams = function() {
-    function sqlFieldsQuery(error, ignite) {
+    function sqlQueryWithParams(error, ignite) {
         assert(error == null, "error on sql query [err=" + error + "]");
 
         var qry = new SqlQuery("salary > ? and salary <= ?");
@@ -110,23 +110,18 @@ testSqlQueryWithParams = function() {
         var fullRes = [];
 
         qry.on("page", function(res) {
-            console.log("!!!!!Page:" + res);
-            console.log("!!!!!Page2:" + res);
-
             fullRes = fullRes.concat(res);
         });
 
         qry.on("end", function(err) {
-            console.log("RES:" + fullRes);
-
             assert(err === null, "Error on query [err=" + err + "].");
 
-            //TODO:
-            assert(fullRes.length, 2, "Result length is not correct" +
+            assert(fullRes.length === 2, "Result length is not correct" +
                 "[expected=1, val = " + fullRes.length + "]");
 
-            assert(fullRes[0].indexOf("Jane Doe") > -1,
-                "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
+            assert(((fullRes[0]["value"]["firstName"].indexOf("Jane") > -1) ||
+                (fullRes[0]["value"]["firstName"].indexOf("John") > -1)),
+                "Result does not contain Jane and John [res=" + fullRes[0]["value"]["firstName"] + "]");
 
             TestUtils.testDone();
         });
@@ -134,4 +129,5 @@ testSqlQueryWithParams = function() {
         ignite.cache("person").query(qry);
     }
 
-    TestUtils.startIgniteN
+    TestUtils.startIgniteNode(sqlQueryWithParams.bind(null));
+}
