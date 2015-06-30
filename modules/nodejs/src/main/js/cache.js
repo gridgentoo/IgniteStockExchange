@@ -153,7 +153,6 @@ Cache.prototype._sqlFieldsQuery = function(qry, onQueryExecute) {
 }
 
 Cache.prototype._sqlQuery = function(qry, onQueryExecute) {
-
     if (qry.returnType() == null) {
         qry.error("No type for sql query.");
         qry.end();
@@ -171,12 +170,15 @@ Cache.prototype._sqlQuery = function(qry, onQueryExecute) {
 
 Cache.prototype._createCommand = function(name) {
     var command = new Command(name);
+
     return command.addParam("cacheName", this._cacheName);
 }
 
 Cache.prototype._createQueryCommand = function(name, qry) {
     var command = this._createCommand(name);
+
     command.addParam("qry", qry.query());
+
     return command.addParam("psz", qry.pageSize());
 }
 

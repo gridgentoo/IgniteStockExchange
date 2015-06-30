@@ -35,6 +35,15 @@ testPutAllGetAll = function() {
     startTest("mycache", {trace: [putAll, getAll], entry: {"key1": "val1", "key2" : "val2"}});
 }
 
+testPutAllObjectGetAll = function() {
+    var key1 = {"name" : "Ann"};
+    var key2 = {"name" : "Paul"};
+    var val1 = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = {"age" : 13, "books" : ["1", "Book"]};
+
+    startTest("mycache", {trace: [putAll, getAll], entry: {key1 : val1, key2 : val2}});
+}
+
 testRemoveAll = function() {
     startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: {"key1": "val1", "key2" : "val2"}});
 }
@@ -93,10 +102,6 @@ function putAll(cache, entries, next) {
     cache.putAll(entries, next);
 }
 
-function postPutAll(cache, entries, next) {
-    cache.postPutAll(entries, next);
-}
-
 function getAll(cache, entries, next) {
     cache.getAll(Object.keys(entries), onGetAll);
     var expected = entries;
@@ -111,8 +116,7 @@ function getAll(cache, entries, next) {
 
             assert(!!values[key], "Cannot find key. [key=" + key + "].");
 
-            assert(values[key] === expected[key], "Incorrect value. [key=" + key +
-                ", expected=" + expected[key] + ", val= " + values[key] + "].");
+            TestUtils.compareObject(expected[key], values[key]);
         }
         next();
     }

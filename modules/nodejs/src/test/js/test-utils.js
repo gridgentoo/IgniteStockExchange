@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+var assert = require("assert");
+
 /**
  * Create instance of TestUtils
  *
@@ -47,6 +49,19 @@ TestUtils.igniteHome = function() {
  */
 TestUtils.sep = function() {
     return require('path').sep;
+}
+
+TestUtils.compareObject = function(o1, o2) {
+    if (typeof o1 !== 'object') {
+        assert(o1 === o2, "Incorrect value. [expected=" + o1 + ", val= " + o2 + "].");
+    }
+    else {
+        assert(Object.keys(o1).length === Object.keys(o2).length, "Incorrect key set")
+
+        for (var keyObj of Object.keys(o2)) {
+            TestUtils.compareObject(o1[keyObj], o2[keyObj]);
+        }
+    }
 }
 
 /**
