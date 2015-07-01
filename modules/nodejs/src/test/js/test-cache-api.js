@@ -35,26 +35,11 @@ testContains = function() {
 }
 
 testPutContainsAll = function() {
-    entries = [];
-
-    var key1 = {"name" : "Ann"};
-    var key2 = {"name" : "Paul"};
-    var val1 = {"age" : 12, "books" : ["1", "Book"]};
-    var val2 = {"age" : 13, "books" : ["1", "Book"]};
-
-    entries.push(new Entry(key1, val1));
-    entries.push(new Entry(key2, val2));
-
-    startTest("mycache", {trace: [putAll, containsKeys], entry: entries});
+    startTest("mycache", {trace: [putAll, containsKeys], entry: objectEntries()});
 }
 
 testNotContainsAll = function() {
-    entries = [];
-
-    entries.push(new Entry("key1", "val1"));
-    entries.push(new Entry("key2", "val2"));
-
-    startTest("mycache", {trace: [notContainsKeys], entry: entries});
+    startTest("mycache", {trace: [notContainsKeys], entry: stringEntries()});
 }
 
 testRemove = function() {
@@ -66,53 +51,61 @@ testRemoveNoKey = function() {
 }
 
 testPutAllGetAll = function() {
-    entries = [];
-
-    entries.push(new Entry("key1", "val1"));
-    entries.push(new Entry("key2", "val2"));
-
-    startTest("mycache", {trace: [putAll, getAll], entry: entries});
+    startTest("mycache", {trace: [putAll, getAll], entry: stringEntries()});
 }
 
 testPutAllObjectGetAll = function() {
-    entries = [];
-
-    var key1 = {"name" : "Ann"};
-    var key2 = {"name" : "Paul"};
-    var val1 = {"age" : 12, "books" : ["1", "Book"]};
-    var val2 = {"age" : 13, "books" : ["1", "Book"]};
-
-    entries.push(new Entry(key1, val1));
-    entries.push(new Entry(key2, val2));
-
-    startTest("mycache", {trace: [putAll, getAll], entry: entries});
+    startTest("mycache", {trace: [putAll, getAll], entry: objectEntries()});
 }
 
 testRemoveAllObjectGetAll = function() {
-    entries = [];
-
-    var key1 = {"name" : "Ann"};
-    var key2 = {"name" : "Paul"};
-    var val1 = {"age" : 12, "books" : ["1", "Book"]};
-    var val2 = {"age" : 13, "books" : ["1", "Book"]};
-
-    entries.push(new Entry(key1, val1));
-    entries.push(new Entry(key2, val2));
-
-    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: entries});
+    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: objectEntries()});
 }
 
 testRemoveAll = function() {
-    entries = [];
-
-    entries.push(new Entry("key1", "val1"));
-    entries.push(new Entry("key2", "val2"));
-
-    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: entries});
+    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: stringEntries()});
 }
 
 testIncorrectCacheName = function() {
     startTest("mycache1", {trace: [incorrectPut], entry: ["key", "6"]});
+}
+
+testGetAndPut = function() {
+    function onGetAndPut(err, res) {
+        assert(err === null, "Get error on get and put [err=" + err + "]");
+        assert(res === "6", "Incorrect result for getAndPut [expected=6, val" + res + "]");
+
+        TestUtils.testDone();
+    }
+
+    function getAndPut(cache, entry) {
+        cache.getAndPut("key", "7", onGetAndPut);
+    }
+
+    startTest("mycache", {trace: [put, getAndPut], entry: ["key", "6"]});
+}
+
+function objectEntries() {
+    entries = [];
+
+    var key1 = {"name" : "Ann"};
+    var key2 = {"name" : "Paul"};
+    var val1 = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = {"age" : 13, "books" : ["1", "Book"]};
+
+    entries.push(new Entry(key1, val1));
+    entries.push(new Entry(key2, val2));
+
+    return entries;
+}
+
+function stringEntries() {
+    entries = [];
+
+    entries.push(new Entry("key1", "val1"));
+    entries.push(new Entry("key2", "val2"));
+
+    return entries;
 }
 
 function startTest(cacheName, testDescription) {

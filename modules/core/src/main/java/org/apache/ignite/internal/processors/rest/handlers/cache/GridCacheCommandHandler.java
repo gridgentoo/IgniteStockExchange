@@ -56,6 +56,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_CONTAINS_KEYS,
         CACHE_CONTAINS_KEY,
         CACHE_GET,
+        CACHE_GET_AND_PUT,
         CACHE_GET_ALL,
         CACHE_PUT,
         CACHE_ADD,
@@ -73,6 +74,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     private static final EnumSet<GridRestCommand> KEY_REQUIRED_REQUESTS = EnumSet.of(
         CACHE_CONTAINS_KEY,
         CACHE_GET,
+        CACHE_GET_AND_PUT,
         CACHE_PUT,
         CACHE_ADD,
         CACHE_REMOVE,
@@ -157,6 +159,18 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 case CACHE_GET: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new GetCommand(key));
+
+                    break;
+                }
+
+                case CACHE_GET_AND_PUT: {
+                    final Object val = req0.value();
+
+                    if (val == null)
+                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
+
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new GetAndPutCommand(key, val));
 
                     break;
                 }
@@ -787,6 +801,32 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.getAsync(key);
+        }
+    }
+
+    /** */
+    private static class GetAndPutCommand extends CacheProjectionCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** Key. */
+        private final Object key;
+
+        /** Value.*/
+        private final Object val;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         */
+        GetAndPutCommand(Object key, Object val) {
+            this.key = key;
+            this.val = val;
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.getAndPutAsync(key, val);
         }
     }
 

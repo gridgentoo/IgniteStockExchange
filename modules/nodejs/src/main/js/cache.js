@@ -140,7 +140,7 @@ Cache.prototype.containsKey = function(key, callback) {
 }
 
 /**
- * Determines if the cache contains an entry for the specified key.
+ * Determines if the cache contains all keys.
  *
  * @this {Cache}
  * @param {Object[]} keys Keys
@@ -149,6 +149,19 @@ Cache.prototype.containsKey = function(key, callback) {
 Cache.prototype.containsKeys = function(keys, callback) {
     this._server.runCommand(this._createCommand("containskeys").
         setPostData(JSON.stringify({"keys" : keys})), callback);
+}
+
+/**
+ * Put cache value
+ *
+ * @this {Cache}
+ * @param {string} key Key
+ * @param {string} value Value
+ * @param {onGet} callback Called on finish
+ */
+Cache.prototype.getAndPut = function(key, val, callback) {
+    this._server.runCommand(this._createCommand("getandput").
+        setPostData(JSON.stringify({"key" : key, "val" : val})), callback);
 }
 
 /**
