@@ -61,6 +61,20 @@ Cache.prototype.put = function(key, value, callback) {
 }
 
 /**
+ * Put if absent
+ *
+ * @this {Cache}
+ * @param {string} key Key
+ * @param {string} value Value
+ * @param {onGet} callback Called on finish
+ */
+Cache.prototype.putIfAbsent = function(key, value, callback) {
+    this._server.runCommand(this._createCommand("putifabsent").
+        setPostData(JSON.stringify({"key": key, "val" : value})),
+        callback);
+}
+
+/**
  * Remove cache key
  *
  * @this {Cache}

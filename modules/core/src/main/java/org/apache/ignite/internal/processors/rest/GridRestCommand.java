@@ -51,6 +51,9 @@ public enum GridRestCommand {
     /** Store value in cache. */
     CACHE_PUT("put"),
 
+    /** Store value in cache. */
+    CACHE_PUT_IF_ABSENT("putifabsent"),
+
     /** Store value in cache if it doesn't exist. */
     CACHE_ADD("add"),
 

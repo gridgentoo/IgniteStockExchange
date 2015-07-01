@@ -58,6 +58,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_GET,
         CACHE_GET_AND_PUT,
         CACHE_GET_AND_PUT_IF_ABSENT,
+        CACHE_PUT_IF_ABSENT,
         CACHE_GET_ALL,
         CACHE_PUT,
         CACHE_ADD,
@@ -78,6 +79,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_GET,
         CACHE_GET_AND_PUT,
         CACHE_GET_AND_PUT_IF_ABSENT,
+        CACHE_PUT_IF_ABSENT,
         CACHE_PUT,
         CACHE_ADD,
         CACHE_REMOVE,
@@ -187,6 +189,19 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
 
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new GetAndPutIfAbsentCommand(key, val));
+
+                    break;
+                }
+
+                case CACHE_PUT_IF_ABSENT: {
+
+                    final Object val = req0.value();
+
+                    if (val == null)
+                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
+
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new PutIfAbsentCommand(key, val));
 
                     break;
                 }
@@ -869,6 +884,25 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.getAndPutIfAbsentAsync(key, val);
+        }
+    }
+
+    /** */
+    private static class PutIfAbsentCommand extends GetAndPutCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         */
+        PutIfAbsentCommand(Object key, Object val) {
+            super(key, val);
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.putIfAbsentAsync(key, val);
         }
     }
 
