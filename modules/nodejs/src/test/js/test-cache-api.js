@@ -26,6 +26,13 @@ testPutGet = function() {
     startTest("mycache", {trace: [put, getExist], entry: ["key" , "6"]});
 }
 
+testPutGetObject = function() {
+    var key = {"name" : "Paul"};
+    var val = {"age" : 12, "books" : ["1", "Book"]};
+
+    startTest("mycache", {trace: [put, getExist], entry: [key , val]});
+}
+
 testPutContains = function() {
     startTest("mycache", {trace: [put, containsKey], entry: ["key" , "6"]});
 }
@@ -249,7 +256,8 @@ function notContainsKeys(cache, entries, next) {
 function getExist(cache, entry, next) {
     function onGet(error, value) {
         assert(!error);
-        assert(value === entry[1], "Get incorrect value on get [exp=" + entry[1] + ", val=" + value + "]");
+        assert(TestUtils.compareObject(entry[1], value), "Get incorrect value on get [exp=" +
+            JSON.stringify(entry[1]) + ", val=" + JSON.stringify(value) + "]");
         next();
     }
 

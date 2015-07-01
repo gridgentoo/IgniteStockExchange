@@ -320,10 +320,10 @@ public class GridJettyRestHandler extends AbstractHandler {
      * @param cmdRes Rest response.
      */
     private void createResponse(GridRestCommand cmd, GridRestResponse cmdRes) {
-        if (cmd == CACHE_GET_ALL) {
-            if (cmdRes.getResponse() == null)
-                return;
+        if (cmdRes.getResponse() == null)
+            return;
 
+        if (cmd == CACHE_GET_ALL) {
             Map o = (Map)cmdRes.getResponse();
 
             List<RestEntry> res = new ArrayList<>();
@@ -332,6 +332,12 @@ public class GridJettyRestHandler extends AbstractHandler {
                 res.add(new RestEntry(k, o.get(k)));
 
             cmdRes.setResponse(res);
+        } else if (cmd == CACHE_GET || cmd == CACHE_GET_AND_PUT ||
+            cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE) {
+            Object o = cmdRes.getResponse();
+
+            if (o instanceof JSONCacheObject)
+                cmdRes.setResponse(((JSONCacheObject)o).getFields());
         }
     }
 

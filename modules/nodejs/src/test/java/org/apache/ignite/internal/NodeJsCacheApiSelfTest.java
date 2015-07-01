@@ -53,6 +53,13 @@ public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testPutGetObject() throws Exception {
+        runJsScript("testPutGetObject");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testIncorrectCache() throws Exception {
         runJsScript("testIncorrectCacheName");
     }
