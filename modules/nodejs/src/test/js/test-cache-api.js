@@ -171,7 +171,7 @@ testReplace = function() {
             cache.get(entry[0], function(err, res) {
                 assert(!err);
                 assert("7" === res, "Get incorrect value on get [exp=7, val=" + res + "]");
-                TestUtils.testDone();
+                next();
             });
         }
     }
@@ -191,7 +191,8 @@ testReplaceObject = function() {
             cache.get(entry[0], function(err, res) {
                 assert(!err);
                 assert(TestUtils.compareObject(newKey, res), "Get incorrect value on get.");
-                TestUtils.testDone();
+
+                next();
             });
         }
     }
@@ -210,7 +211,8 @@ testGetAndReplaceObject = function() {
         function onGetAndReplace(cache, err, res) {
             assert(err === null, "Get error on get and put [err=" + err + "]");
             assert(TestUtils.compareObject(val, res), "Get incorrect value on get.");
-            TestUtils.testDone();
+
+            next();
         }
     }
 
@@ -228,7 +230,7 @@ testReplaceValueObject = function() {
         function onReplaceValue(cache, err, res) {
             assert(err === null, "Get error on get and put [err=" + err + "]");
             assert(res === true, "Incorrect result for replace [expected=true, val" + res + "]");
-            TestUtils.testDone();
+            next();
         }
     }
 
@@ -245,7 +247,7 @@ testIncorrectReplaceObject = function() {
         function onReplace(cache, err, res) {
             assert(err !== null, "Do not get error");
             assert(err.indexOf("Failed to update keys") > -1, "Incorrect error message: " + err);
-            TestUtils.testDone();
+            next();
         }
     }
 
@@ -253,6 +255,28 @@ testIncorrectReplaceObject = function() {
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
     startTest("mycache", {trace: [put, replace], entry: [key, val]});
+}
+
+testSize = function() {
+    function onSize(exp, next, cache, err, res) {
+            assert(err === null, "Do not get error");
+            assert(res === exp, "Incorrect size: " + res);
+
+            next();
+    }
+
+    function size0(cache, entry, next) {
+        cache.size(onSize.bind(null, 0, next, cache));
+    }
+
+     function size1(cache, entry, next) {
+        cache.size(onSize.bind(null, 1, next, cache));
+    }
+
+    var key = {"name" : "Paul"};
+    var val = {"age" : 12, "books" : ["1", "Book"]};
+
+    startTest("mycache", {trace: [size0, put, size1], entry: [key, val]});
 }
 
 function objectEntries() {

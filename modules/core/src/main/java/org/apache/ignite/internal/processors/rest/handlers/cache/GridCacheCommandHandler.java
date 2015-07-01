@@ -73,7 +73,8 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_CAS,
         CACHE_APPEND,
         CACHE_PREPEND,
-        CACHE_METRICS
+        CACHE_METRICS,
+        CACHE_SIZE
     );
 
     /** Requests with required parameter {@code key}. */
@@ -325,6 +326,12 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
 
                 case CACHE_METRICS: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, key, new MetricsCommand());
+
+                    break;
+                }
+
+                case CACHE_SIZE: {
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, key, new SizeCommand());
 
                     break;
                 }
@@ -1302,6 +1309,17 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 (int)metrics.getCacheHits(),
                 (int)metrics.getCacheMisses())
             );
+        }
+    }
+
+    /** */
+    private static class SizeCommand extends CacheCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.sizeAsync(new CachePeekMode[]{CachePeekMode.ALL});
         }
     }
 }

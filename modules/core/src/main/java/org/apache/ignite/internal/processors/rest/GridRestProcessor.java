@@ -575,6 +575,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
                 break;
 
             case CACHE_METRICS:
+            case CACHE_SIZE:
             case TOPOLOGY:
             case NODE:
             case VERSION:

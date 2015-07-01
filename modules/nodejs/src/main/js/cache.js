@@ -270,6 +270,14 @@ Cache.prototype.getAndPutIfAbsent = function(key, val, callback) {
 }
 
 /**
+ * @this {Cache}
+ * @param {onGet} callback Called on finish
+ */
+Cache.prototype.size = function(callback) {
+    this._server.runCommand(this._createCommand("cachesize"), callback);
+}
+
+/**
  * Execute sql query
  *
  * @param {SqlQuery|SqlFieldsQuery} qry Query

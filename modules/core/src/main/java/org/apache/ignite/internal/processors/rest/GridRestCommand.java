@@ -93,6 +93,9 @@ public enum GridRestCommand {
     /** Cache metrics. */
     CACHE_METRICS("cache"),
 
+    /** Cache size. */
+    CACHE_SIZE("cachesize"),
+
     /** Increment. */
     ATOMIC_INCREMENT("incr"),
 

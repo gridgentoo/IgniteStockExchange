@@ -387,6 +387,7 @@ public class GridJettyRestHandler extends AbstractHandler {
             case CACHE_ADD:
             case CACHE_CAS:
             case CACHE_METRICS:
+            case CACHE_SIZE:
             case CACHE_REPLACE:
             case CACHE_APPEND:
             case CACHE_PREPEND: {

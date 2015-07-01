@@ -210,4 +210,11 @@ public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     public void testReplaceValueObject() throws Exception {
         runJsScript("testReplaceValueObject");
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testSize() throws Exception {
+        runJsScript("testSize");
+    }
 }
