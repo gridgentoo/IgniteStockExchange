@@ -205,7 +205,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         res.setQueryId(qryId);
 
         if (!cur.hasNext())
-            curs.remove(req.queryId());
+            curs.remove(qryId);
 
         return res;
     }
