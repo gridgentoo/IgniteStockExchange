@@ -542,27 +542,12 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.sqlQuery((String)params.get("qry"));
 
-                StringBuilder builder = new StringBuilder();
+                JSONObject o = parseRequest(req);
 
-                Scanner reader = null;
+                List args = (List)o.get("arg");
 
-                try {
-                    reader = new Scanner(req.getReader());
-                }
-                catch (IOException e) {
-                    throw new IgniteCheckedException(e);
-                }
-
-                while (reader.hasNext())
-                    builder.append(reader.next() + "\n");
-
-                JSONObject o = JSONObject.fromObject(builder.toString());
-
-                List<Object> args = (List<Object>)o.get("arg");
                 restReq0.arguments(args.toArray());
-
                 restReq0.typeName((String)params.get("type"));
-
                 restReq0.pageSize(Integer.parseInt((String) params.get("psz")));
                 restReq0.cacheName((String)params.get("cacheName"));
 
