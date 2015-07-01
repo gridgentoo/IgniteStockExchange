@@ -17,6 +17,9 @@
 
 var TestUtils = require("./test-utils").TestUtils;
 
+var Ignite = require(TestUtils.scriptPath());
+var Entry = Ignite.Entry;
+
 var assert = require("assert");
 
 testComputeRunScript = function() {
@@ -29,6 +32,14 @@ testComputeExecute = function() {
 
 testComputeAllNodeExecute = function() {
     TestUtils.startIgniteNode(computeAllNodeExecute);
+}
+
+testComputeCacheSizeExecute = function() {
+    TestUtils.startIgniteNode(computeCacheSizeExecute);
+}
+
+testComputeCacheExecute = function() {
+    TestUtils.startIgniteNode(computeCacheExecute);
 }
 
 function onStart(onPut, error, ignite) {
@@ -80,7 +91,7 @@ function computeExecute(error, ignite) {
         var sum = 0;
 
         for (var i = 0; i < results.length; ++i) {
-            sum += parseInt(results[i], 10);
+            sum += JSON.parse(results[i]);
         }
 
         return sum;
@@ -117,6 +128,90 @@ function computeAllNodeExecute(error, ignite) {
     }
 
     ignite.compute().execute(map, reduce, "", callback);
+}
+
+function computeCacheExecute(error, ignite) {
+    var map = function(nodes, args) {
+        for (var i = 0; i < nodes.length; i++) {
+            var f = function (args1) {
+                println("!!!!!!!arg" + args1 + " JSON" + JSON.stringify(args1));
+                var o =  ignite.cache("mycache").get(args1[0]);
+                println("!!!!!!!o" + o + " JSON" + JSON.stringify(o));
+                return o;
+            };
+
+            emit(f, args, nodes[i]);
+        }
+    };
+
+    var reduce = function(results) {
+        println("!!!!!!!!!!results=" + results);
+        var exp = {"age" : 12, "books" : ["1", "Book"]};
+
+        for (var i = 0; i < results.length; i++) {
+            var val = JSON.parse(results[i]);
+
+            println("Incorrect value [exp=" + JSON.stringify(exp) + ", val=" + JSON.stringify(val) + "]");
+        }
+
+        return sum;
+    };
+
+    var callback = function(err, res) {
+        assert(err == null, "Get error on compute task [err=" + err + "]");
+
+        ignite.cache("mycache").size(function(err, size){
+            assert(size === res, "Incorrect size [size=" + size + ", res=" + res + "]");
+            TestUtils.testDone();
+        })
+    }
+
+    entries = [];
+
+    var key1 = {"name" : "Ann"};
+    var key2 = {"name" : "Paul"};
+    var val1 = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = {"age" : 13, "books" : ["1", "Book"]};
+
+    entries.push(new Entry(key1, val1));
+    entries.push(new Entry(key2, val2));
+
+    ignite.cache("mycache").putAll(entries, function(err) {ignite.compute().execute(map, reduce, [key1, val1], callback);});
+}
+
+function computeCacheSizeExecute(error, ignite) {
+    var map = function(nodes, arg) {
+        for (var i = 0; i < nodes.length; i++) {
+            var f = function (args) {
+                println("!!!!!Node id " + ignite.localNode().id());
+
+                return ignite.cache("mycache").localSize();
+            };
+
+            emit(f, [], nodes[i]);
+        }
+    };
+
+    var reduce = function(results) {
+        var sum = 0;
+
+        for (var i = 0; i < results.length; i++) {
+            sum += JSON.parse(results[i]);
+        }
+
+        return sum;
+    };
+
+    var callback = function(err, res) {
+        assert(err == null, "Get error on compute task [err=" + err + "]");
+
+        ignite.cache("mycache").size(function(err, size){
+            assert(size === res, "Incorrect size [size=" + size + ", res=" + res + "]");
+            TestUtils.testDone();
+        })
+    }
+
+    ignite.cache("mycache").putAll("key", "val", function(err) {ignite.compute().execute(map, reduce, "", callback);});
 }
 
 testComputeFuncWithErrorExecute = function() {

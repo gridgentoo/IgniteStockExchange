@@ -83,6 +83,20 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testComputeCacheSizeExecute() throws Exception {
+        runJsScript("testComputeCacheSizeExecute");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testComputeCacheExecute() throws Exception {
+        runJsScript("testComputeCacheExecute");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testRestartGrid() throws Exception {
         final AtomicInteger id = new AtomicInteger(2);
         IgniteInternalFuture<Long> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {
