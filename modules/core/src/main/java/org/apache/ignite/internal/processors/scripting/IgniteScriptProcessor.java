@@ -61,8 +61,14 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
             "var func = __createJSFunction(funcSource); " +
             "return func.apply(null, [arg1, arg2]); }";
 
+        String internalJSCall = "function __internalJSCall(funcSource, arg1, arg2) { " +
+                "var func = __createJSFunction(funcSource); " +
+                "println('INIT arg=' + arg1);"+
+                "return func.apply(null, [JSON.parse(arg1), arg2]); }";
+
         addEngineFunction(createJSFunction);
         addEngineFunction(internalCall);
+        addEngineFunction(internalJSCall);
     }
 
     /**
@@ -129,6 +135,31 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
             Invocable invocable = (Invocable) jsEngine;
 
             return invocable.invokeFunction("__internalCall", src, arg, arg2);
+        }
+        catch (ScriptException e) {
+            throw new IgniteCheckedException("Function evaluation failed [funcName=" + src + "].");
+        }
+        catch (NoSuchMethodException e) {
+            throw new IgniteCheckedException("Cannot find function [func=__internalCall].");
+        }
+    }
+
+    /**
+     * @param src Script src.
+     * @param arg Argument.
+     * @return Result of the function.
+     * @throws IgniteCheckedException If script failed.
+     */
+    public Object invokeJSFunction(String src, Object arg, Object arg2) throws IgniteCheckedException {
+        try {
+            Invocable invocable = (Invocable) jsEngine;
+            if (arg != null && arg2 != null)
+                return invocable.invokeFunction("__internalJSCall", src, arg.toString(), arg2.toString());
+            if (arg != null && arg2 == null)
+                return invocable.invokeFunction("__internalJSCall", src, arg.toString(), arg2);
+
+            return invocable.invokeFunction("__internalJSCall", src, arg, arg2);
+
         }
         catch (ScriptException e) {
             throw new IgniteCheckedException("Function evaluation failed [funcName=" + src + "].");

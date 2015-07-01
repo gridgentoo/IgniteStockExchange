@@ -45,19 +45,22 @@ testComputeCacheExecute = function() {
 function onStart(onPut, error, ignite) {
     var cache = ignite.cache("mycache");
 
-    var params = {}
+    var params = [];
 
     for (var i = 900; i < 1000; ++i) {
-        params["key" + i] = "val" + i;
+        params.push(new Entry("key" + i,  "val" + i));
     }
 
     cache.putAll(params, onPut.bind(null, ignite))
 }
 
 function computeRunScript(ignite, error) {
+    assert(error == null, "Error on put:" + error);
+
     var comp = ignite.compute();
 
     var f = function (args) {
+        println("!!!!" + args + " " + ignite.name());
         return args + " " + ignite.name();
     }
 
@@ -73,6 +76,8 @@ function computeRunScript(ignite, error) {
 }
 
 function computeExecute(error, ignite) {
+    assert(error == null, "Error on put:" + error);
+
     var map = function(nodes, arg) {
         var words = arg.split(" ");
 
@@ -91,7 +96,7 @@ function computeExecute(error, ignite) {
         var sum = 0;
 
         for (var i = 0; i < results.length; ++i) {
-            sum += results[i].intValue();
+            sum += results[i];
         }
 
         return sum;
@@ -108,6 +113,8 @@ function computeExecute(error, ignite) {
 }
 
 function computeAllNodeExecute(error, ignite) {
+    assert(error == null, "Error on put:" + error);
+
     var map = function(nodes, arg) {
         for (var i = 0; i < nodes.length; i++) {
             var f = function (node) {
@@ -131,6 +138,8 @@ function computeAllNodeExecute(error, ignite) {
 }
 
 function computeCacheExecute(error, ignite) {
+    assert(error == null, "Error on put:" + error);
+
     var map = function(nodes, args) {
         for (var i = 0; i < nodes.length; i++) {
             var f = function (args1) {
@@ -188,6 +197,8 @@ function computeCacheExecute(error, ignite) {
 }
 
 function computeCacheSizeExecute(error, ignite) {
+    assert(error == null, "Error on put:" + error);
+
     var map = function(nodes, arg) {
         for (var i = 0; i < nodes.length; i++) {
             var f = function (args) {
@@ -204,9 +215,7 @@ function computeCacheSizeExecute(error, ignite) {
         var sum = 0;
 
         for (var i = 0; i < results.length; i++) {
-            println("TYPE:" + (typeof results[i]));
-            println("keys:" + (Object.keys(results[i])));
-            sum += results[i].intValue();
+            sum += results[i];
         }
 
         return sum;

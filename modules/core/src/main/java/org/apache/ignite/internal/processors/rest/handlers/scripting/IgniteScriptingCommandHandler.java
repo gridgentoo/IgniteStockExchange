@@ -17,6 +17,7 @@
 
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
+import net.sf.json.*;
 import org.apache.ignite.*;
 import org.apache.ignite.cluster.*;
 import org.apache.ignite.compute.*;
@@ -174,7 +175,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     data[i] = results.get(i).getData();
                 }
 
-                return ctx.scripting().invokeFunction(reduceFunc, data);
+                return ctx.scripting().invokeJSFunction(reduceFunc, JSONSerializer.toJSON(data), null);
             }
             catch (IgniteCheckedException e) {
                 throw U.convertException(e);

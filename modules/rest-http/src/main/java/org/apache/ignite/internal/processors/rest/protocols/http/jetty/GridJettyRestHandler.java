@@ -798,7 +798,7 @@ public class GridJettyRestHandler extends AbstractHandler {
         }
 
         while (reader.hasNext())
-            builder.append(reader.next() + "\n");
+            builder.append(reader.nextLine() + "\n");
 
         return JSONObject.fromObject(builder.toString());
     }
