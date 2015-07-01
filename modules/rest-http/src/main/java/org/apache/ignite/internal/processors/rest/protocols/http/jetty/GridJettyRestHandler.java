@@ -315,11 +315,14 @@ public class GridJettyRestHandler extends AbstractHandler {
         }
     }
 
+    /**
+     * @param cmd Rest command.
+     * @param cmdRes Rest response.
+     */
     private void createResponse(GridRestCommand cmd, GridRestResponse cmdRes) {
         if (cmd == CACHE_GET_ALL) {
-            if (cmdRes.getResponse() == null) {
+            if (cmdRes.getResponse() == null)
                 return;
-            }
 
             Map o = (Map)cmdRes.getResponse();
 
@@ -329,37 +332,6 @@ public class GridJettyRestHandler extends AbstractHandler {
                 res.add(new RestEntry(k, o.get(k)));
 
             cmdRes.setResponse(res);
-        }
-    }
-
-    public static class RestEntry {
-        private Object key;
-        private Object value;
-        public RestEntry(Object key, Object value) {
-            if (key instanceof JSONCacheObject)
-                this.key = ((JSONCacheObject)key).getFields();
-            else
-                this.key = key;
-
-            if (value instanceof JSONCacheObject)
-                this.value = ((JSONCacheObject)value).getFields();
-            else
-                this.value = value;
-        }
-        public Object getKey() {
-            return key;
-        }
-
-        public void setKey(Object key) {
-            this.key = key;
-        }
-
-        public Object getValue() {
-            return value;
-        }
-
-        public void setValue(Object value) {
-            this.value = value;
         }
     }
 
@@ -804,7 +776,7 @@ public class GridJettyRestHandler extends AbstractHandler {
     private JSONObject parseRequest(HttpServletRequest req) throws IgniteCheckedException{
         StringBuilder builder = new StringBuilder();
 
-        Scanner reader = null;
+        Scanner reader;
 
         try {
             reader = new Scanner(req.getReader());
@@ -817,5 +789,60 @@ public class GridJettyRestHandler extends AbstractHandler {
             builder.append(reader.next() + "\n");
 
         return JSONObject.fromObject(builder.toString());
+    }
+
+    /**
+     * Rest entry.
+     */
+    public static class RestEntry {
+        /** Key. */
+        private Object key;
+
+        /** Value. */
+        private Object value;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         */
+        public RestEntry(Object key, Object val) {
+            if (key instanceof JSONCacheObject)
+                this.key = ((JSONCacheObject)key).getFields();
+            else
+                this.key = key;
+
+            if (val instanceof JSONCacheObject)
+                this.value = ((JSONCacheObject)val).getFields();
+            else
+                this.value = val;
+        }
+
+        /**
+         * @return Key.
+         */
+        public Object getKey() {
+            return key;
+        }
+
+        /**
+         * @param key Key.
+         */
+        public void setKey(Object key) {
+            this.key = key;
+        }
+
+        /**
+         * @return Value.
+         */
+        public Object getValue() {
+            return value;
+        }
+
+        /**
+         * @param val Value.
+         */
+        public void setValue(Object val) {
+            this.value = val;
+        }
     }
 }
