@@ -202,6 +202,24 @@ testReplaceObject = function() {
     startTest("mycache", {trace: [put, replace], entry: [key, val]});
 }
 
+testGetAndReplaceObject = function() {
+    function getAndReplace(cache, entry, next) {
+        var newKey = {"key" :"7"};
+        cache.getAndReplace(entry[0], newKey, onGetAndReplace.bind(null, cache));
+
+        function onGetAndReplace(cache, err, res) {
+            assert(err === null, "Get error on get and put [err=" + err + "]");
+            assert(TestUtils.compareObject(val, res), "Get incorrect value on get.");
+            TestUtils.testDone();
+        }
+    }
+
+    var key = {"name" : "Paul"};
+    var val = {"age" : 12, "books" : ["1", "Book"]};
+
+    startTest("mycache", {trace: [put, getAndReplace], entry: [key, val]});
+}
+
 testIncorrectReplaceObject = function() {
     function replace(cache, entry, next) {
         cache.replace(entry[0], "7", onReplace.bind(null, cache));

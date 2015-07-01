@@ -333,7 +333,8 @@ public class GridJettyRestHandler extends AbstractHandler {
 
             cmdRes.setResponse(res);
         } else if (cmd == CACHE_GET || cmd == CACHE_GET_AND_PUT ||
-            cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE) {
+            cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE ||
+            cmd == CACHE_GET_AND_REPLACE) {
             Object o = cmdRes.getResponse();
 
             if (o instanceof JSONCacheObject)
@@ -373,6 +374,7 @@ public class GridJettyRestHandler extends AbstractHandler {
             case CACHE_GET:
             case CACHE_GET_ALL:
             case CACHE_GET_AND_PUT:
+            case CACHE_GET_AND_REPLACE:
             case CACHE_PUT_IF_ABSENT:
             case CACHE_GET_AND_PUT_IF_ABSENT:
             case CACHE_PUT:
@@ -427,7 +429,8 @@ public class GridJettyRestHandler extends AbstractHandler {
                     else if (cmd == CACHE_GET || cmd == CACHE_PUT || cmd == CACHE_REMOVE ||
                         cmd == CACHE_CONTAINS_KEY || cmd == CACHE_GET_AND_PUT ||
                         cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE ||
-                        cmd == CACHE_PUT_IF_ABSENT || cmd == CACHE_REMOVE_VALUE || cmd == CACHE_REPLACE) {
+                        cmd == CACHE_PUT_IF_ABSENT || cmd == CACHE_REMOVE_VALUE || cmd == CACHE_REPLACE ||
+                        cmd == CACHE_GET_AND_REPLACE) {
                         JSONCacheObject cacheObj = new JSONCacheObject(o);
 
                         restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);

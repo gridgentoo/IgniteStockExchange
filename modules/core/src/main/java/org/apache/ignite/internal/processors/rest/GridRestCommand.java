@@ -75,6 +75,9 @@ public enum GridRestCommand {
     /** Replace cache value only if there is currently a mapping for it. */
     CACHE_REPLACE("rep"),
 
+    /** Replace cache value only if there is currently a mapping for it. */
+    CACHE_GET_AND_REPLACE("getandreplace"),
+
     /** Compare and set. */
     CACHE_CAS("cas"),
 

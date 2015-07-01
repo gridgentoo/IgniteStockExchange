@@ -57,6 +57,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_CONTAINS_KEY,
         CACHE_GET,
         CACHE_GET_AND_PUT,
+        CACHE_GET_AND_REPLACE,
         CACHE_GET_AND_PUT_IF_ABSENT,
         CACHE_PUT_IF_ABSENT,
         CACHE_GET_ALL,
@@ -79,6 +80,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_CONTAINS_KEY,
         CACHE_GET,
         CACHE_GET_AND_PUT,
+        CACHE_GET_AND_REPLACE,
         CACHE_GET_AND_PUT_IF_ABSENT,
         CACHE_PUT_IF_ABSENT,
         CACHE_PUT,
@@ -174,6 +176,13 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 case CACHE_GET_AND_PUT: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new GetAndPutCommand(key, getValue(req0)));
+
+                    break;
+                }
+
+                case CACHE_GET_AND_REPLACE: {
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new GetAndReplaceCommand(key, getValue(req0)));
 
                     break;
                 }
@@ -862,6 +871,25 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.getAndPutAsync(key, val);
+        }
+    }
+
+    /** */
+    private static class GetAndReplaceCommand extends GetAndPutCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         */
+        GetAndReplaceCommand(Object key, Object val) {
+            super(key, val);
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.getAndReplaceAsync(key, val);
         }
     }
 
