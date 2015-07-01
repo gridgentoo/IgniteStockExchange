@@ -74,6 +74,19 @@ Cache.prototype.remove = function(key, callback) {
 }
 
 /**
+ * Get and remove cache key
+ *
+ * @this {Cache}
+ * @param {string} key Key
+ * @param {onGet} callback Called on finish with previous value
+ */
+Cache.prototype.getAndRemove = function(key, callback) {
+    this._server.runCommand(this._createCommand("getandrmv").
+        setPostData(JSON.stringify({"key": key})),
+        callback);
+}
+
+/**
  * Remove cache keys
  *
  * @this {Cache}

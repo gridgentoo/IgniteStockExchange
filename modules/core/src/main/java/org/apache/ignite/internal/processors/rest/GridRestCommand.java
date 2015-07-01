@@ -60,6 +60,9 @@ public enum GridRestCommand {
     /** Remove value from cache. */
     CACHE_REMOVE("rmv"),
 
+    /** Remove value from cache. */
+    CACHE_GET_AND_REMOVE("getandrmv"),
+
     /** Remove several values from cache. */
     CACHE_REMOVE_ALL("rmvall"),
 

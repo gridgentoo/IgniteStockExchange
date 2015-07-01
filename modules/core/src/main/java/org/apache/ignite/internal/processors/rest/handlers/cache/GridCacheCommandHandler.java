@@ -63,6 +63,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_ADD,
         CACHE_PUT_ALL,
         CACHE_REMOVE,
+        CACHE_GET_AND_REMOVE,
         CACHE_REMOVE_ALL,
         CACHE_REPLACE,
         CACHE_CAS,
@@ -80,6 +81,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_PUT,
         CACHE_ADD,
         CACHE_REMOVE,
+        CACHE_GET_AND_REMOVE,
         CACHE_REPLACE,
         ATOMIC_INCREMENT,
         ATOMIC_DECREMENT,
@@ -246,6 +248,13 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 case CACHE_REMOVE: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new RemoveCommand(key));
+
+                    break;
+                }
+
+                case CACHE_GET_AND_REMOVE: {
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new GetAndRemoveCommand(key));
 
                     break;
                 }
@@ -911,7 +920,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         private static final long serialVersionUID = 0L;
 
         /** */
-        private final Object key;
+        protected final Object key;
 
         /**
          * @param key Key.
@@ -923,6 +932,24 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.removeAsync(key);
+        }
+    }
+
+    /** */
+    private static class GetAndRemoveCommand extends RemoveCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /**
+         * @param key Key.
+         */
+        GetAndRemoveCommand(Object key) {
+            super(key);
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.getAndRemoveAsync(key);
         }
     }
 

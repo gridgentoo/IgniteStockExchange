@@ -100,6 +100,21 @@ testGetAndPutIfAbsent = function() {
     startTest("mycache", {trace: [put, getAndPutIfAbsent, getExist], entry: ["key", "6"]});
 }
 
+testGetAndRemove = function() {
+    function getAndRemove(cache, entry, next) {
+        cache.getAndRemove("key", onGetAndRemove);
+
+        function onGetAndRemove(err, res) {
+            assert(err === null, "Get error on get and put [err=" + err + "]");
+            assert(res === "6", "Incorrect result for getAndPut [expected=6, val" + res + "]");
+
+            next();
+        }
+    }
+
+    startTest("mycache", {trace: [put, getAndRemove, getNone], entry: ["key", "6"]});
+}
+
 function objectEntries() {
     entries = [];
 
