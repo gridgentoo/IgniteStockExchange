@@ -53,6 +53,7 @@ import static org.apache.ignite.transactions.TransactionIsolation.*;
 public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(
+        CACHE_CONTAINS_KEYS,
         CACHE_CONTAINS_KEY,
         CACHE_GET,
         CACHE_GET_ALL,
@@ -139,9 +140,16 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
             IgniteInternalFuture<GridRestResponse> fut;
 
             switch (cmd) {
+                case CACHE_CONTAINS_KEYS: {
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new ContainsKeysCommand(getKeys(req0)));
+
+                    break;
+                }
+
                 case CACHE_CONTAINS_KEY: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
-                        new ContainsCommand(key));
+                        new ContainsKeyCommand(key));
 
                     break;
                 }
@@ -154,23 +162,8 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 }
 
                 case CACHE_GET_ALL: {
-                    Set<Object> keys = req0.values().keySet();
-
-                    if (F.isEmpty(keys))
-                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("keys"));
-
-                    // HashSet wrapping for correct serialization
-                    HashSet<Object> keys0 = new HashSet<>();
-
-                    for (Object getKey : keys) {
-                        if (getKey == null)
-                            throw new IgniteCheckedException("Failing getAll operation (null keys are not allowed).");
-
-                        keys0.add(getKey);
-                    }
-
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
-                        new GetAllCommand(keys0));
+                        new GetAllCommand(getKeys(req0)));
 
                     break;
                 }
@@ -303,6 +296,30 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
             if (log.isDebugEnabled())
                 log.debug("Handled cache REST request: " + req);
         }
+    }
+
+    /**
+     * @param req Request.
+     * @return Request keys.
+     * @throws IgniteCheckedException If incorrect keys are presented.
+     */
+    private Set<Object> getKeys(GridRestCacheRequest req) throws IgniteCheckedException {
+        Set<Object> keys = req.values().keySet();
+
+        if (F.isEmpty(keys))
+            throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("keys"));
+
+        // HashSet wrapping for correct serialization
+        HashSet<Object> keys0 = new HashSet<>();
+
+        for (Object getKey : keys) {
+            if (getKey == null)
+                throw new IgniteCheckedException("Failing operation (null keys are not allowed).");
+
+            keys0.add(getKey);
+        }
+
+        return keys0;
     }
 
     /**
@@ -711,7 +728,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     }
 
     /** */
-    private static class ContainsCommand extends CacheProjectionCommand {
+    private static class ContainsKeyCommand extends CacheProjectionCommand {
         /** */
         private static final long serialVersionUID = 0L;
 
@@ -721,13 +738,34 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /**
          * @param key Key.
          */
-        ContainsCommand(Object key) {
+        ContainsKeyCommand(Object key) {
             this.key = key;
         }
 
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.containsKeyAsync(key);
+        }
+    }
+
+    /** */
+    private static class ContainsKeysCommand extends CacheProjectionCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private final Collection<Object> keys;
+
+        /**
+         * @param keys Keys.
+         */
+        ContainsKeysCommand(Collection<Object> keys) {
+            this.keys = keys;
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.containsKeysAsync(keys);
         }
     }
 

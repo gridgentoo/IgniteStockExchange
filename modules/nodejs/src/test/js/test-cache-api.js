@@ -34,6 +34,29 @@ testContains = function() {
     startTest("mycache", {trace: [notContainsKey], entry: ["key" , "6"]});
 }
 
+testPutContainsAll = function() {
+    entries = [];
+
+    var key1 = {"name" : "Ann"};
+    var key2 = {"name" : "Paul"};
+    var val1 = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = {"age" : 13, "books" : ["1", "Book"]};
+
+    entries.push(new Entry(key1, val1));
+    entries.push(new Entry(key2, val2));
+
+    startTest("mycache", {trace: [putAll, containsKeys], entry: entries});
+}
+
+testNotContainsAll = function() {
+    entries = [];
+
+    entries.push(new Entry("key1", "val1"));
+    entries.push(new Entry("key2", "val2"));
+
+    startTest("mycache", {trace: [notContainsKeys], entry: entries});
+}
+
 testRemove = function() {
     startTest("mycache", {trace: [put, getExist, remove, getNonExist], entry: ["key" , "6"]});
 }
@@ -129,6 +152,40 @@ function notContainsKey(cache, entry, next) {
     cache.containsKey(entry[0], onContainsKey);
 
     function onContainsKey(err, val) {
+        assert(err === null, "Error on contains key [err=" + err + "]");
+        assert(val === false, "Incorrect result [expected=" + false + ", val=" + val + "]");
+
+        TestUtils.testDone();
+    }
+}
+
+function containsKeys(cache, entries, next) {
+    var keys = []
+
+    for (var entry of entries) {
+        keys.push(entry.key());
+    }
+
+    cache.containsKeys(keys, onContainsKeys);
+
+    function onContainsKeys(err, val) {
+        assert(err === null, "Error on contains key [err=" + err + "]");
+        assert(val === true, "Incorrect result [expected=" + true + ", val=" + val + "]");
+
+        TestUtils.testDone();
+    }
+}
+
+function notContainsKeys(cache, entries, next) {
+    var keys = []
+
+    for (var entry of entries) {
+        keys.push(entry.key());
+    }
+
+    cache.containsKeys(keys, onContainsKeys);
+
+    function onContainsKeys(err, val) {
         assert(err === null, "Error on contains key [err=" + err + "]");
         assert(val === false, "Incorrect result [expected=" + false + ", val=" + val + "]");
 

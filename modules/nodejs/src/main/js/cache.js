@@ -140,6 +140,18 @@ Cache.prototype.containsKey = function(key, callback) {
 }
 
 /**
+ * Determines if the cache contains an entry for the specified key.
+ *
+ * @this {Cache}
+ * @param {Object[]} keys Keys
+ * @param {Cache~onGetAll} callback Called on finish with boolean result
+ */
+Cache.prototype.containsKeys = function(keys, callback) {
+    this._server.runCommand(this._createCommand("containskeys").
+        setPostData(JSON.stringify({"keys" : keys})), callback);
+}
+
+/**
  * Execute sql query
  *
  * @param {SqlQuery|SqlFieldsQuery} qry Query

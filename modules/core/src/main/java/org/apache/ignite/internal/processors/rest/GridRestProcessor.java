@@ -388,6 +388,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
         if (interceptor != null && res.getResponse() != null) {
             switch (req.command()) {
+                case CACHE_CONTAINS_KEYS:
                 case CACHE_CONTAINS_KEY:
                 case CACHE_GET:
                 case CACHE_GET_ALL:
@@ -533,6 +534,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
         switch (req.command()) {
             case CACHE_GET:
             case CACHE_CONTAINS_KEY:
+            case CACHE_CONTAINS_KEYS:
             case CACHE_GET_ALL:
                 perm = SecurityPermission.CACHE_READ;
                 name = ((GridRestCacheRequest)req).cacheName();
