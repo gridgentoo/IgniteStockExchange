@@ -154,4 +154,11 @@ public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     public void testGetAndRemove() throws Exception {
         runJsScript("testGetAndRemove");
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRemoveValue() throws Exception {
+        runJsScript("testRemoveValue");
+    }
 }

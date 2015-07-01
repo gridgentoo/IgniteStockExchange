@@ -78,12 +78,26 @@ Cache.prototype.putIfAbsent = function(key, value, callback) {
  * Remove cache key
  *
  * @this {Cache}
- * @param {string} key Key
+ * @param key Key
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.remove = function(key, callback) {
     this._server.runCommand(this._createCommand("rmv").
         setPostData(JSON.stringify({"key": key})),
+        callback);
+}
+
+/**
+ * Remove cache key
+ *
+ * @this {Cache}
+ * @param key Key
+ * @param value Value
+ * @param {noValue} callback Called on finish
+ */
+Cache.prototype.removeValue = function(key, value, callback) {
+    this._server.runCommand(this._createCommand("rmvvalue").
+        setPostData(JSON.stringify({"key": key, "val" : value})),
         callback);
 }
 

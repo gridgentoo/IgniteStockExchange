@@ -559,6 +559,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
             case CACHE_REMOVE:
             case CACHE_REMOVE_ALL:
             case CACHE_GET_AND_REMOVE:
+            case CACHE_REMOVE_VALUE:
                 perm = SecurityPermission.CACHE_REMOVE;
                 name = ((GridRestCacheRequest)req).cacheName();
 

@@ -91,7 +91,7 @@ testGetAndPutIfAbsent = function() {
 
         function onGetAndPutIfAbsent(err, res) {
             assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === "6", "Incorrect result for getAndPut [expected=6, val" + res + "]");
+            assert(res === "6", "Incorrect result for getAndPutIfAbsent [expected=6, val" + res + "]");
 
             next();
         }
@@ -106,13 +106,28 @@ testPutIfAbsent = function() {
 
         function onPutIfAbsent(err, res) {
             assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === false, "Incorrect result for getAndPut [expected=false, val" + res + "]");
+            assert(res === false, "Incorrect result for putIfAbsent [expected=false, val" + res + "]");
 
             next();
         }
     }
 
     startTest("mycache", {trace: [put, putIfAbsent, getExist], entry: ["key", "6"]});
+}
+
+testRemoveValue = function() {
+    function removeValue(cache, entry, next) {
+        cache.removeValue("key", "7", onRemoveValue);
+
+        function onRemoveValue(err, res) {
+            assert(err === null, "Get error on get and put [err=" + err + "]");
+            assert(res === false, "Incorrect result for onRemoveValue [expected=false, val" + res + "]");
+
+            next();
+        }
+    }
+
+    startTest("mycache", {trace: [put, removeValue, getExist], entry: ["key", "6"]});
 }
 
 testGetAndRemove = function() {

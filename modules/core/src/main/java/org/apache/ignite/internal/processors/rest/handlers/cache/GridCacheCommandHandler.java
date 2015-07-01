@@ -64,6 +64,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_ADD,
         CACHE_PUT_ALL,
         CACHE_REMOVE,
+        CACHE_REMOVE_VALUE,
         CACHE_GET_AND_REMOVE,
         CACHE_REMOVE_ALL,
         CACHE_REPLACE,
@@ -83,6 +84,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_PUT,
         CACHE_ADD,
         CACHE_REMOVE,
+        CACHE_REMOVE_VALUE,
         CACHE_GET_AND_REMOVE,
         CACHE_REPLACE,
         ATOMIC_INCREMENT,
@@ -170,38 +172,22 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 }
 
                 case CACHE_GET_AND_PUT: {
-                    final Object val = req0.value();
-
-                    if (val == null)
-                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
-
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
-                        new GetAndPutCommand(key, val));
+                        new GetAndPutCommand(key, getValue(req0)));
 
                     break;
                 }
 
                 case CACHE_GET_AND_PUT_IF_ABSENT: {
-                    final Object val = req0.value();
-
-                    if (val == null)
-                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
-
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
-                        new GetAndPutIfAbsentCommand(key, val));
+                        new GetAndPutIfAbsentCommand(key, getValue(req0)));
 
                     break;
                 }
 
                 case CACHE_PUT_IF_ABSENT: {
-
-                    final Object val = req0.value();
-
-                    if (val == null)
-                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
-
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
-                        new PutIfAbsentCommand(key, val));
+                        new PutIfAbsentCommand(key, getValue(req0)));
 
                     break;
                 }
@@ -214,25 +200,15 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 }
 
                 case CACHE_PUT: {
-                    final Object val = req0.value();
-
-                    if (val == null)
-                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
-
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key, new
-                        PutCommand(key, ttl, val));
+                        PutCommand(key, ttl, getValue(req0)));
 
                     break;
                 }
 
                 case CACHE_ADD: {
-                    final Object val = req0.value();
-
-                    if (val == null)
-                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
-
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
-                        new AddCommand(key, ttl, val));
+                        new AddCommand(key, ttl, getValue(req0)));
 
                     break;
                 }
@@ -263,6 +239,13 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 case CACHE_REMOVE: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new RemoveCommand(key));
+
+                    break;
+                }
+
+                case CACHE_REMOVE_VALUE: {
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new RemoveValueCommand(key, getValue(req0)));
 
                     break;
                 }
@@ -372,6 +355,20 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         }
 
         return keys0;
+    }
+
+    /**
+     * @param req Request.
+     * @return Request value.
+     * @throws IgniteCheckedException If incorrect keys are presented.
+     */
+    private Object getValue(GridRestCacheRequest req) throws IgniteCheckedException {
+        final Object val = req.value();
+
+        if (val == null)
+            throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
+
+        return val;
     }
 
     /**
@@ -966,6 +963,25 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.removeAsync(key);
+        }
+    }
+
+    /** */
+    private static class RemoveValueCommand extends GetAndPutCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         */
+        RemoveValueCommand(Object key, Object val) {
+            super(key, val);
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.removeAsync(key, val);
         }
     }
 
