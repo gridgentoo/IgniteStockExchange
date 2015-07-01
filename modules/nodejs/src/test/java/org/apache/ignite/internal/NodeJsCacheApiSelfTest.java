@@ -168,4 +168,11 @@ public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     public void testRemoveValue() throws Exception {
         runJsScript("testRemoveValue");
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRemoveAllFromCache() throws Exception {
+        runJsScript("testRemoveAllFromCache");
+    }
 }

@@ -152,6 +152,14 @@ testGetAndRemove = function() {
     startTest("mycache", {trace: [put, getAndRemove, getNone], entry: ["key", "6"]});
 }
 
+testRemoveAllFromCache = function() {
+    function removeAllFromCache(cache, entry, next) {
+        cache.removeAllFromCache(next);
+    }
+
+    startTest("mycache", {trace: [put, removeAllFromCache, getNone], entry: ["key", "6"]});
+}
+
 function objectEntries() {
     entries = [];
 

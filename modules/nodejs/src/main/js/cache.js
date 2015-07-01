@@ -128,6 +128,17 @@ Cache.prototype.removeAll = function(keys, callback) {
 }
 
 /**
+ * Remove all cache keys
+ *
+ * @this {Cache}
+ * @param {noValue} callback Called on finish
+ */
+Cache.prototype.removeAllFromCache = function(callback) {
+    this._server.runCommand(this._createCommand("rmvall"),
+        callback);
+}
+
+/**
  * Put keys to cache
  *
  * @this {Cache}
