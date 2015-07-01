@@ -269,7 +269,7 @@ testSize = function() {
         cache.size(onSize.bind(null, 0, next, cache));
     }
 
-     function size1(cache, entry, next) {
+    function size1(cache, entry, next) {
         cache.size(onSize.bind(null, 1, next, cache));
     }
 
