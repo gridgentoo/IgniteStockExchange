@@ -66,6 +66,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_PUT_ALL,
         CACHE_REMOVE,
         CACHE_REMOVE_VALUE,
+        CACHE_REPLACE_VALUE,
         CACHE_GET_AND_REMOVE,
         CACHE_REMOVE_ALL,
         CACHE_REPLACE,
@@ -87,6 +88,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_ADD,
         CACHE_REMOVE,
         CACHE_REMOVE_VALUE,
+        CACHE_REPLACE_VALUE,
         CACHE_GET_AND_REMOVE,
         CACHE_REPLACE,
         ATOMIC_INCREMENT,
@@ -255,6 +257,13 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 case CACHE_REMOVE_VALUE: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new RemoveValueCommand(key, getValue(req0)));
+
+                    break;
+                }
+
+                case CACHE_REPLACE_VALUE: {
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new ReplaceValueCommand(key, getValue(req0), req0.value2()));
 
                     break;
                 }
@@ -890,6 +899,30 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.getAndReplaceAsync(key, val);
+        }
+    }
+
+    /** */
+    private static class ReplaceValueCommand extends GetAndReplaceCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private final Object oldVal;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         * @param oldVal Old value.
+         */
+        ReplaceValueCommand(Object key, Object val, Object oldVal) {
+            super(key, val);
+            this.oldVal = oldVal;
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.replaceAsync(key, oldVal, val);
         }
     }
 

@@ -220,13 +220,27 @@ Cache.prototype.getAndPut = function(key, val, callback) {
  * replace cache value
  *
  * @this {Cache}
- * @param {string} key Key
- * @param {string} value Value
+ * @param key Key
+ * @param value Value
  * @param {onGet} callback Called on finish
  */
 Cache.prototype.replace = function(key, val, callback) {
     this._server.runCommand(this._createCommand("rep").
         setPostData(JSON.stringify({"key" : key, "val" : val})), callback);
+}
+
+/**
+ * replace cache value
+ *
+ * @this {Cache}
+ * @param key Key
+ * @param value Value
+ * @param oldVal Old value
+ * @param {onGet} callback Called on finish
+ */
+Cache.prototype.replaceValue = function(key, val, oldVal, callback) {
+    this._server.runCommand(this._createCommand("repVal").
+        setPostData(JSON.stringify({"key" : key, "val" : val, "oldVal" : oldVal})), callback);
 }
 
 /**

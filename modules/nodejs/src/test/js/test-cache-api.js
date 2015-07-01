@@ -220,6 +220,24 @@ testGetAndReplaceObject = function() {
     startTest("mycache", {trace: [put, getAndReplace], entry: [key, val]});
 }
 
+testReplaceValueObject = function() {
+    function replaceValue(cache, entry, next) {
+        var newKey = {"key" :"7"};
+        cache.replaceValue(entry[0], newKey, entry[1], onReplaceValue.bind(null, cache));
+
+        function onReplaceValue(cache, err, res) {
+            assert(err === null, "Get error on get and put [err=" + err + "]");
+            assert(res === true, "Incorrect result for replace [expected=true, val" + res + "]");
+            TestUtils.testDone();
+        }
+    }
+
+    var key = {"name" : "Paul"};
+    var val = {"age" : 12, "books" : ["1", "Book"]};
+
+    startTest("mycache", {trace: [put, replaceValue], entry: [key, val]});
+}
+
 testIncorrectReplaceObject = function() {
     function replace(cache, entry, next) {
         cache.replace(entry[0], "7", onReplace.bind(null, cache));
