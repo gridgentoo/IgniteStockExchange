@@ -290,7 +290,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
             addHandler(new GridCacheCommandHandler(ctx));
             addHandler(new GridTaskCommandHandler(ctx));
             addHandler(new GridTopologyCommandHandler(ctx));
-            addHandler(new GridVersionCommandHandler(ctx));
+            addHandler(new GridVersionNameCommandHandler(ctx));
             addHandler(new DataStructuresCommandHandler(ctx));
             addHandler(new IgniteScriptingCommandHandler(ctx));
             addHandler(new QueryCommandHandler(ctx));

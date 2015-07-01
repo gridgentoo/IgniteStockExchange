@@ -30,16 +30,16 @@ import static org.apache.ignite.internal.IgniteVersionUtils.*;
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
 
 /**
- * Handler for {@link GridRestCommand#VERSION} command.
+ * Handler for {@link GridRestCommand#VERSION} and {@link GridRestCommand#NAME} command.
  */
-public class GridVersionCommandHandler extends GridRestCommandHandlerAdapter {
+public class GridVersionNameCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(VERSION, NAME);
 
     /**
      * @param ctx Context.
      */
-    public GridVersionCommandHandler(GridKernalContext ctx) {
+    public GridVersionNameCommandHandler(GridKernalContext ctx) {
         super(ctx);
     }
 
