@@ -99,18 +99,10 @@ Cache.prototype.putAll = function(entries, callback) {
 }
 
 /**
- * Callback for cache get
- *
- * @callback Cache~onGetAll
- * @param {string} error Error
- * @param {string[]} results Result values
- */
-
-/**
  * Get keys from the cache
  *
  * @this {Cache}
- * @param {string[]} keys Keys
+ * @param {Object[]} keys Keys
  * @param {Cache~onGetAll} callback Called on finish
  */
 Cache.prototype.getAll = function(keys, callback) {
@@ -133,6 +125,18 @@ Cache.prototype.getAll = function(keys, callback) {
     this._server.runCommand(this._createCommand("getall").setPostData(
         JSON.stringify({"keys" : keys})),
         onGetAll.bind(null, callback));
+}
+
+/**
+ * Determines if the cache contains an entry for the specified key.
+ *
+ * @this {Cache}
+ * @param {Object} key Key
+ * @param {Cache~onGetAll} callback Called on finish with boolean result
+ */
+Cache.prototype.containsKey = function(key, callback) {
+    this._server.runCommand(this._createCommand("containskey").
+        setPostData(JSON.stringify({"key" : key})), callback);
 }
 
 /**
@@ -233,6 +237,14 @@ Entry.prototype.key = function() {
 Entry.prototype.val = function() {
     return this._val;
 }
+
+/**
+ * Callback for cache get
+ *
+ * @callback Cache~onGetAll
+ * @param {string} error Error
+ * @param {string[]} results Result values
+ */
 
 exports.Cache = Cache
 exports.Entry = Entry

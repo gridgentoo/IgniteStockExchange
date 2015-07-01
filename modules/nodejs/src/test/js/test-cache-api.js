@@ -26,6 +26,14 @@ testPutGet = function() {
     startTest("mycache", {trace: [put, getExist], entry: ["key" , "6"]});
 }
 
+testPutContains = function() {
+    startTest("mycache", {trace: [put, containsKey], entry: ["key" , "6"]});
+}
+
+testContains = function() {
+    startTest("mycache", {trace: [notContainsKey], entry: ["key" , "6"]});
+}
+
 testRemove = function() {
     startTest("mycache", {trace: [put, getExist, remove, getNonExist], entry: ["key" , "6"]});
 }
@@ -104,6 +112,28 @@ function onStart(cacheName, testDescription, error, ignite) {
 
 function put(cache, entry, next) {
     cache.put(entry[0], entry[1], next);
+}
+
+function containsKey(cache, entry, next) {
+    cache.containsKey(entry[0], onContainsKey);
+
+    function onContainsKey(err, val) {
+        assert(err === null, "Error on contains key [err=" + err + "]");
+        assert(val === true, "Incorrect result [expected=" + true + ", val=" + val + "]");
+
+        TestUtils.testDone();
+    }
+}
+
+function notContainsKey(cache, entry, next) {
+    cache.containsKey(entry[0], onContainsKey);
+
+    function onContainsKey(err, val) {
+        assert(err === null, "Error on contains key [err=" + err + "]");
+        assert(val === false, "Incorrect result [expected=" + false + ", val=" + val + "]");
+
+        TestUtils.testDone();
+    }
 }
 
 function getExist(cache, entry, next) {

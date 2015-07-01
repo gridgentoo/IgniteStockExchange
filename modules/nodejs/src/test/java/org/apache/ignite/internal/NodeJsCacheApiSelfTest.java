@@ -98,4 +98,18 @@ public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     public void testRemoveAllObjectGetAll() throws Exception {
         runJsScript("testRemoveAllObjectGetAll");
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testContains() throws Exception {
+        runJsScript("testContains");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testPutContains() throws Exception {
+        runJsScript("testPutContains");
+    }
 }

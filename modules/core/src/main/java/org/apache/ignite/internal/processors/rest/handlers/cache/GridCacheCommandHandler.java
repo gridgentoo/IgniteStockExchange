@@ -53,6 +53,7 @@ import static org.apache.ignite.transactions.TransactionIsolation.*;
 public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(
+        CACHE_CONTAINS_KEY,
         CACHE_GET,
         CACHE_GET_ALL,
         CACHE_PUT,
@@ -69,6 +70,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
 
     /** Requests with required parameter {@code key}. */
     private static final EnumSet<GridRestCommand> KEY_REQUIRED_REQUESTS = EnumSet.of(
+        CACHE_CONTAINS_KEY,
         CACHE_GET,
         CACHE_PUT,
         CACHE_ADD,
@@ -137,6 +139,13 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
             IgniteInternalFuture<GridRestResponse> fut;
 
             switch (cmd) {
+                case CACHE_CONTAINS_KEY: {
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new ContainsCommand(key));
+
+                    break;
+                }
+
                 case CACHE_GET: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new GetCommand(key));
@@ -698,6 +707,27 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
             // as cache could be inaccessible on local node and
             // exception processing should be consistent with local execution.
             return op.apply(cache, ((IgniteKernal)g).context()).chain(resultWrapper(cache, key)).get();
+        }
+    }
+
+    /** */
+    private static class ContainsCommand extends CacheProjectionCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private final Object key;
+
+        /**
+         * @param key Key.
+         */
+        ContainsCommand(Object key) {
+            this.key = key;
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.containsKeyAsync(key);
         }
     }
 
