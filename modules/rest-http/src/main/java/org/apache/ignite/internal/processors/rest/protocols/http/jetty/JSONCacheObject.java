@@ -26,45 +26,20 @@ import java.util.*;
  */
 public class JSONCacheObject {
     /** Fields map. */
-    private Map<Object, Object> fields = new HashMap<>();
+    private final Map<Object, Object> fields = new HashMap<>();
 
-    public JSONCacheObject() {
-
+    /**
+     * Empty constructor.
+     */
+    private JSONCacheObject() {
     }
 
-    public void setFields(Map<Object, Object> fields) {
-        this.fields = fields;
-    }
-
-    public Map<Object, Object> getFields() {
-        return fields;
-    }
-
+    /**
+     * @param o JSON object.
+     */
     public JSONCacheObject(JSONObject o) {
         for (Object key : o.keySet())
             addField(toSimpleObject(key), toSimpleObject(o.get(key)));
-    }
-
-    private Object toSimpleObject(Object o) {
-        if (o instanceof JSONObject) {
-            JSONObject o1 = (JSONObject)o;
-            JSONCacheObject res = new JSONCacheObject();
-
-            for (Object key : o1.keySet())
-                res.addField(toSimpleObject(key), toSimpleObject(o1.get(key)));
-
-            return res;
-        }
-        else if (o instanceof JSONArray) {
-            JSONArray o1 = (JSONArray) o;
-            List<Object> val = new ArrayList<>();
-            for (Object v : o1)
-                val.add(toSimpleObject(v));
-
-            return val;
-        }
-
-        return o;
     }
 
     /**
@@ -90,9 +65,46 @@ public class JSONCacheObject {
         return fields.keySet();
     }
 
+    /**
+     * @return Fields map.
+     */
+    public Map<Object, Object> getFields() {
+        return fields;
+    }
+
+    /**
+     * Convert JSON object to JSONCacheObject
+     *
+     * @param o Object to convert.
+     * @return Converted object.
+     */
+    private Object toSimpleObject(Object o) {
+        if (o instanceof JSONObject) {
+            JSONObject o1 = (JSONObject)o;
+
+            JSONCacheObject res = new JSONCacheObject();
+
+            for (Object key : o1.keySet())
+                res.addField(toSimpleObject(key), toSimpleObject(o1.get(key)));
+
+            return res;
+        }
+        else if (o instanceof JSONArray) {
+            JSONArray o1 = (JSONArray) o;
+
+            List<Object> val = new ArrayList<>();
+
+            for (Object v : o1)
+                val.add(toSimpleObject(v));
+
+            return val;
+        }
+
+        return o;
+    }
+
     /** {@inheritDoc} */
     @Override public int hashCode() {
-        //TODO:
         return fields.hashCode();
     }
 
