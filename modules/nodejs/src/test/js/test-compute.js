@@ -91,7 +91,7 @@ function computeExecute(error, ignite) {
         var sum = 0;
 
         for (var i = 0; i < results.length; ++i) {
-            sum += JSON.parse(results[i]);
+            sum += results[i].intValue();
         }
 
         return sum;
@@ -134,9 +134,15 @@ function computeCacheExecute(error, ignite) {
     var map = function(nodes, args) {
         for (var i = 0; i < nodes.length; i++) {
             var f = function (args1) {
-                println("!!!!!!!arg" + args1 + " JSON" + JSON.stringify(args1));
-                var o =  ignite.cache("mycache").get(args1[0]);
-                println("!!!!!!!o" + o + " JSON" + JSON.stringify(o));
+                var jsArgs = JSON.parse(args1);
+                println("!!!!jsArgs " + JSON.stringify(jsArgs[0]));
+                println("ARG0=" + args1.get(0));
+                var cacheO = new org.apache.ignite.internal.processors.rest.protocols.http.jetty.JSONCacheObject(args1.get(0));
+                println("CACHE OBJ= " + cacheO);
+                var o =  ignite.cache("mycache").get(cacheO);
+
+                println("!!!!!!!o" + o);
+
                 return o;
             };
 
@@ -149,7 +155,7 @@ function computeCacheExecute(error, ignite) {
         var exp = {"age" : 12, "books" : ["1", "Book"]};
 
         for (var i = 0; i < results.length; i++) {
-            var val = JSON.parse(results[i]);
+            var val = results[i];
 
             println("Incorrect value [exp=" + JSON.stringify(exp) + ", val=" + JSON.stringify(val) + "]");
         }
@@ -176,7 +182,9 @@ function computeCacheExecute(error, ignite) {
     entries.push(new Entry(key1, val1));
     entries.push(new Entry(key2, val2));
 
-    ignite.cache("mycache").putAll(entries, function(err) {ignite.compute().execute(map, reduce, [key1, val1], callback);});
+    ignite.cache("mycache").putAll(entries, function(err) {
+        ignite.compute().execute(map, reduce, [key1, val1], callback);
+    });
 }
 
 function computeCacheSizeExecute(error, ignite) {
@@ -196,7 +204,9 @@ function computeCacheSizeExecute(error, ignite) {
         var sum = 0;
 
         for (var i = 0; i < results.length; i++) {
-            sum += JSON.parse(results[i]);
+            println("TYPE:" + (typeof results[i]));
+            println("keys:" + (Object.keys(results[i])));
+            sum += results[i].intValue();
         }
 
         return sum;
@@ -211,7 +221,10 @@ function computeCacheSizeExecute(error, ignite) {
         })
     }
 
-    ignite.cache("mycache").putAll("key", "val", function(err) {ignite.compute().execute(map, reduce, "", callback);});
+    ignite.cache("mycache").put("key", "val",
+        function(err) {
+            ignite.compute().execute(map, reduce, "", callback);
+        });
 }
 
 testComputeFuncWithErrorExecute = function() {

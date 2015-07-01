@@ -539,7 +539,9 @@ public class GridJettyRestHandler extends AbstractHandler {
                 RestRunScriptRequest restReq0 = new RestRunScriptRequest();
 
                 restReq0.script((String)params.get("func"));
-                restReq0.argument(params.get("arg"));
+
+                JSONObject o = parseRequest(req);
+                restReq0.argument(o.get("arg"));
 
                 restReq = restReq0;
 
@@ -550,7 +552,10 @@ public class GridJettyRestHandler extends AbstractHandler {
                 RestMapReduceScriptRequest restReq0 = new RestMapReduceScriptRequest();
 
                 restReq0.mapFunction((String) params.get("map"));
-                restReq0.argument(params.get("arg"));
+
+                JSONObject o = parseRequest(req);
+                restReq0.argument(o.get("arg"));
+
                 restReq0.reduceFunction((String) params.get("reduce"));
 
                 restReq = restReq0;

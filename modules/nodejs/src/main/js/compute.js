@@ -34,7 +34,8 @@ function Compute(server) {
  * @param {onGet} callback Callback
  */
 Compute.prototype.runScript = function(runnable, args, callback) {
-    this._server.runCommand(new Command("runscript").addParam("func", runnable).addParam("arg", args), callback);
+    this._server.runCommand(new Command("runscript").addParam("func", runnable).
+    setPostData(JSON.stringify({"arg" : args})), callback);
 }
 
 /**
@@ -47,9 +48,8 @@ Compute.prototype.runScript = function(runnable, args, callback) {
 Compute.prototype.execute = function(map, reduce, arg, callback) {
     var command = new Command("excmapreduce");
 
-    command.addParam("map", map);
-    command.addParam("reduce", reduce);
-    command.addParam("arg", arg);
+    command.addParam("map", map).addParam("reduce", reduce);
+    command.setPostData(JSON.stringify({"arg" : arg}));
 
     this._server.runCommand(command, callback);
 }
