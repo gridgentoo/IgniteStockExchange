@@ -138,7 +138,7 @@ Cache.prototype.getAll = function(keys, callback) {
 /**
  * Execute sql query
  *
- * @param {SqlQuery} qry Query
+ * @param {SqlQuery|SqlFieldsQuery} qry Query
  */
 Cache.prototype.query = function(qry) {
     function onQueryExecute(qry, error, res) {
