@@ -180,8 +180,8 @@ Cache.prototype._sqlFieldsQuery = function(qry, onQueryExecute) {
 
 Cache.prototype._sqlQuery = function(qry, onQueryExecute) {
     if (qry.returnType() == null) {
-        qry.error("No type for sql query.");
-        qry.end();
+        qry.end("No type for sql query.");
+
         return;
     }
 

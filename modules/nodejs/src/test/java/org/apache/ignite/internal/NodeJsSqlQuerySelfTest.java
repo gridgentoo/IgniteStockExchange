@@ -91,7 +91,7 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
         personCache.put(p3.getId(), p3);
         personCache.put(p4.getId(), p4);
 
-        SqlQuery qry = new SqlQuery(Person.class, "salary > ? and salary <= ?");
+        SqlQuery<Integer, Person> qry = new SqlQuery<>(Person.class, "salary > ? and salary <= ?");
 
         qry.setArgs(1000, 2000);
 

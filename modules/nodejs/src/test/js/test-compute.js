@@ -164,9 +164,6 @@ function testComputeWithErrors(map) {
         var callback = function(err, res) {
             assert(err != null, "Do not get error on compute task.");
 
-            console.log("ERROR on Compute: "  + err);
-            console.log("End of ERROR.");
-
             assert(err.indexOf("Function evaluation failed") > -1, "Incorrect error "+
                 "[expected=function evaluation failed, value=" + err + "]");
 

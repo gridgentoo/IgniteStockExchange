@@ -57,12 +57,10 @@ Server.prototype.host = function() {
  * Run http request
  *
  * @this {Server}
- * @param {string} cmdName command name.
- * @param params Parameters for command.
+ * @param {Command} cmd Command
  * @param {onGet} Called on finish
  */
 Server.prototype.runCommand = function(cmd, callback) {
-
     var requestQry = "cmd=" + cmd.name() + cmd.paramsString();
 
     var http = require('http');
@@ -89,6 +87,7 @@ Server.prototype.runCommand = function(cmd, callback) {
 
         response.on('end', function () {
             console.log("fullResponseString:" + fullResponseString);
+
             if (response.statusCode !== 200) {
                 if (response.statusCode === 401) {
                     callback.call(null, "Authentication failed. Status code 401.");
@@ -181,30 +180,65 @@ Server._escape = function(f) {
     return qs.escape(f.toString());
 }
 
+/**
+ * @constructor
+ * @this{Command}
+ * @param{string} name Command name.
+ */
 function Command(name) {
     this._name = name;
     this._params = [];
 }
 
+/**
+ * @this {Command}
+ * @param {string} key Key
+ * @param {string} val Value
+ * @returns this
+ */
 Command.prototype.addParam = function(key, value) {
     this._params.push({key: key, value: value});
     return this;
 }
 
-Command.prototype.addParams = function(prefix, params) {
-    for (var i = 1; i <= params.length; ++i) {
-        this.addParam(prefix + i, params[i - 1]);
-    }
-    return this;
-}
-
+/**
+ * @this {Command}
+ * @param{JSONObject} postData Post data.
+ * @returns this
+ */
 Command.prototype.setPostData = function(postData) {
     this._postData = postData;
     return this;
 }
 
+/**
+ * @this {Command}
+ * @returns Post data.
+ */
 Command.prototype.postData = function() {
     return this._postData;
+}
+
+/**
+ * @this {Command}
+ * @returns Command name.
+ */
+Command.prototype.name = function() {
+    return this._name;
+}
+
+/**
+ * @this {Command}
+ * @returns Http request string.
+ */
+Command.prototype.paramsString = function() {
+    var paramsString = "";
+
+    for (var p of this._params) {
+        paramsString += "&" + Server._escape(p.key) + "=" + Server._escape(p.value);
+    }
+
+    return paramsString;
 }
 
 Command.prototype._method = function() {
@@ -213,19 +247,6 @@ Command.prototype._method = function() {
 
 Command.prototype._isPost = function() {
     return !!this._postData;
-}
-
-Command.prototype.name = function() {
-    return this._name;
-}
-
-Command.prototype.paramsString = function() {
-    var paramsString = "";
-
-    for (var p of this._params) {
-        paramsString += "&" + Server._escape(p.key) + "=" + Server._escape(p.value);
-    }
-    return paramsString;
 }
 
 exports.Server = Server;
