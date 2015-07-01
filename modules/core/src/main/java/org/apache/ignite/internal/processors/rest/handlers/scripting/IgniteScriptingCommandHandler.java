@@ -260,9 +260,6 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
      * Run script callable.
      */
     private static class RunScriptCallable implements Callable<GridRestResponse> {
-        /** */
-        private static final long serialVersionUID = 0L;
-
         /** Kernal context. */
         private GridKernalContext ctx;
 
@@ -294,9 +291,6 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
      * Map reduce callable.
      */
     private static class MapReduceCallable implements Callable<GridRestResponse> {
-        /** */
-        private static final long serialVersionUID = 0L;
-
         /** Kernal context. */
         private GridKernalContext ctx;
 
