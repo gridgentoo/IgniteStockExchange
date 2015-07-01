@@ -427,7 +427,7 @@ public class GridJettyRestHandler extends AbstractHandler {
                     else if (cmd == CACHE_GET || cmd == CACHE_PUT || cmd == CACHE_REMOVE ||
                         cmd == CACHE_CONTAINS_KEY || cmd == CACHE_GET_AND_PUT ||
                         cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE ||
-                        cmd == CACHE_PUT_IF_ABSENT || cmd == CACHE_REMOVE_VALUE) {
+                        cmd == CACHE_PUT_IF_ABSENT || cmd == CACHE_REMOVE_VALUE || cmd == CACHE_REPLACE) {
                         JSONCacheObject cacheObj = new JSONCacheObject(o);
 
                         restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);

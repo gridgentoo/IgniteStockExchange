@@ -160,6 +160,65 @@ testRemoveAllFromCache = function() {
     startTest("mycache", {trace: [put, removeAllFromCache, getNone], entry: ["key", "6"]});
 }
 
+testReplace = function() {
+    function replace(cache, entry, next) {
+        cache.replace(entry[0], "7", onReplace.bind(null, cache));
+
+        function onReplace(cache, err, res) {
+            assert(err === null, "Get error on get and put [err=" + err + "]");
+            assert(res === true, "Incorrect result for replace [expected=true, val" + res + "]");
+
+            cache.get(entry[0], function(err, res) {
+                assert(!err);
+                assert("7" === res, "Get incorrect value on get [exp=7, val=" + res + "]");
+                TestUtils.testDone();
+            });
+        }
+    }
+
+    startTest("mycache", {trace: [put, replace], entry: ["key", "6"]});
+}
+
+testReplaceObject = function() {
+    function replace(cache, entry, next) {
+        var newKey = {"key" :"7"};
+        cache.replace(entry[0], newKey, onReplace.bind(null, cache));
+
+        function onReplace(cache, err, res) {
+            assert(err === null, "Get error on get and put [err=" + err + "]");
+            assert(res === true, "Incorrect result for replace [expected=true, val" + res + "]");
+
+            cache.get(entry[0], function(err, res) {
+                assert(!err);
+                assert(TestUtils.compareObject(newKey, res), "Get incorrect value on get.");
+                TestUtils.testDone();
+            });
+        }
+    }
+
+    var key = {"name" : "Paul"};
+    var val = {"age" : 12, "books" : ["1", "Book"]};
+
+    startTest("mycache", {trace: [put, replace], entry: [key, val]});
+}
+
+testIncorrectReplaceObject = function() {
+    function replace(cache, entry, next) {
+        cache.replace(entry[0], "7", onReplace.bind(null, cache));
+
+        function onReplace(cache, err, res) {
+            assert(err !== null, "Do not get error");
+            assert(err.indexOf("Failed to update keys") > -1, "Incorrect error message: " + err);
+            TestUtils.testDone();
+        }
+    }
+
+    var key = {"name" : "Paul"};
+    var val = {"age" : 12, "books" : ["1", "Book"]};
+
+    startTest("mycache", {trace: [put, replace], entry: [key, val]});
+}
+
 function objectEntries() {
     entries = [];
 
