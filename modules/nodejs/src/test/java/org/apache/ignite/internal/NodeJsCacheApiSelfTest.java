@@ -133,4 +133,11 @@ public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     public void testGetAndPut() throws Exception {
         runJsScript("testGetAndPut");
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testGetAndPutIfAbsent() throws Exception {
+        runJsScript("testGetAndPutIfAbsent");
+    }
 }

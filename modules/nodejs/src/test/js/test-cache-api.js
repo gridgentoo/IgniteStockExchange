@@ -78,11 +78,26 @@ testGetAndPut = function() {
         TestUtils.testDone();
     }
 
-    function getAndPut(cache, entry) {
+    function getAndPut(cache, entry, next) {
         cache.getAndPut("key", "7", onGetAndPut);
     }
 
     startTest("mycache", {trace: [put, getAndPut], entry: ["key", "6"]});
+}
+
+testGetAndPutIfAbsent = function() {
+    function getAndPutIfAbsent(cache, entry, next) {
+        cache.getAndPutIfAbsent("key", "7", onGetAndPutIfAbsent);
+
+        function onGetAndPutIfAbsent(err, res) {
+            assert(err === null, "Get error on get and put [err=" + err + "]");
+            assert(res === "6", "Incorrect result for getAndPut [expected=6, val" + res + "]");
+
+            next();
+        }
+    }
+
+    startTest("mycache", {trace: [put, getAndPutIfAbsent, getExist], entry: ["key", "6"]});
 }
 
 function objectEntries() {
@@ -187,15 +202,13 @@ function notContainsKeys(cache, entries, next) {
 }
 
 function getExist(cache, entry, next) {
-    var key = Object.keys(entry)[0];
-
-    cache.get(entry[0], onGet);
-
     function onGet(error, value) {
         assert(!error);
-        assert(value === entry[1]);
+        assert(value === entry[1], "Get incorrect value on get [exp=" + entry[1] + ", val=" + value + "]");
         next();
     }
+
+    cache.get(entry[0], onGet);
 }
 
 function remove(cache, entry, next) {

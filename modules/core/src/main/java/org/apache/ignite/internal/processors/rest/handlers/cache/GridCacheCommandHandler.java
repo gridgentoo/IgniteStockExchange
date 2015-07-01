@@ -57,6 +57,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_CONTAINS_KEY,
         CACHE_GET,
         CACHE_GET_AND_PUT,
+        CACHE_GET_AND_PUT_IF_ABSENT,
         CACHE_GET_ALL,
         CACHE_PUT,
         CACHE_ADD,
@@ -75,6 +76,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         CACHE_CONTAINS_KEY,
         CACHE_GET,
         CACHE_GET_AND_PUT,
+        CACHE_GET_AND_PUT_IF_ABSENT,
         CACHE_PUT,
         CACHE_ADD,
         CACHE_REMOVE,
@@ -171,6 +173,18 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
 
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new GetAndPutCommand(key, val));
+
+                    break;
+                }
+
+                case CACHE_GET_AND_PUT_IF_ABSENT: {
+                    final Object val = req0.value();
+
+                    if (val == null)
+                        throw new IgniteCheckedException(GridRestCommandHandlerAdapter.missingParameter("val"));
+
+                    fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
+                        new GetAndPutIfAbsentCommand(key, val));
 
                     break;
                 }
@@ -810,10 +824,10 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         private static final long serialVersionUID = 0L;
 
         /** Key. */
-        private final Object key;
+        protected final Object key;
 
         /** Value.*/
-        private final Object val;
+        protected final Object val;
 
         /**
          * @param key Key.
@@ -827,6 +841,25 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.getAndPutAsync(key, val);
+        }
+    }
+
+    /** */
+    private static class GetAndPutIfAbsentCommand extends GetAndPutCommand {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         */
+        GetAndPutIfAbsentCommand(Object key, Object val) {
+            super(key, val);
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
+            return c.getAndPutIfAbsentAsync(key, val);
         }
     }
 

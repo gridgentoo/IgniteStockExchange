@@ -45,6 +45,9 @@ public enum GridRestCommand {
     /** Store value in cache and return previous value. */
     CACHE_GET_AND_PUT("getandput"),
 
+    /** Store value in cache and return previous value. */
+    CACHE_GET_AND_PUT_IF_ABSENT("getandputifabsent"),
+
     /** Store value in cache. */
     CACHE_PUT("put"),
 

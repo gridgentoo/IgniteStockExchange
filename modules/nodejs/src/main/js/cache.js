@@ -152,7 +152,7 @@ Cache.prototype.containsKeys = function(keys, callback) {
 }
 
 /**
- * Put cache value
+ * Get and put cache value
  *
  * @this {Cache}
  * @param {string} key Key
@@ -161,6 +161,19 @@ Cache.prototype.containsKeys = function(keys, callback) {
  */
 Cache.prototype.getAndPut = function(key, val, callback) {
     this._server.runCommand(this._createCommand("getandput").
+        setPostData(JSON.stringify({"key" : key, "val" : val})), callback);
+}
+
+/**
+ * Stores given key-value pair in cache only if cache had no previous mapping for it.
+ *
+ * @this {Cache}
+ * @param {string} key Key
+ * @param {string} value Value
+ * @param {onGet} callback Called on finish
+ */
+Cache.prototype.getAndPutIfAbsent = function(key, val, callback) {
+    this._server.runCommand(this._createCommand("getandputifabsent").
         setPostData(JSON.stringify({"key" : key, "val" : val})), callback);
 }
 

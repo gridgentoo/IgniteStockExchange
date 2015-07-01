@@ -549,6 +549,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
             case CACHE_APPEND:
             case CACHE_PREPEND:
             case CACHE_GET_AND_PUT:
+            case CACHE_GET_AND_PUT_IF_ABSENT:
                 perm = SecurityPermission.CACHE_PUT;
                 name = ((GridRestCacheRequest)req).cacheName();
 
