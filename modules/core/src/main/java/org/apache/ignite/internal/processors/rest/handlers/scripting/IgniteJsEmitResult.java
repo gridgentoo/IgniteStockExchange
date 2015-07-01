@@ -37,9 +37,9 @@ public class IgniteJsEmitResult {
         List<T3<Object, Object, Object>> res = emitResPerCall.get();
 
         if (res == null)
-            res = new ArrayList();
+            res = new ArrayList<>();
 
-        res.add(new T3(f, args, node));
+        res.add(new T3<>(f, args, node));
 
         emitResPerCall.set(res);
     }
