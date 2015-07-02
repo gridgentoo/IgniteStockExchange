@@ -22,6 +22,7 @@ import net.sf.json.processors.*;
 import org.apache.ignite.*;
 import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.rest.client.message.*;
+import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
@@ -332,13 +333,6 @@ public class GridJettyRestHandler extends AbstractHandler {
                 res.add(new RestEntry(k, o.get(k)));
 
             cmdRes.setResponse(res);
-        } else if (cmd == CACHE_GET || cmd == CACHE_GET_AND_PUT ||
-            cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE ||
-            cmd == CACHE_GET_AND_REPLACE) {
-            Object o = cmdRes.getResponse();
-
-            if (o instanceof JSONCacheObject)
-                cmdRes.setResponse(((JSONCacheObject)o).getFields());
         }
     }
 
@@ -818,15 +812,8 @@ public class GridJettyRestHandler extends AbstractHandler {
          * @param val Value.
          */
         public RestEntry(Object key, Object val) {
-            if (key instanceof JSONCacheObject)
-                this.key = ((JSONCacheObject)key).getFields();
-            else
-                this.key = key;
-
-            if (val instanceof JSONCacheObject)
-                this.value = ((JSONCacheObject)val).getFields();
-            else
-                this.value = val;
+            this.key = key;
+            this.value = val;
         }
 
         /**

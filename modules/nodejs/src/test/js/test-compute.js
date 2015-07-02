@@ -143,6 +143,20 @@ function computeCacheExecute(error, ignite) {
     var map = function(nodes, args) {
         for (var i = 0; i < nodes.length; i++) {
             var f = function (args1) {
+                ignite.cache("mycache").put({"1": "1"}, 2);
+
+                var val = ignite.cache("mycache").get({"1": "1"});
+
+                println("GET 1,1 = " + val);
+
+                var val1 = ignite.cache("mycache").get(args1.get(0));
+
+                println("GET 1,2 = " + val1);
+                println("GET TYPE=" + (typeof val1));
+                println("GET TYPE=" + (Object.keys(val1)));
+
+                println("GET TYPE=" + (val1.get("age")));
+
                 var jsArgs = JSON.parse(args1);
                 println("!!!!jsArgs " + JSON.stringify(jsArgs[0]));
                 println("ARG0=" + args1.get(0));
@@ -160,20 +174,16 @@ function computeCacheExecute(error, ignite) {
     };
 
     var reduce = function(results) {
-        println("!!!!!!!!!!results=" + results);
-        var exp = {"age" : 12, "books" : ["1", "Book"]};
-
-        for (var i = 0; i < results.length; i++) {
-            var val = results[i];
-
-            println("Incorrect value [exp=" + JSON.stringify(exp) + ", val=" + JSON.stringify(val) + "]");
-        }
-
-        return sum;
+        return {"1": 1};
     };
 
     var callback = function(err, res) {
         assert(err == null, "Get error on compute task [err=" + err + "]");
+
+        console.log("RESULT:" + res + "; keys=" + Object.keys(res));
+        console.log("key:" + res["BB"]);
+        console.log("key:" + res.BB);
+
 
         ignite.cache("mycache").size(function(err, size){
             assert(size === res, "Incorrect size [size=" + size + ", res=" + res + "]");

@@ -15,19 +15,16 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
+package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
-import net.sf.json.*;
 
+import javax.json.*;
 import java.util.*;
 
 /**
  * Json cache object.
  */
-public class JSONCacheObject {
-    /** Fields map. */
-    private final Map<Object, Object> fields = new HashMap<>();
-
+public class JSONCacheObject extends HashMap<Object, Object> {
     /**
      * Empty constructor.
      */
@@ -37,7 +34,7 @@ public class JSONCacheObject {
     /**
      * @param o JSON object.
      */
-    public JSONCacheObject(JSONObject o) {
+    public JSONCacheObject(Map o) {
         for (Object key : o.keySet())
             addField(toSimpleObject(key), toSimpleObject(o.get(key)));
     }
@@ -47,7 +44,7 @@ public class JSONCacheObject {
      * @param val Field value.
      */
     public void addField(Object key, Object val) {
-        fields.put(key, val);
+        put(key, val);
     }
 
     /**
@@ -55,21 +52,7 @@ public class JSONCacheObject {
      * @return Field value.
      */
     public Object getField(Object key) {
-        return fields.get(key);
-    }
-
-    /**
-     * @return Fields key set.
-     */
-    public Set<Object> keys() {
-        return fields.keySet();
-    }
-
-    /**
-     * @return Fields map.
-     */
-    public Map<Object, Object> getFields() {
-        return fields;
+        return get(key);
     }
 
     /**
@@ -78,9 +61,9 @@ public class JSONCacheObject {
      * @param o Object to convert.
      * @return Converted object.
      */
-    private Object toSimpleObject(Object o) {
-        if (o instanceof JSONObject) {
-            JSONObject o1 = (JSONObject)o;
+    public static Object toSimpleObject(Object o) {
+        if (o instanceof Map) {
+            Map o1 = (Map)o;
 
             JSONCacheObject res = new JSONCacheObject();
 
@@ -89,8 +72,8 @@ public class JSONCacheObject {
 
             return res;
         }
-        else if (o instanceof JSONArray) {
-            JSONArray o1 = (JSONArray) o;
+        else if (o instanceof List) {
+            List o1 = (List) o;
 
             List<Object> val = new ArrayList<>();
 
@@ -101,31 +84,5 @@ public class JSONCacheObject {
         }
 
         return o;
-    }
-
-    /** {@inheritDoc} */
-    @Override public int hashCode() {
-        return fields.hashCode();
-    }
-
-    /** {@inheritDoc} */
-    @Override public boolean equals(Object obj) {
-        if (obj == null || !(obj instanceof JSONCacheObject))
-            return false;
-
-        JSONCacheObject obj0 = (JSONCacheObject) obj;
-
-        if (fields.size() != obj0.fields.size())
-            return false;
-
-        for (Object key : obj0.keys()) {
-            if (!fields.containsKey(key))
-                return false;
-
-            if (!obj0.getField(key).equals(getField(key)))
-                return false;
-        }
-
-        return true;
     }
 }
