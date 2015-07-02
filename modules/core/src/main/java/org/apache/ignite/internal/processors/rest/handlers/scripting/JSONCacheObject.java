@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
 import jdk.nashorn.api.scripting.JSObject;
+import org.apache.ignite.internal.util.typedef.internal.U;
 
 import java.util.*;
 
@@ -25,7 +26,7 @@ import java.util.*;
  * Json cache object.
  */
 public class JSONCacheObject implements JSObject {
-    Map <Object, Object> fields = new HashMap<Object, Object>();
+    Map<Object, Object> fields = new HashMap();
     /**
      * Empty constructor.
      */
@@ -47,6 +48,7 @@ public class JSONCacheObject implements JSObject {
     @Override public boolean equals(Object obj) {
         if (obj == null || !(obj instanceof JSONCacheObject))
             return false;
+
         return fields.equals(((JSONCacheObject)obj).fields);
     }
 
@@ -91,98 +93,113 @@ public class JSONCacheObject implements JSObject {
             for (Object v : o1)
                 val.add(toSimpleObject(v));
 
-            return val;
+            return val.toArray();
         }
 
         return o;
     }
 
     @Override public Object call(Object o, Object... objects) {
+        System.out.println("!!!!CALL");
         return null;
     }
 
     @Override public Object newObject(Object... objects) {
+        System.out.println("!!!!newObject");
         return null;
     }
 
     @Override public Object eval(String s) {
+        System.out.println("!!!!eval");
         return null;
     }
 
     @Override public Object getMember(String s) {
+        System.out.println("!!!!getMember + " + s);
         return fields.get(s);
     }
 
     @Override public Object getSlot(int i) {
+        System.out.println("!!!!getSlot");
         return null;
     }
 
     @Override public boolean hasMember(String s) {
+        System.out.println("!!!!hasMember");
         return fields.containsKey(s);
     }
 
     @Override
     public boolean hasSlot(int i) {
+        System.out.println("!!!!hasSlot");
         return false;
     }
 
-    @Override
-    public void removeMember(String s) {
+    @Override public void removeMember(String s) {
+        System.out.println("!!!!removeMember");
+        fields.remove(s);
+    }
+
+    @Override public void setMember(String s, Object o) {
+        System.out.println("!!!!setMember");
+        fields.put(s, o);
+    }
+
+    @Override public void setSlot(int i, Object o) {
+        System.out.println("!!!!setSlot");
 
     }
 
-    @Override
-    public void setMember(String s, Object o) {
+    @Override public Set<String> keySet() {
+        System.out.println("!!!!keySet");
+        Set<String> keys = new HashSet<>();
 
+        for (Object o : keys) {
+            if (!(o instanceof JSONCacheObject))
+                keys.add(o.toString());
+        }
+
+        return keys;
     }
 
-    @Override
-    public void setSlot(int i, Object o) {
-
-    }
-
-    @Override
-    public Set<String> keySet() {
-        return null;
-    }
-
-    @Override
-    public Collection<Object> values() {
+    @Override public Collection<Object> values() {
+        System.out.println("!!!!values");
         return fields.values();
     }
 
     @Override
     public boolean isInstance(Object o) {
+        System.out.println("!!!!isInstance");
         return false;
     }
 
-    @Override
-    public boolean isInstanceOf(Object o) {
+    @Override public boolean isInstanceOf(Object o) {
+        System.out.println("!!!!isInstanceOf");
         return false;
     }
 
-    @Override
-    public String getClassName() {
-        return null;
+    @Override public String getClassName() {
+        System.out.println("!!!!getClassName");
+        return U.getSimpleName(JSONCacheObject.class);
     }
 
-    @Override
-    public boolean isFunction() {
+    @Override public boolean isFunction() {
+        System.out.println("!!!!isFunction");
         return false;
     }
 
-    @Override
-    public boolean isStrictFunction() {
+    @Override public boolean isStrictFunction() {
+        System.out.println("!!!!isStrictFunction");
         return false;
     }
 
-    @Override
-    public boolean isArray() {
+    @Override public boolean isArray() {
+        System.out.println("!!!!isArray");
         return false;
     }
 
-    @Override
-    public double toNumber() {
+    @Override public double toNumber() {
+        System.out.println("!!!!toNumber");
         return 0;
     }
 }

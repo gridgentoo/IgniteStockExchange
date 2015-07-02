@@ -63,7 +63,6 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
 
         String internalJSCall = "function __internalJSCall(funcSource, arg1, arg2) { " +
                 "var func = __createJSFunction(funcSource); " +
-                "println('INIT arg=' + arg1);"+
                 "return func.apply(null, [JSON.parse(arg1), arg2]); }";
 
         addEngineFunction(createJSFunction);
@@ -137,10 +136,12 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
             return invocable.invokeFunction("__internalCall", src, arg, arg2);
         }
         catch (ScriptException e) {
-            throw new IgniteCheckedException("Function evaluation failed [funcName=" + src + "].");
+            throw new IgniteCheckedException("Function evaluation failed [funcName=" + src +
+                    ", err= " + e.getMessage() + "].");
         }
         catch (NoSuchMethodException e) {
-            throw new IgniteCheckedException("Cannot find function [func=__internalCall].");
+            throw new IgniteCheckedException("Cannot find function [func=__internalCall" +
+                    ", err= " + e.getMessage() + "].");
         }
     }
 

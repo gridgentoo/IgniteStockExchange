@@ -143,38 +143,37 @@ function computeCacheExecute(error, ignite) {
     var map = function(nodes, args) {
         for (var i = 0; i < 1; i++) {
             var f = function (args1) {
-                print("IN FUNCTION");
-
                 ignite.cache("mycache").put({"1": "1"},  2);
-
-                print("PUT 1:1");
 
                 var val = ignite.cache("mycache").get({"1": "1"});
 
-
-                print("Get 1:1");
-
-
-                print("GET 1,1 = " + val);
+                if (val !== 2) {
+                    throw "Incorrect return val [expected=2, val=" + val + "]";
+                }
 
                 var val1 = ignite.cache("mycache").get(args1.get(0));
 
-                print("GET 1,2 = " + val1);
-                print("GET TYPE=" + (typeof val1));
+                if (val1["age"] !== 12) {
+                    throw "Incorrect age [expected=12, val=" + val + "]";
+                }
 
-                print("GET TYPE AGE=" + (val1["age"]));
-                print("GET TYPE AGE2=" + (val1.age));
+                print("BOOKS=" + val1.books);
 
-                var jsArgs = JSON.parse(args1);
-                print("!!!!jsArgs " + JSON.stringify(jsArgs[0]));
-                println("ARG0=" + args1.get(0));
-                var cacheO = new org.apache.ignite.internal.processors.rest.protocols.http.jetty.JSONCacheObject(args1.get(0));
-                println("CACHE OBJ= " + cacheO);
-                var o =  ignite.cache("mycache").get(cacheO);
+                if (val1.books.length !== 2) {
+                    throw "Incorrect books length [expected=2, val=" +
+                        val1.books.length + "]";
+                }
 
-                println("!!!!!!!o" + o);
+                if (val1.books[0] !== "1") {
+                    throw "Incorrect books value [expected=1, val=" +
+                        val1.books[0] + "]";
+                }
+                if (val1.books[1] !== "Book") {
+                    throw "Incorrect books value [expected=Book, val=" +
+                        val1.books[1] + "]";
+                }
 
-                return o;
+                return val1;
             };
 
             emit(f, args, nodes[i]);
@@ -188,15 +187,10 @@ function computeCacheExecute(error, ignite) {
     var callback = function(err, res) {
         assert(err == null, "Get error on compute task [err=" + err + "]");
 
-        console.log("RESULT:" + res + "; keys=" + Object.keys(res));
-        console.log("key:" + res["BB"]);
-        console.log("key:" + res.BB);
+        assert(TestUtils.compareObject({"1": 1}, res),
+            "Incorrect result [exp= {1:1}, val=" + res);
 
-
-        ignite.cache("mycache").size(function(err, size){
-            assert(size === res, "Incorrect size [size=" + size + ", res=" + res + "]");
-            TestUtils.testDone();
-        })
+        TestUtils.testDone();
     }
 
     entries = [];
