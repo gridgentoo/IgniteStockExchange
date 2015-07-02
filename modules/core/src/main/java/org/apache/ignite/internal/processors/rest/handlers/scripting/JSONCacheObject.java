@@ -17,14 +17,15 @@
 
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
+import jdk.nashorn.api.scripting.JSObject;
 
-import javax.json.*;
 import java.util.*;
 
 /**
  * Json cache object.
  */
-public class JSONCacheObject extends HashMap<Object, Object> {
+public class JSONCacheObject implements JSObject {
+    Map <Object, Object> fields = new HashMap<Object, Object>();
     /**
      * Empty constructor.
      */
@@ -39,12 +40,22 @@ public class JSONCacheObject extends HashMap<Object, Object> {
             addField(toSimpleObject(key), toSimpleObject(o.get(key)));
     }
 
+    @Override public int hashCode() {
+        return fields.hashCode();
+    }
+
+    @Override public boolean equals(Object obj) {
+        if (obj == null || !(obj instanceof JSONCacheObject))
+            return false;
+        return fields.equals(((JSONCacheObject)obj).fields);
+    }
+
     /**
      * @param key Field name.
      * @param val Field value.
      */
     public void addField(Object key, Object val) {
-        put(key, val);
+        fields.put(key, val);
     }
 
     /**
@@ -52,7 +63,7 @@ public class JSONCacheObject extends HashMap<Object, Object> {
      * @return Field value.
      */
     public Object getField(Object key) {
-        return get(key);
+        return fields.get(key);
     }
 
     /**
@@ -84,5 +95,94 @@ public class JSONCacheObject extends HashMap<Object, Object> {
         }
 
         return o;
+    }
+
+    @Override public Object call(Object o, Object... objects) {
+        return null;
+    }
+
+    @Override public Object newObject(Object... objects) {
+        return null;
+    }
+
+    @Override public Object eval(String s) {
+        return null;
+    }
+
+    @Override public Object getMember(String s) {
+        return fields.get(s);
+    }
+
+    @Override public Object getSlot(int i) {
+        return null;
+    }
+
+    @Override public boolean hasMember(String s) {
+        return fields.containsKey(s);
+    }
+
+    @Override
+    public boolean hasSlot(int i) {
+        return false;
+    }
+
+    @Override
+    public void removeMember(String s) {
+
+    }
+
+    @Override
+    public void setMember(String s, Object o) {
+
+    }
+
+    @Override
+    public void setSlot(int i, Object o) {
+
+    }
+
+    @Override
+    public Set<String> keySet() {
+        return null;
+    }
+
+    @Override
+    public Collection<Object> values() {
+        return fields.values();
+    }
+
+    @Override
+    public boolean isInstance(Object o) {
+        return false;
+    }
+
+    @Override
+    public boolean isInstanceOf(Object o) {
+        return false;
+    }
+
+    @Override
+    public String getClassName() {
+        return null;
+    }
+
+    @Override
+    public boolean isFunction() {
+        return false;
+    }
+
+    @Override
+    public boolean isStrictFunction() {
+        return false;
+    }
+
+    @Override
+    public boolean isArray() {
+        return false;
+    }
+
+    @Override
+    public double toNumber() {
+        return 0;
     }
 }

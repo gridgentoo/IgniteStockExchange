@@ -19,8 +19,6 @@ package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
 import org.apache.ignite.*;
 
-import javax.json.*;
-
 /**
  * Node js cache.
  */
@@ -52,10 +50,7 @@ public class NodeJsCache {
     public Object get(Object key) {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
 
-        cache.get(cacheKey);
-
-
-        JsonObject value = Json.createObjectBuilder().add("BBB", "a").build();
-        return value;
+        Object res =  cache.get(cacheKey);
+        return res;
     }
 }

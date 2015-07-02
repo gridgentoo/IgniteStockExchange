@@ -141,24 +141,32 @@ function computeCacheExecute(error, ignite) {
     assert(error == null, "Error on put:" + error);
 
     var map = function(nodes, args) {
-        for (var i = 0; i < nodes.length; i++) {
+        for (var i = 0; i < 1; i++) {
             var f = function (args1) {
-                ignite.cache("mycache").put({"1": "1"}, 2);
+                print("IN FUNCTION");
+
+                ignite.cache("mycache").put({"1": "1"},  2);
+
+                print("PUT 1:1");
 
                 var val = ignite.cache("mycache").get({"1": "1"});
 
-                println("GET 1,1 = " + val);
+
+                print("Get 1:1");
+
+
+                print("GET 1,1 = " + val);
 
                 var val1 = ignite.cache("mycache").get(args1.get(0));
 
-                println("GET 1,2 = " + val1);
-                println("GET TYPE=" + (typeof val1));
-                println("GET TYPE=" + (Object.keys(val1)));
+                print("GET 1,2 = " + val1);
+                print("GET TYPE=" + (typeof val1));
 
-                println("GET TYPE=" + (val1.get("age")));
+                print("GET TYPE AGE=" + (val1["age"]));
+                print("GET TYPE AGE2=" + (val1.age));
 
                 var jsArgs = JSON.parse(args1);
-                println("!!!!jsArgs " + JSON.stringify(jsArgs[0]));
+                print("!!!!jsArgs " + JSON.stringify(jsArgs[0]));
                 println("ARG0=" + args1.get(0));
                 var cacheO = new org.apache.ignite.internal.processors.rest.protocols.http.jetty.JSONCacheObject(args1.get(0));
                 println("CACHE OBJ= " + cacheO);
