@@ -41,6 +41,10 @@ public class JSONCacheObject implements JSObject {
             addField(toSimpleObject(key), toSimpleObject(o.get(key)));
     }
 
+    public Map<Object, Object> getFields() {
+        return fields;
+    }
+
     @Override public int hashCode() {
         return fields.hashCode();
     }

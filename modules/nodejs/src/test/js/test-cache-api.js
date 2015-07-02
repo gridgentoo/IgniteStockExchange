@@ -166,7 +166,7 @@ testReplace = function() {
 
         function onReplace(cache, err, res) {
             assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === true, "Incorrect result for replace [expected=true, val" + res + "]");
+            assert(res === true, "Incorrect result for replace [expected=true, val=" + res + "]");
 
             cache.get(entry[0], function(err, res) {
                 assert(!err);

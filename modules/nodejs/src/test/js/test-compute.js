@@ -190,7 +190,10 @@ function computeCacheExecute(error, ignite) {
         assert(TestUtils.compareObject({"1": 1}, res),
             "Incorrect result [exp= {1:1}, val=" + res);
 
-        TestUtils.testDone();
+        ignite.cache("mycache").size(function(err, size){
+            assert(size === 3, "Incorrect size [size=" + 3 + ", res=" + size + "]");
+            TestUtils.testDone();
+        })
     }
 
     entries = [];

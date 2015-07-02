@@ -333,6 +333,15 @@ public class GridJettyRestHandler extends AbstractHandler {
                 res.add(new RestEntry(k, o.get(k)));
 
             cmdRes.setResponse(res);
+
+        }
+        else if (cmd == CACHE_GET || cmd == CACHE_GET_AND_PUT ||
+                cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE ||
+                cmd == CACHE_GET_AND_REPLACE) {
+            Object o = cmdRes.getResponse();
+
+            if (o instanceof JSONCacheObject)
+                cmdRes.setResponse(((JSONCacheObject)o).getFields());
         }
     }
 
@@ -413,7 +422,7 @@ public class GridJettyRestHandler extends AbstractHandler {
                     else if (cmd == CACHE_GET_ALL || cmd == CACHE_REMOVE_ALL || cmd == CACHE_CONTAINS_KEYS) {
                         JSONCacheObject cacheObj = new JSONCacheObject(o);
 
-                        List keys = (List)cacheObj.getField("keys");
+                        Object[] keys = (Object[])cacheObj.getField("keys");
 
                         for (Object key : keys)
                             map.put(key, null);
@@ -812,8 +821,15 @@ public class GridJettyRestHandler extends AbstractHandler {
          * @param val Value.
          */
         public RestEntry(Object key, Object val) {
-            this.key = key;
-            this.value = val;
+            if (key instanceof JSONCacheObject)
+                this.key = ((JSONCacheObject)key).getFields();
+            else
+                this.key = key;
+
+            if (val instanceof JSONCacheObject)
+                this.value = ((JSONCacheObject)val).getFields();
+            else
+                this.value = val;
         }
 
         /**
