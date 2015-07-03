@@ -1319,7 +1319,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
 
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
-            return c.sizeAsync(new CachePeekMode[]{CachePeekMode.ALL});
+            return c.sizeAsync(new CachePeekMode[]{CachePeekMode.PRIMARY});
         }
     }
 }
