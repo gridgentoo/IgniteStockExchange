@@ -45,6 +45,11 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
         stopAllGrids();
     }
 
+    /** {@inheritDoc} */
+    @Override protected void beforeTest() throws Exception {
+        grid(0).cache("mycache").removeAll();
+    }
+
     /**
      * @throws Exception If failed.
      */
@@ -97,11 +102,11 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void testRestartGrid() throws Exception {
+    public void _testRestartGrid() throws Exception {
         final AtomicInteger id = new AtomicInteger(2);
         IgniteInternalFuture<Long> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {
             @Override public Object call() throws Exception {
-                ArrayList<Integer> ids = new ArrayList<Integer>();
+                ArrayList<Integer> ids = new ArrayList<>();
 
                 for (int i = 0 ; i < 3; ++i) {
                     int cur = id.getAndIncrement();
@@ -111,8 +116,8 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
                     ids.add(cur);
                 }
 
-                for (int i = 0; i < ids.size(); ++i)
-                    stopGrid(ids.get(i));
+                for (Integer id1 : ids)
+                    stopGrid(id1);
 
                 return null;
             }

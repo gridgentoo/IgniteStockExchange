@@ -25,7 +25,6 @@ import org.apache.ignite.internal.processors.rest.client.message.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.handlers.cache.*;
 import org.apache.ignite.internal.processors.rest.handlers.query.*;
-import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 import org.apache.ignite.internal.processors.rest.handlers.datastructures.*;
 import org.apache.ignite.internal.processors.rest.handlers.task.*;
 import org.apache.ignite.internal.processors.rest.handlers.top.*;
@@ -58,6 +57,10 @@ public class GridRestProcessor extends GridProcessorAdapter {
     /** HTTP protocol class name. */
     private static final String HTTP_PROTO_CLS =
         "org.apache.ignite.internal.processors.rest.protocols.http.jetty.GridJettyRestProtocol";
+
+    /** HTTP protocol class name. */
+    private static final String HTTP_SCRIPTING_CLS =
+        "org.apache.ignite.internal.processors.rest.protocols.http.jetty.IgniteScriptingCommandHandler";
 
     /** */
     public static final byte[] ZERO_BYTES = new byte[0];
@@ -292,8 +295,8 @@ public class GridRestProcessor extends GridProcessorAdapter {
             addHandler(new GridTopologyCommandHandler(ctx));
             addHandler(new GridVersionNameCommandHandler(ctx));
             addHandler(new DataStructuresCommandHandler(ctx));
-            addHandler(new IgniteScriptingCommandHandler(ctx));
             addHandler(new QueryCommandHandler(ctx));
+            addScriptingHandler();
         }
     }
 
@@ -644,6 +647,31 @@ public class GridRestProcessor extends GridProcessorAdapter {
         catch (ClassNotFoundException ignored) {
             if (log.isDebugEnabled())
                 log.debug("Failed to initialize HTTP REST protocol (consider adding ignite-rest-http " +
+                    "module to classpath).");
+        }
+        catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            throw new IgniteCheckedException("Failed to initialize HTTP REST protocol.", e);
+        }
+    }
+
+    /**
+     * Add scripting handler if exist in classpath.
+     *
+     * @throws IgniteCheckedException In case of error.
+     */
+    private void addScriptingHandler() throws IgniteCheckedException {
+        try {
+            Class<?> cls1 = Class.forName(HTTP_SCRIPTING_CLS);
+
+            Constructor<?> ctor1 = cls1.getConstructor(GridKernalContext.class);
+
+            GridRestCommandHandlerAdapter handl1 = (GridRestCommandHandlerAdapter)ctor1.newInstance(ctx);
+
+            addHandler(handl1);
+        }
+        catch (ClassNotFoundException ignored) {
+            if (log.isDebugEnabled())
+                log.debug("Failed to add scripting handler (consider adding ignite-rest-http " +
                     "module to classpath).");
         }
         catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {

@@ -15,14 +15,16 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.rest.handlers.scripting;
+package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
 
+import net.sf.json.*;
 import org.apache.ignite.*;
 import org.apache.ignite.cluster.*;
 import org.apache.ignite.compute.*;
 import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
+import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.future.*;
@@ -176,7 +178,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     data[i] = results.get(i).getData();
                 }
 
-                Object o = ctx.scripting().invokeFunction(reduceFunc, data, null);
+                Object o = ctx.scripting().invokeJSFunction(reduceFunc, JSONSerializer.toJSON(data), null);
                 return o;
             }
             catch (IgniteCheckedException e) {
@@ -215,10 +217,14 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         /** {@inheritDoc} */
         @Override public Object execute() throws IgniteException {
             try {
-                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv);
+                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func,
+                    JSONCacheObject.toSimpleObject(argv), null);
             }
             catch (IgniteCheckedException e) {
                 throw U.convertException(e);
+            }
+            catch (Exception e) {
+                throw new IgniteException(e);
             }
         }
     }

@@ -29,7 +29,7 @@ public class NodeJSIgnite {
     /**
      * @param ignite Ignite.
      */
-    NodeJSIgnite(Ignite ignite) {
+    public NodeJSIgnite(Ignite ignite) {
         this.ignite = ignite;
     }
 
