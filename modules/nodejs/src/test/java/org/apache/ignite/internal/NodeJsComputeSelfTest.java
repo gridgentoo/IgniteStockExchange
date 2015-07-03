@@ -17,6 +17,8 @@
 
 package org.apache.ignite.internal;
 
+import org.apache.ignite.cache.*;
+import org.apache.ignite.configuration.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.testframework.*;
 
@@ -48,6 +50,16 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
     /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
         grid(0).cache("mycache").removeAll();
+    }
+
+    /** {@inheritDoc} */
+    @Override protected CacheConfiguration cacheConfiguration() {
+        CacheConfiguration ccfg = new CacheConfiguration();
+
+        ccfg.setName(CACHE_NAME);
+        ccfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+        return ccfg;
     }
 
     /**
@@ -97,6 +109,27 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
      */
     public void testComputeCacheExecute() throws Exception {
         runJsScript("testComputeCacheExecute");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testComputeRunScriptContainsKey() throws Exception {
+        runJsScript("testComputeRunScriptContainsKey");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testComputeRunScriptContainsKeys() throws Exception {
+        runJsScript("testComputeRunScriptContainsKeys");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testComputeRunScriptPutAllGetAll() throws Exception {
+        runJsScript("testComputeRunScriptPutAllGetAll");
     }
 
     /**

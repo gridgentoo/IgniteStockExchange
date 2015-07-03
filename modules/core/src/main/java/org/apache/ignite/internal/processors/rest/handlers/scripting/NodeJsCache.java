@@ -18,13 +18,16 @@
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
 import org.apache.ignite.*;
+import org.apache.ignite.internal.util.typedef.internal.*;
+
+import java.util.*;
 
 /**
  * Node js cache.
  */
 public class NodeJsCache {
     /** Ignite cache. */
-    private IgniteCache cache;
+    private IgniteCache<Object, Object> cache;
 
     /**
      * @param cache Ignite cache.
@@ -50,8 +53,60 @@ public class NodeJsCache {
     public Object get(Object key) {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
 
-        Object res =  cache.get(cacheKey);
+        return cache.get(cacheKey);
+    }
+
+    /**
+     * @param key Key
+     * @return True if cache contains key.
+     */
+    public boolean containsKey(Object key) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+
+        return cache.containsKey(cacheKey);
+    }
+
+    /**
+     * @param keys Keys
+     * @return True if cache contains key.
+     */
+    public boolean containsKeys(List keys) {
+        List cacheKeys = (List)JSONCacheObject.toSimpleObject(keys);
+
+        return cache.containsKeys(new HashSet<>(cacheKeys));
+    }
+
+    /**
+     * @param keys Keys.
+     * @return Cache entries.
+     */
+    public List<RestEntry> getAll(List keys) {
+        List cacheKeys = (List)JSONCacheObject.toSimpleObject(keys);
+
+        Map<Object, Object> entries = cache.getAll(new HashSet<>(cacheKeys));
+
+        List<RestEntry> res = new ArrayList<>();
+
+        for (Map.Entry<Object, Object> e : entries.entrySet())
+            res.add(new RestEntry(e.getKey(), e.getValue()));
+
         return res;
+    }
+
+    /**
+     * @param entries Entries.
+     */
+    public void putAll(List entries) {
+        List cacheKeys = (List)JSONCacheObject.toSimpleObject(entries);
+
+        Map<Object, Object> cacheEntries = U.newHashMap(entries.size());
+
+        for (Object e : cacheKeys) {
+            JSONCacheObject e0 = (JSONCacheObject)e;
+            cacheEntries.put(e0.getField("_key"), e0.getField("_val"));
+        }
+
+        cache.putAll(cacheEntries);
     }
 
     /**

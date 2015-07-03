@@ -42,6 +42,118 @@ testComputeCacheExecute = function() {
     TestUtils.startIgniteNode(computeCacheExecute);
 }
 
+testComputeRunScriptContainsKey = function() {
+    function computeRunScriptContainsKey(error, ignite) {
+        assert(error == null, "Error on start:" + error);
+
+        var comp = ignite.compute();
+
+        var f = function(key) {
+            var cache = ignite.cache("mycache");
+            cache.put(key, "[AAAAAAA]");
+
+            if (!cache.containsKey(key))
+                throw "Contains key does not work."
+
+            return key;
+        }
+
+        function onEnd(err, res) {
+            assert(err == null);
+            assert(TestUtils.compareObject(initKey, res), "Incorrect result after script.")
+
+            ignite.cache("mycache").containsKey(initKey, function(err0, res0) {
+                assert(err0 === null, "Get error on js contatins key [err=" + err0 + "]");
+                assert(res0 === true, "Incorrect value on js contains key [res=" + res0 + "]");
+                TestUtils.testDone();
+            });
+        }
+
+        var initKey = {"1" : ["1", "2"]};
+
+        comp.runScript(f, initKey, onEnd.bind(null));
+    }
+
+    TestUtils.startIgniteNode(computeRunScriptContainsKey);
+}
+
+testComputeRunScriptContainsKeys = function() {
+    function computeRunScriptContainsKey(error, ignite) {
+        assert(error == null, "Error on start:" + error);
+
+        var comp = ignite.compute();
+
+        var f = function(keys) {
+            var cache = ignite.cache("mycache");
+            cache.put(keys[0], "[AAAAAAA]");
+            cache.put(keys[1], "[BBBBBBB]");
+
+            if (!cache.containsKeys(keys))
+                throw "Contains key does not work."
+
+            return keys;
+        }
+
+        function onEnd(err, res) {
+            assert(err == null);
+            assert(TestUtils.compareObject([initKey0, initKey1], res), "Incorrect result after script.")
+
+            ignite.cache("mycache").containsKey(initKey0, function(err0, res0) {
+                assert(err0 === null, "Get error on js contatins key [err=" + err0 + "]");
+                assert(res0 === true, "Incorrect value on js contains key [res=" + res0 + "]");
+                TestUtils.testDone();
+            });
+        }
+
+        var initKey0 = {"1" : ["1", "2"]};
+        var initKey1 = {"2" : "AAA"};
+
+        comp.runScript(f, [initKey0, initKey1], onEnd.bind(null));
+    }
+
+    TestUtils.startIgniteNode(computeRunScriptContainsKey);
+}
+
+testComputeRunScriptPutAllGetAll = function() {
+    function computeRunScriptContainsKey(error, ignite) {
+        assert(error == null, "Error on start:" + error);
+
+        var comp = ignite.compute();
+
+        var f = function(args) {
+            var cache = ignite.cache("mycache");
+
+            cache.putAll(args[0]);
+
+            return cache.getAll(args[1]);
+        }
+
+        function onEnd(err, res) {
+            assert(err == null);
+
+            assert(TestUtils.compareObject(initEntries[0].key(), res[0].key), "Incorrect result after script " +
+                "[InitEntries=" + JSON.stringify(initEntries[0].key()) + ", val=" + JSON.stringify(res[0].key) + "]");
+
+            ignite.cache("mycache").containsKey(initKey0, function(err0, res0) {
+                assert(err0 === null, "Get error on js contatins key [err=" + err0 + "]");
+                assert(res0 === true, "Incorrect value on js contains key [res=" + res0 + "]");
+                TestUtils.testDone();
+            });
+        }
+
+        var initKey0 = {"1" : ["1", "2"]};
+        var initKey1 = {"2" : "AAA"};
+        var initVal0 = {"1" : ["1", "2"]};
+        var initVal1 = {"2" : "AAA"};
+        var initEntries = [new Entry(initKey0, initVal0), new Entry(initKey1, initVal1)];
+
+        comp.runScript(f, [initEntries, [initKey0, initKey1]],
+            onEnd.bind(null));
+    }
+
+    TestUtils.startIgniteNode(computeRunScriptContainsKey);
+}
+
 function onStart(onPut, error, ignite) {
     var cache = ignite.cache("mycache");
 
@@ -181,7 +293,7 @@ function computeCacheExecute(error, ignite) {
     };
 
     var reduce = function(results) {
-        return {"1": 1};
+        return {"1" : 1};
     };
 
     var callback = function(err, res) {

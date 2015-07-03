@@ -143,6 +143,7 @@ public class JSONCacheObject implements JSObject {
 
         return o;
     }
+
     @Override public Object call(Object o, Object... objects) {
         System.out.println("!!!!CALL");
         return null;
