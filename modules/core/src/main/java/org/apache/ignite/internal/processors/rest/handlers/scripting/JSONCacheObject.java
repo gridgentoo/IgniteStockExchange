@@ -49,11 +49,25 @@ public class JSONCacheObject implements JSObject {
         return fields.hashCode();
     }
 
+    /** {@inheritDoc} */
     @Override public boolean equals(Object obj) {
         if (obj == null || !(obj instanceof JSONCacheObject))
             return false;
 
-        return fields.equals(((JSONCacheObject)obj).fields);
+        JSONCacheObject obj0 = (JSONCacheObject) obj;
+
+        if (fields.size() != obj0.fields.size())
+            return false;
+
+        for (Object key : obj0.fields.keySet()) {
+            if (!fields.containsKey(key))
+                return false;
+
+            if (!obj0.getField(key).equals(getField(key)))
+                return false;
+        }
+
+        return true;
     }
 
     /**
@@ -97,7 +111,7 @@ public class JSONCacheObject implements JSObject {
             for (Object v : o1)
                 val.add(toSimpleObject(v));
 
-            return val.toArray();
+            return val;
         }
 
         return o;

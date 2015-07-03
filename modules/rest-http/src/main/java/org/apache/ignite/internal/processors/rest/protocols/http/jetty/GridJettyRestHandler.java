@@ -422,7 +422,7 @@ public class GridJettyRestHandler extends AbstractHandler {
                     else if (cmd == CACHE_GET_ALL || cmd == CACHE_REMOVE_ALL || cmd == CACHE_CONTAINS_KEYS) {
                         JSONCacheObject cacheObj = new JSONCacheObject(o);
 
-                        Object[] keys = (Object[])cacheObj.getField("keys");
+                        List keys = (List)cacheObj.getField("keys");
 
                         for (Object key : keys)
                             map.put(key, null);

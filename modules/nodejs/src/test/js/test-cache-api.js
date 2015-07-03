@@ -224,8 +224,8 @@ testGetAndReplaceObject = function() {
 
 testReplaceValueObject = function() {
     function replaceValue(cache, entry, next) {
-        var newKey = {"key" :"7"};
-        cache.replaceValue(entry[0], newKey, entry[1], onReplaceValue.bind(null, cache));
+        var newVal = {"key" :"7"};
+        cache.replaceValue(entry[0], newVal, entry[1], onReplaceValue.bind(null, cache));
 
         function onReplaceValue(cache, err, res) {
             assert(err === null, "Get error on get and put [err=" + err + "]");
