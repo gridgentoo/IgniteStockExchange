@@ -30,7 +30,7 @@ import static javax.script.ScriptContext.*;
  */
 public class IgniteScriptProcessor extends GridProcessorAdapter {
     /** Javascript engine name. */
-    public static final String JAVA_SCRIPT_ENGINE_NAME = "JavaScript";
+    public static final String JAVA_SCRIPT_ENGINE_NAME = "nashorn";
 
     /** Javascript engine. */
     private ScriptEngine jsEngine;

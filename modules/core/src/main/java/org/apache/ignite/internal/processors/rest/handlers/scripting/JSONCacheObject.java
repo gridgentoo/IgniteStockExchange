@@ -203,7 +203,6 @@ public class JSONCacheObject implements JSObject {
     }
 
     @Override public double toNumber() {
-        System.out.println("!!!!toNumber");
         return 0;
     }
 }
