@@ -151,7 +151,6 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                 List<T3<Object, Object, Object>> jsMapRes = emitRes.getEmitResult();
 
                 for (T3<Object, Object, Object> task : jsMapRes) {
-
                     map.put(new JsCallFunctionJob((String)task.get1(), task.get2()),
                         (ClusterNode)task.get3());
                 }
@@ -177,7 +176,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     data[i] = results.get(i).getData();
                 }
 
-                Object o = ctx.scripting().invokeJSFunction(reduceFunc, data, null);
+                Object o = ctx.scripting().invokeFunction(reduceFunc, data, null);
                 return o;
             }
             catch (IgniteCheckedException e) {
@@ -209,7 +208,8 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
          */
         public JsCallFunctionJob(String func, Object argv) {
             this.func = func;
-            this.argv = argv;
+
+            this.argv = JSONCacheObject.toSimpleObject(argv);
         }
 
         /** {@inheritDoc} */

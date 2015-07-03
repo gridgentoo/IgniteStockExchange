@@ -17,47 +17,26 @@
 
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
-import org.apache.ignite.*;
+import org.apache.ignite.cluster.*;
 
 /**
- * Node js cache.
+ * Node js cluster node.
  */
-public class NodeJsCache {
-    /** Ignite cache. */
-    private IgniteCache cache;
+public class NodeJsClusterNode {
+    /** Cluster node. */
+    private String id;
 
     /**
-     * @param cache Ignite cache.
+     * @param node Cluster node.
      */
-    public NodeJsCache(IgniteCache cache) {
-        this.cache = cache;
+    public NodeJsClusterNode(ClusterNode node) {
+       this.id = node.id().toString();
     }
 
     /**
-     * @param key Key.
-     * @param val Value.
+     * @return Node id.
      */
-    public void put(Object key, Object val) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
-
-        cache.put(cacheKey, cacheVal);
-    }
-
-    /**
-     * @param key Key.
-     */
-    public Object get(Object key) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-
-        Object res =  cache.get(cacheKey);
-        return res;
-    }
-
-    /**
-     * @return Local size.
-     */
-    public int localSize() {
-        return cache.localSize();
+    public String id() {
+        return id;
     }
 }

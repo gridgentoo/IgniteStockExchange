@@ -17,7 +17,7 @@
 
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
-import jdk.nashorn.api.scripting.JSObject;
+import jdk.nashorn.api.scripting.*;
 import org.apache.ignite.internal.util.typedef.internal.U;
 
 import java.util.*;
@@ -93,6 +93,8 @@ public class JSONCacheObject implements JSObject {
      * @return Converted object.
      */
     public static Object toSimpleObject(Object o) {
+        o = tryConvert(o, Object[].class);
+
         if (o instanceof Map) {
             Map o1 = (Map)o;
 
@@ -113,10 +115,34 @@ public class JSONCacheObject implements JSObject {
 
             return val;
         }
+        else if (o.getClass().isArray()) {
+            Object[] o1 = (Object[]) o;
+
+            List<Object> val = new ArrayList<>();
+
+            for (Object v : o1)
+                val.add(toSimpleObject(v));
+
+            return val;
+        }
 
         return o;
     }
 
+    /**
+     * @param o Object.
+     * @param cl Class.
+     */
+    private static Object tryConvert(Object o, Class cl) {
+        try {
+            return ScriptUtils.convert(o, cl);
+
+        } catch (Exception e) {
+            //skip.
+        }
+
+        return o;
+    }
     @Override public Object call(Object o, Object... objects) {
         System.out.println("!!!!CALL");
         return null;
@@ -147,8 +173,7 @@ public class JSONCacheObject implements JSObject {
         return fields.containsKey(s);
     }
 
-    @Override
-    public boolean hasSlot(int i) {
+    @Override public boolean hasSlot(int i) {
         System.out.println("!!!!hasSlot");
         return false;
     }
@@ -185,8 +210,7 @@ public class JSONCacheObject implements JSObject {
         return fields.values();
     }
 
-    @Override
-    public boolean isInstance(Object o) {
+    @Override public boolean isInstance(Object o) {
         System.out.println("!!!!isInstance");
         return false;
     }

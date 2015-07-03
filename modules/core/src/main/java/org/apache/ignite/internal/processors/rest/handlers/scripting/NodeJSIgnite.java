@@ -33,7 +33,25 @@ public class NodeJSIgnite {
         this.ignite = ignite;
     }
 
+    /**
+     * @param cache Cache name.
+     * @return Node js cache.
+     */
     public NodeJsCache cache(String cache) {
         return new NodeJsCache(ignite.cache(cache));
+    }
+
+    /**
+     * @return Local node.
+     */
+    public NodeJsClusterNode localNode() {
+        return new NodeJsClusterNode(ignite.cluster().localNode());
+    }
+
+    /**
+     * @return Ignite name.
+     */
+    public String name() {
+        return ignite.name();
     }
 }

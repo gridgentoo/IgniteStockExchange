@@ -60,7 +60,7 @@ function computeRunScript(ignite, error) {
     var comp = ignite.compute();
 
     var f = function (args) {
-        println("!!!!" + args + " " + ignite.name());
+        print("!!!!" + args + " " + ignite.name());
         return args + " " + ignite.name();
     }
 
@@ -83,7 +83,7 @@ function computeExecute(error, ignite) {
 
         for (var i = 0; i < words.length; i++) {
             var f = function (word) {
-                println(">>> Printing " + word);
+                print(">>> Printing " + word);
 
                 return word.length;
             };
@@ -118,7 +118,7 @@ function computeAllNodeExecute(error, ignite) {
     var map = function(nodes, arg) {
         for (var i = 0; i < nodes.length; i++) {
             var f = function (node) {
-                println(">>> Printing " + node.id().toString());
+                print(">>> Printing " + node.id().toString());
 
                 return "";
             };
@@ -217,12 +217,12 @@ function computeCacheSizeExecute(error, ignite) {
     var map = function(nodes, arg) {
         for (var i = 0; i < nodes.length; i++) {
             var f = function (args) {
-                println("!!!!!Node id " + ignite.localNode().id());
+                print("!!!!!Node id " + ignite.localNode().id());
 
                 return ignite.cache("mycache").localSize();
             };
 
-            emit(f, [], nodes[i]);
+            emit(f, [1, 2], nodes[i]);
         }
     };
 
