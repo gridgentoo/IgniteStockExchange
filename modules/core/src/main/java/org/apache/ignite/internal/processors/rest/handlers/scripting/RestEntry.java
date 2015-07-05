@@ -16,13 +16,13 @@ public class RestEntry {
      * @param val Value.
      */
     public RestEntry(Object key, Object val) {
-        if (key instanceof JSONCacheObject)
-            this.key = ((JSONCacheObject)key).getFields();
+        if (key instanceof RestJSONCacheObject)
+            this.key = ((RestJSONCacheObject)key).getFields();
         else
             this.key = key;
 
-        if (val instanceof JSONCacheObject)
-            this.val = ((JSONCacheObject)val).getFields();
+        if (val instanceof RestJSONCacheObject)
+            this.val = ((RestJSONCacheObject)val).getFields();
         else
             this.val = val;
     }

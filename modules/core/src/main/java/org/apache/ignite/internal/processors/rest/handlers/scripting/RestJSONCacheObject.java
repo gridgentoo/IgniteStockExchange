@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
 import jdk.nashorn.api.scripting.*;
+import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.typedef.internal.U;
 
 import java.util.*;
@@ -25,57 +26,33 @@ import java.util.*;
 /**
  * Json cache object.
  */
-public class JSONCacheObject implements JSObject {
-    Map<Object, Object> fields = new HashMap();
-    /**
-     * Empty constructor.
-     */
-    private JSONCacheObject() {
-    }
+public class RestJSONCacheObject implements JSObject {
+    /** Fields. */
+    private final JSONCacheObject fields;
 
     /**
      * @param o JSON object.
      */
-    public JSONCacheObject(Map o) {
-        for (Object key : o.keySet())
-            addField(toSimpleObject(key), toSimpleObject(o.get(key)));
-    }
-
-    public Map<Object, Object> getFields() {
-        return fields;
-    }
-
-    @Override public int hashCode() {
-        return fields.hashCode();
-    }
-
-    /** {@inheritDoc} */
-    @Override public boolean equals(Object obj) {
-        if (obj == null || !(obj instanceof JSONCacheObject))
-            return false;
-
-        JSONCacheObject obj0 = (JSONCacheObject) obj;
-
-        if (fields.size() != obj0.fields.size())
-            return false;
-
-        for (Object key : obj0.fields.keySet()) {
-            if (!fields.containsKey(key))
-                return false;
-
-            if (!obj0.getField(key).equals(getField(key)))
-                return false;
-        }
-
-        return true;
+    private RestJSONCacheObject(JSONCacheObject o) {
+        fields = o;
     }
 
     /**
-     * @param key Field name.
-     * @param val Field value.
+     * @param o Object.
+     * @return Rest JSON cache object.
      */
-    public void addField(Object key, Object val) {
-        fields.put(key, val);
+    public static Object convertToRestObject(Object o) {
+        if (o instanceof JSONCacheObject)
+            return new RestJSONCacheObject((JSONCacheObject)o);
+
+        return o;
+    }
+
+    /**
+     * @return Fields.
+     */
+    public Map<Object, Object> getFields() {
+        return fields;
     }
 
     /**
@@ -84,64 +61,6 @@ public class JSONCacheObject implements JSObject {
      */
     public Object getField(Object key) {
         return fields.get(key);
-    }
-
-    /**
-     * Convert JSON object to JSONCacheObject
-     *
-     * @param o Object to convert.
-     * @return Converted object.
-     */
-    public static Object toSimpleObject(Object o) {
-        o = tryConvert(o, Object[].class);
-
-        if (o instanceof Map) {
-            Map o1 = (Map)o;
-
-            JSONCacheObject res = new JSONCacheObject();
-
-            for (Object key : o1.keySet())
-                res.addField(toSimpleObject(key), toSimpleObject(o1.get(key)));
-
-            return res;
-        }
-        else if (o instanceof List) {
-            List o1 = (List) o;
-
-            List<Object> val = new ArrayList<>();
-
-            for (Object v : o1)
-                val.add(toSimpleObject(v));
-
-            return val;
-        }
-        else if (o.getClass().isArray()) {
-            Object[] o1 = (Object[]) o;
-
-            List<Object> val = new ArrayList<>();
-
-            for (Object v : o1)
-                val.add(toSimpleObject(v));
-
-            return val;
-        }
-
-        return o;
-    }
-
-    /**
-     * @param o Object.
-     * @param cl Class.
-     */
-    private static Object tryConvert(Object o, Class cl) {
-        try {
-            return ScriptUtils.convert(o, cl);
-
-        } catch (Exception e) {
-            //skip.
-        }
-
-        return o;
     }
 
     @Override public Object call(Object o, Object... objects) {
@@ -198,8 +117,8 @@ public class JSONCacheObject implements JSObject {
         System.out.println("!!!!keySet");
         Set<String> keys = new HashSet<>();
 
-        for (Object o : keys) {
-            if (!(o instanceof JSONCacheObject))
+        for (Object o : fields.keySet()) {
+            if (!(o instanceof RestJSONCacheObject))
                 keys.add(o.toString());
         }
 
@@ -223,7 +142,7 @@ public class JSONCacheObject implements JSObject {
 
     @Override public String getClassName() {
         System.out.println("!!!!getClassName");
-        return U.getSimpleName(JSONCacheObject.class);
+        return U.getSimpleName(RestJSONCacheObject.class);
     }
 
     @Override public boolean isFunction() {

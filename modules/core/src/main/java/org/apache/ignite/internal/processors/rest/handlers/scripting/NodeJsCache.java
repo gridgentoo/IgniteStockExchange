@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
 import org.apache.ignite.*;
+import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 
 import java.util.*;
@@ -53,7 +54,7 @@ public class NodeJsCache {
     public Object get(Object key) {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
 
-        return cache.get(cacheKey);
+        return RestJSONCacheObject.convertToRestObject(cache.get(cacheKey));
     }
 
     /**
@@ -71,7 +72,7 @@ public class NodeJsCache {
      * @return True if cache contains key.
      */
     public boolean containsKeys(List keys) {
-        List cacheKeys = (List)JSONCacheObject.toSimpleObject(keys);
+        List<Object> cacheKeys = (List<Object>)JSONCacheObject.toSimpleObject(keys);
 
         return cache.containsKeys(new HashSet<>(cacheKeys));
     }
@@ -88,7 +89,9 @@ public class NodeJsCache {
         List<RestEntry> res = new ArrayList<>();
 
         for (Map.Entry<Object, Object> e : entries.entrySet())
-            res.add(new RestEntry(e.getKey(), e.getValue()));
+            res.add(new RestEntry(
+                RestJSONCacheObject.convertToRestObject(e.getKey()),
+                RestJSONCacheObject.convertToRestObject(e.getValue())));
 
         return res;
     }

@@ -24,6 +24,7 @@ import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.rest.client.message.*;
 import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 import org.apache.ignite.internal.processors.rest.request.*;
+import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
@@ -340,8 +341,8 @@ public class GridJettyRestHandler extends AbstractHandler {
         else {
             Object o = cmdRes.getResponse();
 
-            if (o instanceof JSONCacheObject)
-                cmdRes.setResponse(((JSONCacheObject)o).getFields());
+            if (o instanceof RestJSONCacheObject)
+                cmdRes.setResponse(((RestJSONCacheObject)o).getFields());
         }
     }
 
