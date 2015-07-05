@@ -403,46 +403,67 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                     Map<Object, Object> map = U.newHashMap(o.keySet().size());
 
-                    if (cmd == CACHE_PUT_ALL) {
-                        List entries = (List)o.get("entries");
+                    switch (cmd) {
+                        case CACHE_PUT_ALL: {
+                            List entries = (List) o.get("entries");
 
-                        for (Object entry : entries) {
-                            JSONCacheObject cacheEntry = new JSONCacheObject((JSONObject)entry);
+                            for (Object entry : entries) {
+                                JSONCacheObject cacheEntry = new JSONCacheObject((JSONObject) entry);
 
-                            Object key = cacheEntry.getField("_key");
-                            Object val = cacheEntry.getField("_val");
+                                Object key = cacheEntry.getField("_key");
+                                Object val = cacheEntry.getField("_val");
 
-                            map.put(key, val);
+                                map.put(key, val);
+                            }
+
+                            restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+
+                            restReq0.values(map);
+
+                            break;
                         }
 
-                        restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+                        case CACHE_GET_ALL:
+                        case CACHE_REMOVE_ALL:
+                        case CACHE_CONTAINS_KEYS: {
+                            JSONCacheObject cacheObj = new JSONCacheObject(o);
 
-                        restReq0.values(map);
-                    }
-                    else if (cmd == CACHE_GET_ALL || cmd == CACHE_REMOVE_ALL || cmd == CACHE_CONTAINS_KEYS) {
-                        JSONCacheObject cacheObj = new JSONCacheObject(o);
+                            List keys = (List) cacheObj.getField("keys");
 
-                        List keys = (List)cacheObj.getField("keys");
+                            for (Object key : keys)
+                                map.put(key, null);
 
-                        for (Object key : keys)
-                            map.put(key, null);
+                            restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
 
-                        restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+                            restReq0.values(map);
 
-                        restReq0.values(map);
-                    }
-                    else if (cmd == CACHE_GET || cmd == CACHE_PUT || cmd == CACHE_REMOVE ||
-                        cmd == CACHE_CONTAINS_KEY || cmd == CACHE_GET_AND_PUT ||
-                        cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE ||
-                        cmd == CACHE_PUT_IF_ABSENT || cmd == CACHE_REMOVE_VALUE || cmd == CACHE_REPLACE ||
-                        cmd == CACHE_GET_AND_REPLACE || cmd == CACHE_REPLACE_VALUE) {
-                        JSONCacheObject cacheObj = new JSONCacheObject(o);
+                            break;
+                        }
 
-                        restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+                        case CACHE_GET:
+                        case CACHE_PUT:
+                        case CACHE_REMOVE:
+                        case CACHE_CONTAINS_KEY:
+                        case CACHE_GET_AND_PUT:
+                        case CACHE_GET_AND_PUT_IF_ABSENT:
+                        case CACHE_GET_AND_REMOVE:
+                        case CACHE_PUT_IF_ABSENT:
+                        case CACHE_REMOVE_VALUE:
+                        case CACHE_REPLACE:
+                        case CACHE_GET_AND_REPLACE:
+                        case CACHE_REPLACE_VALUE: {
+                            JSONCacheObject cacheObj = new JSONCacheObject(o);
 
-                        restReq0.key(cacheObj.getField("key"));
-                        restReq0.value(cacheObj.getField("val"));
-                        restReq0.value2(cacheObj.getField("oldVal"));
+                            restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
+
+                            restReq0.key(cacheObj.getField("key"));
+                            restReq0.value(cacheObj.getField("val"));
+                            restReq0.value2(cacheObj.getField("oldVal"));
+                            break;
+                        }
+
+                        default:
+                            throw new IgniteCheckedException("Invalid command: " + cmd);
                     }
                 }
                 else {

@@ -44,14 +44,14 @@ public class RestEntry {
     /**
      * @return Value.
      */
-    public Object getVal() {
+    public Object getValue() {
         return val;
     }
 
     /**
      * @param val Value.
      */
-    public void setVal(Object val) {
+    public void setValue(Object val) {
         this.val = val;
     }
 }
