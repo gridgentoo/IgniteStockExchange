@@ -292,7 +292,7 @@ public class GridJettyRestHandler extends AbstractHandler {
         JSON json;
 
         try {
-            createResponse(cmd, cmdRes);
+            createResponse(req, cmd, cmdRes);
 
             json = JSONSerializer.toJSON(cmdRes, cfg);
         }
@@ -317,11 +317,13 @@ public class GridJettyRestHandler extends AbstractHandler {
     }
 
     /**
+     * @param req Request.
      * @param cmd Rest command.
      * @param cmdRes Rest response.
      */
-    private void createResponse(GridRestCommand cmd, GridRestResponse cmdRes) {
-        if (cmdRes.getResponse() == null)
+    private void createResponse(HttpServletRequest req, GridRestCommand cmd,
+        GridRestResponse cmdRes) {
+        if (cmdRes.getResponse() == null || req.getHeader("JSONObject") == null)
             return;
 
         if (cmd == CACHE_GET_ALL) {
@@ -335,9 +337,7 @@ public class GridJettyRestHandler extends AbstractHandler {
             cmdRes.setResponse(res);
 
         }
-        else if (cmd == CACHE_GET || cmd == CACHE_GET_AND_PUT ||
-                cmd == CACHE_GET_AND_PUT_IF_ABSENT || cmd == CACHE_GET_AND_REMOVE ||
-                cmd == CACHE_GET_AND_REPLACE) {
+        else {
             Object o = cmdRes.getResponse();
 
             if (o instanceof JSONCacheObject)
