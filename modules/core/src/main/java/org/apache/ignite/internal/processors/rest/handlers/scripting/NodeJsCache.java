@@ -121,7 +121,48 @@ public class NodeJsCache {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
         Object cacheVal = JSONCacheObject.toSimpleObject(val);
 
-        return cache.getAndPut(cacheKey, cacheVal);
+        return RestJSONCacheObject.convertToRestObject(cache.getAndPut(cacheKey, cacheVal));
+    }
+
+    /**
+     * @param key Key.
+     * @param val Value.
+     * @return Previous value.
+     */
+    public Object getAndPutIfAbsent(Object key, Object val) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+
+        return RestJSONCacheObject.convertToRestObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
+    }
+
+    /**
+     * @param key Key.
+     * @return Previous value.
+     */
+    public Object getAndRemove(Object key) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+
+        return RestJSONCacheObject.convertToRestObject(cache.getAndRemove(cacheKey));
+    }
+
+    /**
+     * @param key Key.
+     * @param val Value.
+     * @return Previous value.
+     */
+    public Object putIfAbsent(Object key, Object val) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+
+        return cache.putIfAbsent(cacheKey, cacheVal);
+    }
+
+    /**
+     * @return Cache name.
+     */
+    public String getName() {
+        return cache.getName();
     }
 
     /**

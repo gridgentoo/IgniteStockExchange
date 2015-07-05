@@ -23,7 +23,6 @@ import org.apache.ignite.compute.*;
 import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.rest.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
-import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.future.*;

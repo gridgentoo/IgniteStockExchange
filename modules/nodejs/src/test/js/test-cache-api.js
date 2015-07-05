@@ -350,7 +350,7 @@ function containsKeys(cache, entries, next) {
     var keys = []
 
     for (var entry of entries) {
-        keys.push(entry.key());
+        keys.push(entry.key);
     }
 
     cache.containsKeys(keys, onContainsKeys);
@@ -367,7 +367,7 @@ function notContainsKeys(cache, entries, next) {
     var keys = []
 
     for (var entry of entries) {
-        keys.push(entry.key());
+        keys.push(entry.key);
     }
 
     cache.containsKeys(keys, onContainsKeys);
@@ -413,7 +413,7 @@ function getAll(cache, entries, next) {
     var keys = []
 
     for (var entry of entries) {
-        keys.push(entry.key());
+        keys.push(entry.key);
     }
 
     cache.getAll(keys, onGetAll.bind(null, keys));
@@ -432,7 +432,7 @@ function getAll(cache, entries, next) {
             var foundVal = null;
 
             for (var j = 0; j < values.length; ++j) {
-                if (TestUtils.compareObject(key, values[j].key())) {
+                if (TestUtils.compareObject(key, values[j].key)) {
                     foundVal = values[j];
                 }
             }
@@ -440,7 +440,7 @@ function getAll(cache, entries, next) {
             var foundExp = null;
 
             for (var j = 0; j < expected.length; ++j) {
-                if (TestUtils.compareObject(key, expected[j].key())) {
+                if (TestUtils.compareObject(key, expected[j].key)) {
                     foundExp = expected[j];
                 }
             }

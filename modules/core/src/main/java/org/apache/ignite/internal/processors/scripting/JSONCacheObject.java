@@ -61,6 +61,9 @@ public class JSONCacheObject extends HashMap<Object, Object> {
      * @return Converted object.
      */
     public static Object toSimpleObject(Object o) {
+        if (o == null)
+            return null;
+
         if (o instanceof Map) {
             Map o1 = (Map)o;
 

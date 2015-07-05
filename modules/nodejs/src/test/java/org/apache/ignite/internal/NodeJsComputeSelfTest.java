@@ -142,6 +142,13 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testComputeMapReduceGetAndRemoveObject() throws Exception {
+        runJsScript("testComputeMapReduceGetAndRemoveObject");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void _testRestartGrid() throws Exception {
         final AtomicInteger id = new AtomicInteger(2);
         IgniteInternalFuture<Long> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {

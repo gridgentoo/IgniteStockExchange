@@ -411,8 +411,8 @@ public class GridJettyRestHandler extends AbstractHandler {
                             for (Object entry : entries) {
                                 JSONCacheObject cacheEntry = new JSONCacheObject((JSONObject) entry);
 
-                                Object key = cacheEntry.getField("_key");
-                                Object val = cacheEntry.getField("_val");
+                                Object key = cacheEntry.getField("key");
+                                Object val = cacheEntry.getField("value");
 
                                 map.put(key, val);
                             }

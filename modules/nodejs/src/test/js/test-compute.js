@@ -131,8 +131,8 @@ testComputeRunScriptPutAllGetAll = function() {
         function onEnd(err, res) {
             assert(err == null);
 
-            assert(TestUtils.compareObject(initEntries[0].key(), res[0].key), "Incorrect result after script " +
-                "[InitEntries=" + JSON.stringify(initEntries[0].key()) + ", val=" + JSON.stringify(res[0].key) + "]");
+            assert(TestUtils.compareObject(initEntries[0].key, res[0].key), "Incorrect result after script " +
+                "[InitEntries=" + JSON.stringify(initEntries[0].key) + ", val=" + JSON.stringify(res[0].key) + "]");
 
             ignite.cache("mycache").containsKey(initKey0, function(err0, res0) {
                 assert(err0 === null, "Get error on js contatins key [err=" + err0 + "]");
@@ -161,7 +161,11 @@ testComputeMapReduceGetAndPut = function() {
         var map = function(nodes, arg) {
             for (var i = 0; i < nodes.length; i++) {
                 var f = function (val) {
-                    ignite.cache("mycache").put(val, val);
+                    var prev = ignite.cache("mycache").getAndPutIfAbsent(val, val);
+
+                    if (prev !== null) {
+                        throw "Get and put if absent does not work.";
+                    }
 
                     return val;
                 };
@@ -201,6 +205,67 @@ testComputeMapReduceGetAndPut = function() {
     }
 
     TestUtils.startIgniteNode(computeMapReduceGetAndPut);
+}
+
+testComputeMapReduceGetAndRemoveObject = function() {
+    function computeMapReduceGetAndRemove(error, ignite) {
+        assert(error == null, "Error on start:" + error);
+
+        var map = function(nodes, entries) {
+            for (var i = 0; i < entries.length; i++) {
+                var f = function (entry) {
+                    var cache = ignite.cache("mycache");
+                    print("ENTRY =" + entry);
+
+                    print("ENTRY Key=" + entry.key);
+
+                    if (cache.putIfAbsent(entry.key, entry.value) !== true) {
+                        throw "Incorrect put if absent result."
+                    }
+
+                    if (cache.putIfAbsent(entry.key, "1") !== false) {
+                        throw "Incorrect put if absent result."
+                    }
+
+                    return cache.getAndRemove(entry.key);
+                };
+
+                emit(f, entries[i], nodes[i % nodes.length]);
+            }
+        };
+
+        var reduce = function(results) {
+            var sum = 0;
+
+            for (var i = 0; i < results.length; ++i) {
+                sum += results[i].age;
+            }
+
+            return sum;
+        };
+
+        var callback = function(err, res) {
+            assert(err == null, "Get error on compute task [err=" + err + "]");
+            assert(res === 25, "Incorrect reduce result.");
+
+            TestUtils.testDone();
+        }
+
+
+        entries = [];
+
+        var key1 = {"name" : "Ann"};
+        var key2 = {"name" : "Paul"};
+        var val1 = {"age" : 12, "books" : ["1", "Book"]};
+        var val2 = {"age" : 13, "books" : ["1", "Book"]};
+
+        entries.push(new Entry(key1, val1));
+        entries.push(new Entry(key2, val2));
+
+        ignite.compute().execute(map, reduce, entries, callback);
+    }
+
+    TestUtils.startIgniteNode(computeMapReduceGetAndRemove);
 }
 
 function onStart(onPut, error, ignite) {

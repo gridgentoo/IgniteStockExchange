@@ -355,25 +355,9 @@ Cache.prototype._createQueryCommand = function(name, qry) {
  * @param key Key
  * @param val Value
  */
-function Entry(key, val) {
-    this._key = key;
-    this._val = val;
-}
-
-/**
- * @this{Entry}
- * @returns Key
-  */
-Entry.prototype.key = function() {
-    return this._key;
-}
-
-/**
- * @this{Entry}
- * @returns Value
- */
-Entry.prototype.val = function() {
-    return this._val;
+function Entry(key0, val0) {
+    this.key = key0;
+    this.value = val0;
 }
 
 /**
