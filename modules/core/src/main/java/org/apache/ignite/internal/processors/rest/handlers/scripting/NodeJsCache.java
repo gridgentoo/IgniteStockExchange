@@ -106,7 +106,7 @@ public class NodeJsCache {
 
         for (Object e : cacheKeys) {
             JSONCacheObject e0 = (JSONCacheObject)e;
-            cacheEntries.put(e0.getField("_key"), e0.getField("_val"));
+            cacheEntries.put(e0.getField("key"), e0.getField("value"));
         }
 
         cache.putAll(cacheEntries);
