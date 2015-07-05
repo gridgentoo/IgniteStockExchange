@@ -17,7 +17,6 @@
 
 package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
 
-import net.sf.json.*;
 import org.apache.ignite.*;
 import org.apache.ignite.cluster.*;
 import org.apache.ignite.compute.*;
@@ -92,7 +91,8 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             case RUN_SCRIPT: {
                 assert req instanceof RestRunScriptRequest : "Invalid type of run script request.";
 
-                return ctx.closure().callLocalSafe(new RunScriptCallable(ctx, (RestRunScriptRequest) req), false);
+                return ctx.closure().callLocalSafe(
+                        new RunScriptCallable(ctx, (RestRunScriptRequest) req), false);
             }
 
             case EXECUTE_MAP_REDUCE_SCRIPT: {
@@ -178,8 +178,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     data[i] = results.get(i).getData();
                 }
 
-                Object o = ctx.scripting().invokeJSFunction(reduceFunc, JSONSerializer.toJSON(data), null);
-                return o;
+                return ctx.scripting().invokeFunction(reduceFunc, data, null);
             }
             catch (IgniteCheckedException e) {
                 throw U.convertException(e);
@@ -218,9 +217,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         /** {@inheritDoc} */
         @Override public Object execute() throws IgniteException {
             try {
-                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func,
-                    RestJSONCacheObject.convertToRestObject(JSONCacheObject.toSimpleObject(argv)),
-                    null);
+                return ((IgniteKernal)ignite).context().scripting().invokeFunction(func, argv, null);
             }
             catch (IgniteCheckedException e) {
                 throw U.convertException(e);
@@ -317,7 +314,8 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
          * @param req Run script request.
          * @param emitRes Emit function results.
          */
-        public MapReduceCallable(GridKernalContext ctx, RestMapReduceScriptRequest req,IgniteJsEmitResult emitRes) {
+        public MapReduceCallable(GridKernalContext ctx, RestMapReduceScriptRequest req,
+            IgniteJsEmitResult emitRes) {
             this.ctx = ctx;
             this.req = req;
             this.emitRes = emitRes;
