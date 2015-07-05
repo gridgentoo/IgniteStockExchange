@@ -115,7 +115,7 @@ testComputeRunScriptContainsKeys = function() {
 }
 
 testComputeRunScriptPutAllGetAll = function() {
-    function computeRunScriptContainsKey(error, ignite) {
+    function computeRunScriptPutAllGetAll(error, ignite) {
         assert(error == null, "Error on start:" + error);
 
         var comp = ignite.compute();
@@ -151,7 +151,56 @@ testComputeRunScriptPutAllGetAll = function() {
             onEnd.bind(null));
     }
 
-    TestUtils.startIgniteNode(computeRunScriptContainsKey);
+    TestUtils.startIgniteNode(computeRunScriptPutAllGetAll);
+}
+
+testComputeMapReduceGetAndPut = function() {
+    function computeMapReduceGetAndPut(error, ignite) {
+        assert(error == null, "Error on start:" + error);
+
+        var map = function(nodes, arg) {
+            for (var i = 0; i < nodes.length; i++) {
+                var f = function (val) {
+                    ignite.cache("mycache").put(val, val);
+
+                    return val;
+                };
+
+                emit(f, i, nodes[i]);
+            }
+        };
+
+        var reduce = function(results) {
+            var sum = 0;
+
+            for (var i = 0; i < results.length; ++i) {
+                if (results.indexOf(i) === -1) {
+                    throw "Do not find " + i;
+                }
+
+                var prev = ignite.cache("mycache").getAndPut(i, i + 1);
+
+                if (prev !== i) {
+                    throw "Incorrect previous value [key=" + i + ", val=" + prev + "]";
+                }
+
+                sum += prev;
+            }
+
+            return sum;
+        };
+
+        var callback = function(err, res) {
+            assert(err == null, "Get error on compute task [err=" + err + "]");
+            assert(res === 1);
+
+            TestUtils.testDone();
+        }
+
+        ignite.compute().execute(map, reduce, [], callback);
+    }
+
+    TestUtils.startIgniteNode(computeMapReduceGetAndPut);
 }
 
 function onStart(onPut, error, ignite) {

@@ -167,7 +167,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         /** {@inheritDoc} */
         @Nullable @Override public Object reduce(List<ComputeJobResult> results) {
             try {
-                Object[] data = new Object[results.size()];
+                List data = new ArrayList<>(results.size());
 
                 for (int i = 0; i < results.size(); ++i) {
                     IgniteException err = results.get(i).getException();
@@ -175,7 +175,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                     if (err != null)
                         return new GridRestResponse(GridRestResponse.STATUS_FAILED, err.getMessage());
 
-                    data[i] = results.get(i).getData();
+                    data.add(results.get(i).getData());
                 }
 
                 return ctx.scripting().invokeFunction(reduceFunc, data, null);

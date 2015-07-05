@@ -113,9 +113,28 @@ public class NodeJsCache {
     }
 
     /**
+     * @param key Key.
+     * @param val Value.
+     * @return Previous value.
+     */
+    public Object getAndPut(Object key, Object val) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+
+        return cache.getAndPut(cacheKey, cacheVal);
+    }
+
+    /**
      * @return Local size.
      */
     public int localSize() {
         return cache.localSize();
+    }
+
+    /**
+     * @return Size.
+     */
+    public int size() {
+        return cache.size();
     }
 }
