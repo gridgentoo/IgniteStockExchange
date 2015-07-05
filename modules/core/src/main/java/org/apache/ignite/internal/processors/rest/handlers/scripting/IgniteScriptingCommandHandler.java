@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
+package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
 import org.apache.ignite.*;
 import org.apache.ignite.cluster.*;

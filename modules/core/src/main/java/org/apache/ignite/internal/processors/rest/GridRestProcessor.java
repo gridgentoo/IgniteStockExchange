@@ -26,6 +26,7 @@ import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.processors.rest.handlers.cache.*;
 import org.apache.ignite.internal.processors.rest.handlers.query.*;
 import org.apache.ignite.internal.processors.rest.handlers.datastructures.*;
+import org.apache.ignite.internal.processors.rest.handlers.scripting.IgniteScriptingCommandHandler;
 import org.apache.ignite.internal.processors.rest.handlers.task.*;
 import org.apache.ignite.internal.processors.rest.handlers.top.*;
 import org.apache.ignite.internal.processors.rest.handlers.version.*;
@@ -296,7 +297,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
             addHandler(new GridVersionNameCommandHandler(ctx));
             addHandler(new DataStructuresCommandHandler(ctx));
             addHandler(new QueryCommandHandler(ctx));
-            addScriptingHandler();
+            addHandler(new IgniteScriptingCommandHandler(ctx));
         }
     }
 
@@ -647,31 +648,6 @@ public class GridRestProcessor extends GridProcessorAdapter {
         catch (ClassNotFoundException ignored) {
             if (log.isDebugEnabled())
                 log.debug("Failed to initialize HTTP REST protocol (consider adding ignite-rest-http " +
-                    "module to classpath).");
-        }
-        catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            throw new IgniteCheckedException("Failed to initialize HTTP REST protocol.", e);
-        }
-    }
-
-    /**
-     * Add scripting handler if exist in classpath.
-     *
-     * @throws IgniteCheckedException In case of error.
-     */
-    private void addScriptingHandler() throws IgniteCheckedException {
-        try {
-            Class<?> cls1 = Class.forName(HTTP_SCRIPTING_CLS);
-
-            Constructor<?> ctor1 = cls1.getConstructor(GridKernalContext.class);
-
-            GridRestCommandHandlerAdapter handl1 = (GridRestCommandHandlerAdapter)ctor1.newInstance(ctx);
-
-            addHandler(handl1);
-        }
-        catch (ClassNotFoundException ignored) {
-            if (log.isDebugEnabled())
-                log.debug("Failed to add scripting handler (consider adding ignite-rest-http " +
                     "module to classpath).");
         }
         catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
