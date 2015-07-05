@@ -97,6 +97,15 @@ public class NodeJsCache {
     }
 
     /**
+     * @param keys Keys.
+     */
+    public void removeAll(List keys) {
+        List cacheKeys = (List)JSONCacheObject.toSimpleObject(keys);
+
+        cache.removeAll(new HashSet<>(cacheKeys));
+    }
+
+    /**
      * @param entries Entries.
      */
     public void putAll(List entries) {
@@ -129,6 +138,20 @@ public class NodeJsCache {
      * @param val Value.
      * @return Previous value.
      */
+    public Object getAndReplace(Object key, Object val) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+
+        Object o = RestJSONCacheObject.convertToRestObject(cache.getAndReplace(cacheKey, cacheVal));
+
+        return o;
+    }
+
+    /**
+     * @param key Key.
+     * @param val Value.
+     * @return Previous value.
+     */
     public Object getAndPutIfAbsent(Object key, Object val) {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
         Object cacheVal = JSONCacheObject.toSimpleObject(val);
@@ -144,6 +167,61 @@ public class NodeJsCache {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
 
         return RestJSONCacheObject.convertToRestObject(cache.getAndRemove(cacheKey));
+    }
+
+    /**
+     * @param key Key.
+     * @return If operation success.
+     */
+    public boolean remove(Object key) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+
+        return cache.remove(cacheKey);
+    }
+
+    /**
+     * @param key Key.
+     * @param val Value.
+     * @return If operation success.
+     */
+    public boolean removeValue(Object key, Object val) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+
+        return cache.remove(cacheKey, cacheVal);
+    }
+
+    /**
+     * @param key Key.
+     * @param val Value.
+     * @return If operation success.
+     */
+    public boolean replace(Object key, Object val) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+
+        return cache.replace(cacheKey, cacheVal);
+    }
+
+    /**
+     * @param key Key.
+     * @param val Value.
+     * @param oldVal Old value.
+     * @return If operation success.
+     */
+    public boolean replaceValue(Object key, Object val, Object oldVal) {
+        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+        Object oldCacheVal = JSONCacheObject.toSimpleObject(oldVal);
+
+        return cache.replace(cacheKey, oldCacheVal, cacheVal);
+    }
+
+    /**
+     * Removes all from cache.
+     */
+    public void removeAllFromCache() {
+        cache.removeAll();
     }
 
     /**

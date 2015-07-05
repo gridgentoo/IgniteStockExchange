@@ -135,6 +135,13 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testComputeRunScriptRemoveOperations() throws Exception {
+        runJsScript("testComputeRunScriptRemoveOperations");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testComputeMapReduceGetAndPut() throws Exception {
         runJsScript("testComputeMapReduceGetAndPut");
     }

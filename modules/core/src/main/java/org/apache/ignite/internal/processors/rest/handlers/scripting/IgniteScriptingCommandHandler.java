@@ -63,10 +63,14 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
             script.addEngineFunction(emitFunction);
 
+            String entryFunction = "Entry = function(key, val) {" +
+                    "this.key = key; this.value = val}";
+
+            script.addEngineFunction(entryFunction);
+
             emitRes = new IgniteJsEmitResult();
 
             script.addBinding("__emitResult", emitRes);
-
 
             script.addBinding("ignite", new NodeJSIgnite(ctx.grid()));
         }

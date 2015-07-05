@@ -154,6 +154,94 @@ testComputeRunScriptPutAllGetAll = function() {
     TestUtils.startIgniteNode(computeRunScriptPutAllGetAll);
 }
 
+testComputeRunScriptRemoveOperations = function() {
+    computeRunScriptRemoveOperations = function(error, ignite) {
+        assert(error === null, "Error on put:" + error);
+
+        var comp = ignite.compute();
+
+        var f = function (args) {
+            var cache = ignite.cache("mycache");
+
+            if (cache.remove("key1") === true) {
+                throw "Incorrect remove from empty map";
+            }
+
+            var key0 = {"keyName" : "keyVal"};
+            var key1 = {"keyName" : "keyVal1"};
+            var val0 = {"valName" : 1};
+            var val1 = {"valName" : 2};
+
+            var entries = [new Entry(key0, val0), new Entry(key1, val1)];
+            var keys = [key0, key1];
+
+            cache.put(key0, val0);
+
+            if (cache.removeValue(key0, val1) === true) {
+                throw "Incorrect removeValue from empty map [key=" + JSON.stringify(key0) + "]";
+            }
+
+            if (cache.remove(key0) === false) {
+                throw "Incorrect remove from empty map [key=" + JSON.stringify(key0) + "]";
+            }
+
+            cache.put(key0, val0);
+
+            if (cache.replaceValue(key0, val0, val1) === true) {
+                throw "Incorrect replaceValue result [key=" + JSON.stringify(key0) + "]";
+            }
+
+            var prevVal = cache.getAndReplace(key0, val1);
+
+            if (prevVal.valName !== val0.valName) {
+                throw "Incorrect getAndReplace result [key=" + JSON.stringify(key0) +
+                 ", prevVal=" + prevVal.valName +
+                 ", expected=" + val0.valName + "]";
+            }
+
+            prevVal = cache.get(key0);
+
+            if (prevVal.valName !== val1.valName) {
+                throw "Incorrect getAndReplace result [key=" + JSON.stringify(key0) + "]";
+            }
+
+            cache.removeAllFromCache();
+
+            if (cache.get(key0) !== null) {
+                throw "Incorrect removeAll result";
+            }
+
+            cache.putAll(entries);
+
+            if (cache.replace(key1, val0) !== true) {
+                throw "Incorrect replace result";
+            }
+
+            prevVal = cache.get(key1);
+
+            if (prevVal.valName !== val0.valName) {
+                throw "Incorrect replace [key=" + JSON.stringify(key1) + "]";
+            }
+
+            cache.removeAll(keys);
+
+            if (cache.size() !== 0) {
+                throw "Incorrect removeAll result.";
+            }
+        }
+
+        function onEnd(err, res) {
+            assert(err == null);
+
+            TestUtils.testDone();
+        }
+
+        comp.runScript(f, [], onEnd.bind(null));
+    }
+
+    TestUtils.startIgniteNode(computeRunScriptRemoveOperations);
+}
+
 testComputeMapReduceGetAndPut = function() {
     function computeMapReduceGetAndPut(error, ignite) {
         assert(error == null, "Error on start:" + error);
