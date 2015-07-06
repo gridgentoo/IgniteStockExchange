@@ -29,12 +29,11 @@ function onConnect(error, ignite) {
         throw new Error(error);
     }
 
-    var cache = ignite.getOrCreateCache("mycache");
+    var cache = ignite.getOrCreateCache("PutGetExampleCache");
 
     putGet(cache);
 
     putAllGetAll(cache);
-
 }
 
 putGet = function(cache) {
@@ -63,6 +62,8 @@ putGet = function(cache) {
 
         if (putCnt < keyCnt - 1) {
             putCnt++;
+
+            return;
         }
 
         console.log(">>> Stored values in cache.");
