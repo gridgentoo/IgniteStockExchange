@@ -15,28 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.cache.distributed.replicated;
+package org.apache.ignite.stream.kafka;
 
-import org.apache.ignite.cache.*;
-
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
+import junit.framework.*;
 
 /**
- *
+ * Apache Kafka streamer tests.
  */
-public class IgniteCacheAtomicReplicatedNodeRestartSelfTest extends GridCacheReplicatedNodeRestartSelfTest {
-    /** {@inheritDoc} */
-    @Override protected void beforeTest() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-747");
-    }
+public class IgniteKafkaStreamerSelfTestSuite extends TestSuite {
+    /**
+     * @return Test suite.
+     * @throws Exception Thrown in case of the failure.
+     */
+    public static TestSuite suite() throws Exception {
+        TestSuite suite = new TestSuite("Apache Kafka streamer Test Suite");
 
-    /** {@inheritDoc} */
-    @Override public void testRestartWithPutSixNodesTwoBackups() throws Throwable {
-        fail("https://issues.apache.org/jira/browse/IGNITE-1095");
-    }
+        suite.addTest(new TestSuite(KafkaIgniteStreamerSelfTest.class));
 
-    /** {@inheritDoc} */
-    @Override protected CacheAtomicityMode atomicityMode() {
-        return ATOMIC;
+        return suite;
     }
 }

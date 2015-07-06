@@ -15,28 +15,39 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.cache.distributed.replicated;
+package org.apache.ignite.stream.kafka;
 
-import org.apache.ignite.cache.*;
-
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
+import kafka.producer.*;
+import kafka.utils.*;
 
 /**
- *
+ * Simple partitioner for Kafka.
  */
-public class IgniteCacheAtomicReplicatedNodeRestartSelfTest extends GridCacheReplicatedNodeRestartSelfTest {
-    /** {@inheritDoc} */
-    @Override protected void beforeTest() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-747");
+@SuppressWarnings("UnusedDeclaration")
+public class SimplePartitioner implements Partitioner {
+    /**
+     * Constructs instance.
+     *
+     * @param props Properties.
+     */
+    public SimplePartitioner(VerifiableProperties props) {
+        // No-op.
     }
 
-    /** {@inheritDoc} */
-    @Override public void testRestartWithPutSixNodesTwoBackups() throws Throwable {
-        fail("https://issues.apache.org/jira/browse/IGNITE-1095");
-    }
+    /**
+     * Partitions the key based on the key value.
+     *
+     * @param key Key.
+     * @param partSize Partition size.
+     * @return partition Partition.
+     */
+    public int partition(Object key, int partSize) {
+        String keyStr = (String)key;
 
-    /** {@inheritDoc} */
-    @Override protected CacheAtomicityMode atomicityMode() {
-        return ATOMIC;
+        String[] keyValues = keyStr.split("\\.");
+
+        Integer intKey = Integer.parseInt(keyValues[3]);
+
+        return intKey > 0 ? intKey % partSize : 0;
     }
 }

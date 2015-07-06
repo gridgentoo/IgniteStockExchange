@@ -71,6 +71,7 @@
         <module>modules/cloud</module>
         <module>modules/mesos</module>
         <module>modules/nodejs</module>
+        <module>modules/kafka</module>
     </modules>
 
     <profiles>
