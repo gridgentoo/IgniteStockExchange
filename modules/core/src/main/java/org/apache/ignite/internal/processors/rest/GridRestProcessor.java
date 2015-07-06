@@ -59,10 +59,6 @@ public class GridRestProcessor extends GridProcessorAdapter {
     private static final String HTTP_PROTO_CLS =
         "org.apache.ignite.internal.processors.rest.protocols.http.jetty.GridJettyRestProtocol";
 
-    /** HTTP protocol class name. */
-    private static final String HTTP_SCRIPTING_CLS =
-        "org.apache.ignite.internal.processors.rest.protocols.http.jetty.IgniteScriptingCommandHandler";
-
     /** */
     public static final byte[] ZERO_BYTES = new byte[0];
 

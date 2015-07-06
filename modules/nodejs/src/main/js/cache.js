@@ -353,7 +353,6 @@ Cache.prototype._createQueryCommand = function(name, qry) {
 }
 
 Cache.prototype._runCacheCommand = function(command, callback) {
-    console.log("RUNCACHECOMMAND create:" + this._create);
     if (this._create) {
         var onCreateCallback = function(command, callback, err) {
             if (err !== null) {
