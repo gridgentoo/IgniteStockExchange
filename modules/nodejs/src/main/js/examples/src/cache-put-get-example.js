@@ -30,6 +30,11 @@ function onConnect(error, ignite) {
 
     var cache = ignite.getOrCreateCache("mycache");
 
+    putGet(cache);
+
+}
+
+putGet = function(cache) {
     console.log(">>> Cache put-get example started.");
 
     var keyCnt = 20;
@@ -68,5 +73,8 @@ function onConnect(error, ignite) {
     for (var i = 0; i < keyCnt; i++) {
         cache.put(i, i.toString(), onPut);
     }
+}
+
+putAllGetAll = function(cache) {
 
 }
