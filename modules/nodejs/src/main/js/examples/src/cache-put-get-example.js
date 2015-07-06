@@ -18,6 +18,7 @@
 var Ignite = require("../../");
 
 var Ignition = Ignite.Ignition;
+var Entry = Ignite.Entry;
 
 Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
@@ -31,6 +32,8 @@ function onConnect(error, ignite) {
     var cache = ignite.getOrCreateCache("mycache");
 
     putGet(cache);
+
+    putAllGetAll(cache);
 
 }
 
@@ -76,5 +79,43 @@ putGet = function(cache) {
 }
 
 putAllGetAll = function(cache) {
+    console.log(">>> Starting putAll-getAll example.");
 
+    var keyCnt = 20;
+
+    var batch = [];
+    var keys = [];
+
+    for (var i = keyCnt; i < keyCnt + keyCnt; ++i) {
+        var key = i;
+
+        var val = "bulk-" + i;
+
+        keys.push(key);
+        batch.push(new Entry(key, val));
+    }
+
+    var onGetAll = function(err, entries) {
+        if (err) {
+            console.log("Error: " + err);
+
+            throw new Error(err);
+        }
+
+        for (var e of entries) {
+            console.log("Got entry [key=" + e.key + ", val=" + e.value + ']');
+        }
+    }
+
+    var onPutAll= function(err) {
+        if (err) {
+            console.log("Error: " + err);
+
+            throw new Error(err);
+        }
+
+        cache.getAll(keys, onGetAll);
+    }
+
+    cache.putAll(batch, onPutAll);
 }
