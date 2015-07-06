@@ -53,6 +53,7 @@ import static org.apache.ignite.transactions.TransactionIsolation.*;
 public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(
+        GET_OR_CREATE_CACHE,
         CACHE_CONTAINS_KEYS,
         CACHE_CONTAINS_KEY,
         CACHE_GET,
@@ -155,6 +156,12 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
             IgniteInternalFuture<GridRestResponse> fut;
 
             switch (cmd) {
+                case GET_OR_CREATE_CACHE: {
+                    fut = ctx.closure().callLocalSafe(new GetOrCreateCacheCallable(ctx, cacheName));
+
+                    break;
+                }
+
                 case CACHE_CONTAINS_KEYS: {
                     fut = executeCommand(req.destinationId(), req.clientId(), cacheName, skipStore, key,
                         new ContainsKeysCommand(getKeys(req0)));
@@ -1320,6 +1327,38 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.sizeAsync(new CachePeekMode[]{CachePeekMode.PRIMARY});
+        }
+    }
+
+    /**
+     * Map reduce callable.
+     */
+    private static class GetOrCreateCacheCallable implements Callable<GridRestResponse> {
+        /** Kernal context. */
+        private GridKernalContext ctx;
+
+        /** Cache name. */
+        private String cacheName;
+
+        /**
+         * @param ctx Kernal context.
+         * @param cacheName Cache name.
+         */
+        public GetOrCreateCacheCallable(GridKernalContext ctx, String cacheName) {
+            this.ctx = ctx;
+            this.cacheName = cacheName;
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() throws Exception {
+            try {
+                ctx.grid().getOrCreateCache(cacheName);
+
+                return new GridRestResponse();
+            }
+            catch (Exception e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+            }
         }
     }
 }

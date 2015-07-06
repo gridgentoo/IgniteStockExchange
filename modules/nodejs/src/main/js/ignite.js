@@ -48,7 +48,18 @@ Ignite.prototype.server = function() {
  * @returns {Cache} Cache
  */
 Ignite.prototype.cache = function(cacheName) {
-    return new Cache(this._server, cacheName);
+    return new Cache(this._server, cacheName, false);
+}
+
+/**
+ * Get or create an instance of cache
+ *
+ * @this {Ignite}
+ * @param {string} Cache name
+ * @returns {Cache} Cache
+ */
+Ignite.prototype.getOrCreateCache = function(cacheName) {
+    return new Cache(this._server, cacheName, true);
 }
 
 /**

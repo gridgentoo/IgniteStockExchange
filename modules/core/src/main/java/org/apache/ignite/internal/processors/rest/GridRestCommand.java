@@ -129,6 +129,9 @@ public enum GridRestCommand {
     /** Quit. */
     QUIT("quit"),
 
+    /** Get or create cache. */
+    GET_OR_CREATE_CACHE("getorcreatecache"),
+
     /** Run script. */
     RUN_SCRIPT("runscript"),
 

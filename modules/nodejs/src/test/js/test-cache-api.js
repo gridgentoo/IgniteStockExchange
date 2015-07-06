@@ -23,58 +23,62 @@ var Entry = Ignite.Entry;
 var assert = require("assert");
 
 testPutGet = function() {
-    startTest("mycache", {trace: [put, getExist], entry: ["key" , "6"]});
+    startTest(false, "mycache", {trace: [put, getExist], entry: ["key" , "6"]});
 }
 
 testPutGetObject = function() {
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
-    startTest("mycache", {trace: [put, getExist], entry: [key , val]});
+    startTest(false, "mycache", {trace: [put, getExist], entry: [key , val]});
 }
 
 testPutContains = function() {
-    startTest("mycache", {trace: [put, containsKey], entry: ["key" , "6"]});
+    startTest(false, "mycache", {trace: [put, containsKey], entry: ["key" , "6"]});
 }
 
 testContains = function() {
-    startTest("mycache", {trace: [notContainsKey], entry: ["key" , "6"]});
+    startTest(false, "mycache", {trace: [notContainsKey], entry: ["key" , "6"]});
 }
 
 testPutContainsAll = function() {
-    startTest("mycache", {trace: [putAll, containsKeys], entry: objectEntries()});
+    startTest(false, "mycache", {trace: [putAll, containsKeys], entry: objectEntries()});
 }
 
 testNotContainsAll = function() {
-    startTest("mycache", {trace: [notContainsKeys], entry: stringEntries()});
+    startTest(false, "mycache", {trace: [notContainsKeys], entry: stringEntries()});
 }
 
 testRemove = function() {
-    startTest("mycache", {trace: [put, getExist, remove, getNonExist], entry: ["key" , "6"]});
+    startTest(false, "mycache", {trace: [put, getExist, remove, getNonExist], entry: ["key" , "6"]});
 }
 
 testRemoveNoKey = function() {
-    startTest("mycache", {trace: [remove, getNonExist], entry: ["key" , "6"]});
+    startTest(false, "mycache", {trace: [remove, getNonExist], entry: ["key" , "6"]});
 }
 
 testPutAllGetAll = function() {
-    startTest("mycache", {trace: [putAll, getAll], entry: stringEntries()});
+    startTest(false, "mycache", {trace: [putAll, getAll], entry: stringEntries()});
 }
 
 testPutAllObjectGetAll = function() {
-    startTest("mycache", {trace: [putAll, getAll], entry: objectEntries()});
+    startTest(false, "mycache", {trace: [putAll, getAll], entry: objectEntries()});
 }
 
 testRemoveAllObjectGetAll = function() {
-    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: objectEntries()});
+    startTest(false, "mycache", {trace: [putAll, getAll, removeAll, getNone], entry: objectEntries()});
 }
 
 testRemoveAll = function() {
-    startTest("mycache", {trace: [putAll, getAll, removeAll, getNone], entry: stringEntries()});
+    startTest(false, "mycache", {trace: [putAll, getAll, removeAll, getNone], entry: stringEntries()});
 }
 
 testIncorrectCacheName = function() {
-    startTest("mycache1", {trace: [incorrectPut], entry: ["key", "6"]});
+    startTest(false, "mycache1", {trace: [incorrectPut], entry: ["key", "6"]});
+}
+
+testGetOrCreateCacheName = function() {
+    startTest(true, "mycache2", {trace: [put, getExist], entry: ["key", "6"]});
 }
 
 testGetAndPut = function() {
@@ -89,7 +93,7 @@ testGetAndPut = function() {
         cache.getAndPut("key", "7", onGetAndPut);
     }
 
-    startTest("mycache", {trace: [put, getAndPut], entry: ["key", "6"]});
+    startTest(false, "mycache", {trace: [put, getAndPut], entry: ["key", "6"]});
 }
 
 testGetAndPutIfAbsent = function() {
@@ -104,7 +108,7 @@ testGetAndPutIfAbsent = function() {
         }
     }
 
-    startTest("mycache", {trace: [put, getAndPutIfAbsent, getExist], entry: ["key", "6"]});
+    startTest(false, "mycache", {trace: [put, getAndPutIfAbsent, getExist], entry: ["key", "6"]});
 }
 
 testPutIfAbsent = function() {
@@ -119,7 +123,7 @@ testPutIfAbsent = function() {
         }
     }
 
-    startTest("mycache", {trace: [put, putIfAbsent, getExist], entry: ["key", "6"]});
+    startTest(false, "mycache", {trace: [put, putIfAbsent, getExist], entry: ["key", "6"]});
 }
 
 testRemoveValue = function() {
@@ -134,7 +138,7 @@ testRemoveValue = function() {
         }
     }
 
-    startTest("mycache", {trace: [put, removeValue, getExist], entry: ["key", "6"]});
+    startTest(false, "mycache", {trace: [put, removeValue, getExist], entry: ["key", "6"]});
 }
 
 testGetAndRemove = function() {
@@ -149,7 +153,7 @@ testGetAndRemove = function() {
         }
     }
 
-    startTest("mycache", {trace: [put, getAndRemove, getNone], entry: ["key", "6"]});
+    startTest(false, "mycache", {trace: [put, getAndRemove, getNone], entry: ["key", "6"]});
 }
 
 testRemoveAllFromCache = function() {
@@ -157,7 +161,7 @@ testRemoveAllFromCache = function() {
         cache.removeAllFromCache(next);
     }
 
-    startTest("mycache", {trace: [put, removeAllFromCache, getNone], entry: ["key", "6"]});
+    startTest(false, "mycache", {trace: [put, removeAllFromCache, getNone], entry: ["key", "6"]});
 }
 
 testReplace = function() {
@@ -176,7 +180,7 @@ testReplace = function() {
         }
     }
 
-    startTest("mycache", {trace: [put, replace], entry: ["key", "6"]});
+    startTest(false, "mycache", {trace: [put, replace], entry: ["key", "6"]});
 }
 
 testReplaceObject = function() {
@@ -200,7 +204,7 @@ testReplaceObject = function() {
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
-    startTest("mycache", {trace: [put, replace], entry: [key, val]});
+    startTest(false, "mycache", {trace: [put, replace], entry: [key, val]});
 }
 
 testGetAndReplaceObject = function() {
@@ -219,7 +223,7 @@ testGetAndReplaceObject = function() {
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
-    startTest("mycache", {trace: [put, getAndReplace], entry: [key, val]});
+    startTest(false, "mycache", {trace: [put, getAndReplace], entry: [key, val]});
 }
 
 testReplaceValueObject = function() {
@@ -237,7 +241,7 @@ testReplaceValueObject = function() {
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
-    startTest("mycache", {trace: [put, replaceValue], entry: [key, val]});
+    startTest(false, "mycache", {trace: [put, replaceValue], entry: [key, val]});
 }
 
 testIncorrectReplaceObject = function() {
@@ -254,7 +258,7 @@ testIncorrectReplaceObject = function() {
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
-    startTest("mycache", {trace: [put, replace], entry: [key, val]});
+    startTest(false, "mycache", {trace: [put, replace], entry: [key, val]});
 }
 
 testSize = function() {
@@ -276,7 +280,7 @@ testSize = function() {
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
-    startTest("mycache", {trace: [size0, put, size1], entry: [key, val]});
+    startTest(false, "mycache", {trace: [size0, put, size1], entry: [key, val]});
 }
 
 function objectEntries() {
@@ -302,12 +306,18 @@ function stringEntries() {
     return entries;
 }
 
-function startTest(cacheName, testDescription) {
-    TestUtils.startIgniteNode(onStart.bind(null, cacheName, testDescription));
+function startTest(createCache, cacheName, testDescription) {
+    TestUtils.startIgniteNode(onStart.bind(null, createCache, cacheName, testDescription));
 }
 
-function onStart(cacheName, testDescription, error, ignite) {
-    var cache = ignite.cache(cacheName);
+function onStart(createCache, cacheName, testDescription, error, ignite) {
+    var cache;
+    if (createCache) {
+        cache = ignite.getOrCreateCache(cacheName);
+    }
+    else {
+        cache = ignite.cache(cacheName);
+    }
     callNext();
 
     function callNext(error) {
