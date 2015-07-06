@@ -42,6 +42,14 @@ public class NodeJSIgnite {
     }
 
     /**
+     * @param cache Cache name.
+     * @return Node js cache.
+     */
+    public NodeJsCache getOrCreateCache(String cache) {
+        return new NodeJsCache(ignite.getOrCreateCache(cache));
+    }
+
+    /**
      * @return Local node.
      */
     public NodeJsClusterNode localNode() {
