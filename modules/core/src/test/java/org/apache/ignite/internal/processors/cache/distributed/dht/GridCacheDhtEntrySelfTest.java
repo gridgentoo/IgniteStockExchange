@@ -24,6 +24,7 @@ import org.apache.ignite.cache.affinity.rendezvous.*;
 import org.apache.ignite.cluster.*;
 import org.apache.ignite.configuration.*;
 import org.apache.ignite.internal.*;
+import org.apache.ignite.internal.processors.cache.*;
 import org.apache.ignite.internal.processors.cache.distributed.near.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.lang.*;
@@ -267,7 +268,9 @@ public class GridCacheDhtEntrySelfTest extends GridCommonAbstractTest {
         assert e0.readers().contains(other.id());
         assert e1 == null || e1.readers().isEmpty();
 
-        assert !e0.evictInternal(false, dht0.context().versions().next(), null);
+        GridCacheContext<Integer, String> ctx0 = dht0.context();
+
+        assert !e0.evictInternal(false, ctx0.versions().next(), ctx0.affinity().affinityTopologyVersion(), null);
 
         assertEquals(1, near0.localSize(CachePeekMode.ALL));
         assertEquals(1, dht0.localSize(null));
@@ -275,7 +278,7 @@ public class GridCacheDhtEntrySelfTest extends GridCommonAbstractTest {
         assertEquals(1, near1.localSize(CachePeekMode.ALL));
         assertEquals(0, dht1.localSize(null));
 
-        assert !e0.evictInternal(true, dht0.context().versions().next(), null);
+        assert !e0.evictInternal(true, ctx0.versions().next(), ctx0.affinity().affinityTopologyVersion(), null);
 
         assertEquals(1, near0.localSize(CachePeekMode.ALL));
         assertEquals(1, dht0.localSize(null));

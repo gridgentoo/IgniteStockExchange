@@ -221,8 +221,12 @@ public interface GridCacheEntryEx {
      * @return {@code True} if entry could be evicted.
      * @throws IgniteCheckedException In case of error.
      */
-    public boolean evictInternal(boolean swap, GridCacheVersion obsoleteVer,
-        @Nullable CacheEntryPredicate[] filter) throws IgniteCheckedException;
+    public boolean evictInternal(
+        boolean swap,
+        GridCacheVersion obsoleteVer,
+        AffinityTopologyVersion topVer,
+        @Nullable CacheEntryPredicate[] filter
+    ) throws IgniteCheckedException;
 
     /**
      * Evicts entry when batch evict is performed. When called, does not write entry data to swap, but instead
@@ -232,7 +236,10 @@ public interface GridCacheEntryEx {
      * @return Swap entry if this entry was marked obsolete, {@code null} if entry was not evicted.
      * @throws IgniteCheckedException If failed.
      */
-    public GridCacheBatchSwapEntry evictInBatchInternal(GridCacheVersion obsoleteVer) throws IgniteCheckedException;
+    public GridCacheBatchSwapEntry evictInBatchInternal(
+        GridCacheVersion obsoleteVer,
+        AffinityTopologyVersion topVer
+    ) throws IgniteCheckedException;
 
     /**
      * This method should be called each time entry is marked obsolete

@@ -2296,7 +2296,7 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
      * @return {@code true} if entry has readers. It makes sense only for dht entry.
      * @throws GridCacheEntryRemovedException If removed.
      */
-    protected boolean hasReaders() throws GridCacheEntryRemovedException {
+    protected boolean hasReaders(AffinityTopologyVersion topVer) throws GridCacheEntryRemovedException {
         return false;
     }
 
@@ -2347,7 +2347,7 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
                 CacheObject val = saveValueForIndexUnlocked();
 
                 try {
-                    if ((!hasReaders() || readers)) {
+                    if ((!hasReaders(cctx.affinity().affinityTopologyVersion()) || readers)) {
                         // markObsolete will clear the value.
                         if (!(marked = markObsolete0(ver, true))) {
                             if (log.isDebugEnabled())
@@ -2654,7 +2654,7 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
 
             expiryPlc.ttlUpdated(key(),
                 version(),
-                hasReaders() ? ((GridDhtCacheEntry)this).readers() : null);
+                hasReaders(cctx.affinity().affinityTopologyVersion()) ? ((GridDhtCacheEntry)this).readers() : null);
         }
     }
 
@@ -3597,7 +3597,7 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
     }
 
     /** {@inheritDoc} */
-    @Override public boolean evictInternal(boolean swap, GridCacheVersion obsoleteVer,
+    @Override public boolean evictInternal(boolean swap, GridCacheVersion obsoleteVer, AffinityTopologyVersion topVer,
         @Nullable CacheEntryPredicate[] filter) throws IgniteCheckedException {
         boolean marked = false;
 
@@ -3606,7 +3606,7 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
                 synchronized (this) {
                     CacheObject prev = saveValueForIndexUnlocked();
 
-                    if (!hasReaders() && markObsolete0(obsoleteVer, false)) {
+                    if (!hasReaders(topVer) && markObsolete0(obsoleteVer, false)) {
                         if (swap) {
                             if (!isStartVersion()) {
                                 try {
@@ -3651,7 +3651,7 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
 
                         CacheObject prevVal = saveValueForIndexUnlocked();
 
-                        if (!hasReaders() && markObsolete0(obsoleteVer, false)) {
+                        if (!hasReaders(topVer) && markObsolete0(obsoleteVer, false)) {
                             if (swap) {
                                 if (!isStartVersion()) {
                                     try {
@@ -3718,7 +3718,8 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
     }
 
     /** {@inheritDoc} */
-    @Override public GridCacheBatchSwapEntry evictInBatchInternal(GridCacheVersion obsoleteVer)
+    @Override public GridCacheBatchSwapEntry evictInBatchInternal(GridCacheVersion obsoleteVer,
+        AffinityTopologyVersion topVer)
         throws IgniteCheckedException {
         assert Thread.holdsLock(this);
         assert cctx.isSwapOrOffheapEnabled();
@@ -3726,7 +3727,7 @@ public abstract class GridCacheMapEntry implements GridCacheEntryEx {
         GridCacheBatchSwapEntry ret = null;
 
         try {
-            if (!hasReaders() && markObsolete0(obsoleteVer, false)) {
+            if (!hasReaders(topVer) && markObsolete0(obsoleteVer, false)) {
                 if (!isStartVersion() && hasValueUnlocked()) {
                     IgniteUuid valClsLdrId = null;
                     IgniteUuid keyClsLdrId = null;

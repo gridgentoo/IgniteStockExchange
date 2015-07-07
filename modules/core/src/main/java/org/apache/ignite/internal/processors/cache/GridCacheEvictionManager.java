@@ -147,7 +147,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
         if (!cctx.isLocal()) {
             evictSync = cfg.isEvictSynchronized() && !cctx.isNear() && !cctx.isSwapOrOffheapEnabled();
 
-            nearSync = isNearEnabled(cctx) && !cctx.isNear() && cfg.isEvictSynchronized();
+            nearSync = !cctx.isNear() && cfg.isEvictSynchronized();
         }
         else {
             if (cfg.isEvictSynchronized())
@@ -228,21 +228,12 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
      * Outputs warnings if potential configuration problems are detected.
      */
     private void reportConfigurationProblems() {
-        CacheMode mode = cctx.config().getCacheMode();
-
-        if (plcEnabled && !cctx.isNear() && mode == PARTITIONED) {
-            if (!evictSync) {
+        if (plcEnabled && !cctx.isNear()) {
+            if (!evictSync || !nearSync) {
                 U.warn(log, "Evictions are not synchronized with other nodes in topology " +
                     "which provides 2x-3x better performance but may cause data inconsistency if cache store " +
                     "is not configured (consider changing 'evictSynchronized' configuration property).",
                     "Evictions are not synchronized for cache: " + cctx.namexx());
-            }
-
-            if (!nearSync && isNearEnabled(cctx)) {
-                U.warn(log, "Evictions on primary node are not synchronized with near caches on other nodes " +
-                    "which provides 2x-3x better performance but may cause data inconsistency (consider changing " +
-                    "'nearEvictSynchronized' configuration property).",
-                    "Evictions are not synchronized with near caches on other nodes for cache: " + cctx.namexx());
             }
         }
     }
@@ -351,8 +342,11 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
                         log.debug("Topology version is different [locTopVer=" + topVer +
                             ", rmtTopVer=" + req.topologyVersion() + ']');
 
-                    sendEvictionResponse(nodeId,
-                        new GridCacheEvictionResponse(cctx.cacheId(), req.futureId(), true));
+                    GridCacheEvictionResponse res = new GridCacheEvictionResponse(cctx.cacheId(), req.futureId(), true);
+
+                    res.topologyVersion(topVer);
+
+                    sendEvictionResponse(nodeId, res);
 
                     return;
                 }
@@ -418,7 +412,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
 
                     assert !near;
 
-                    boolean evicted = evictLocally(key, ver, near, obsoleteVer);
+                    boolean evicted = evictLocally(key, ver, near, obsoleteVer, req.topologyVersion());
 
                     if (log.isDebugEnabled())
                         log.debug("Evicted key [key=" + key + ", ver=" + ver + ", near=" + near +
@@ -446,7 +440,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
 
             assert near;
 
-            boolean evicted = evictLocally(key, ver, near, obsoleteVer);
+            boolean evicted = evictLocally(key, ver, near, obsoleteVer, req.topologyVersion());
 
             if (log.isDebugEnabled())
                 log.debug("Evicted key [key=" + key + ", ver=" + ver + ", near=" + near +
@@ -607,8 +601,9 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
     private boolean evictLocally(KeyCacheObject key,
         final GridCacheVersion ver,
         boolean near,
-        GridCacheVersion obsoleteVer)
-    {
+        GridCacheVersion obsoleteVer,
+        AffinityTopologyVersion topVer
+    ) {
         assert key != null;
         assert ver != null;
         assert obsoleteVer != null;
@@ -631,7 +626,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
             // without any consistency risks. We don't use filter in this case.
             // If entry should be evicted from DHT cache, we do not compare versions
             // as well because versions may change outside the transaction.
-            return evict0(cache, entry, obsoleteVer, null, false);
+            return evict0(cache, entry, obsoleteVer, null, false, topVer);
         }
         catch (IgniteCheckedException e) {
             U.error(log, "Failed to evict entry on remote node [key=" + key + ", localNode=" + cctx.nodeId() + ']', e);
@@ -654,7 +649,8 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
         GridCacheEntryEx entry,
         GridCacheVersion obsoleteVer,
         @Nullable CacheEntryPredicate[] filter,
-        boolean explicit
+        boolean explicit,
+        AffinityTopologyVersion topVer
     ) throws IgniteCheckedException {
         assert cache != null;
         assert entry != null;
@@ -666,7 +662,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
 
         boolean hasVal = recordable && entry.hasValue();
 
-        boolean evicted = entry.evictInternal(cctx.isSwapOrOffheapEnabled(), obsoleteVer, filter);
+        boolean evicted = entry.evictInternal(cctx.isSwapOrOffheapEnabled(), obsoleteVer, topVer, filter);
 
         if (evicted) {
             // Remove manually evicted entry from policy.
@@ -721,7 +717,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
 
         if (memoryMode == OFFHEAP_TIERED) {
             try {
-                evict0(cctx.cache(), e, cctx.versions().next(), null, false);
+                evict0(cctx.cache(), e, cctx.versions().next(), null, false, cctx.affinity().affinityTopologyVersion());
             }
             catch (IgniteCheckedException ex) {
                 U.error(log, "Failed to evict entry from on heap memory: " + e, ex);
@@ -753,7 +749,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
 
         if (!cctx.isNear() && memoryMode == OFFHEAP_TIERED) {
             try {
-                evict0(cctx.cache(), e, cctx.versions().next(), null, false);
+                evict0(cctx.cache(), e, cctx.versions().next(), null, false, topVer);
             }
             catch (IgniteCheckedException ex) {
                 U.error(log, "Failed to evict entry from on heap memory: " + e, ex);
@@ -865,15 +861,16 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
         if (!cctx.isNear() && !explicit && !firstEvictWarn)
             warnFirstEvict();
 
+        AffinityTopologyVersion topVer = cctx.topology().topologyVersion();
+
         if (evictSyncAgr) {
             assert !cctx.isNear(); // Make sure cache is not NEAR.
 
-            if (cctx.affinity().backups(
-                    entry.key(),
-                    cctx.topology().topologyVersion()).contains(cctx.localNode()) &&
-                evictSync)
-                // Do not track backups if evicts are synchronized.
-                return !explicit;
+            // Do not track backups if evicts are synchronized.
+            if (evictSync) {
+                if (!cctx.affinity().primary(cctx.localNode(), entry.partition(), topVer))
+                    return !explicit;
+            }
 
             try {
                 if (!cctx.isAll(entry, filter))
@@ -898,7 +895,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
             // Do not touch entry if not evicted:
             // 1. If it is call from policy, policy tracks it on its own.
             // 2. If it is explicit call, entry is touched on tx commit.
-            return evict0(cctx.cache(), entry, obsoleteVer, filter, explicit);
+            return evict0(cctx.cache(), entry, obsoleteVer, filter, explicit, topVer);
         }
 
         return true;
@@ -914,8 +911,6 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
         assert cctx.isSwapOrOffheapEnabled();
 
         List<GridCacheEntryEx> locked = new ArrayList<>(keys.size());
-
-        Set<GridCacheEntryEx> notRemove = null;
 
         Collection<GridCacheBatchSwapEntry> swapped = new ArrayList<>(keys.size());
 
@@ -934,6 +929,8 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
             if (e != null)
                 cached.put(k, e);
         }
+
+        Set<GridCacheEntryEx> notRemove = null;
 
         try {
             for (GridCacheEntryEx entry : cached.values()) {
@@ -956,7 +953,8 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
                 if (obsoleteVer == null)
                     obsoleteVer = cctx.versions().next();
 
-                GridCacheBatchSwapEntry swapEntry = entry.evictInBatchInternal(obsoleteVer);
+                GridCacheBatchSwapEntry swapEntry = entry.evictInBatchInternal(obsoleteVer,
+                    cctx.affinity().affinityTopologyVersion());
 
                 if (swapEntry != null) {
                     swapped.add(swapEntry);
@@ -1194,7 +1192,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
 
                     // Do not touch primary entries, if not evicted.
                     // They will be touched within updating transactions.
-                    evict0(cctx.cache(), entry, obsoleteVer, versionFilter(info), false);
+                    evict0(cctx.cache(), entry, obsoleteVer, versionFilter(info), false, topVer);
                 }
                 catch (IgniteCheckedException e) {
                     U.error(log, "Failed to evict entry [entry=" + entry +
@@ -1421,12 +1419,24 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
 
                 ClusterNode loc = cctx.localNode();
 
+                cctx.awaitStarted();
+
+                AffinityTopologyVersion startTopVer = cctx.startTopologyVersion();
+
+                if (startTopVer == null)
+                    startTopVer = cctx.affinity().affinityTopologyVersion();
+
                 // Initialize.
                 primaryParts.addAll(cctx.affinity().primaryPartitions(cctx.localNodeId(),
-                    cctx.affinity().affinityTopologyVersion()));
+                    startTopVer));
 
                 while (!isCancelled()) {
                     DiscoveryEvent evt = evts.take();
+
+                    AffinityTopologyVersion evtTopVer = new AffinityTopologyVersion(evt.topologyVersion());
+
+                    if (startTopVer.compareTo(evtTopVer) >= 0)
+                        continue;
 
                     if (log.isDebugEnabled())
                         log.debug("Processing event: " + evt);
@@ -1436,7 +1446,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
                         if (!evts.isEmpty())
                             break;
 
-                        if (!cctx.affinity().primary(loc, it.next(), new AffinityTopologyVersion(evt.topologyVersion())))
+                        if (!cctx.affinity().primary(loc, it.next(), evtTopVer))
                             it.remove();
                     }
 
@@ -1448,8 +1458,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
                         if (!evts.isEmpty())
                             break;
 
-                        if (part.primary(new AffinityTopologyVersion(evt.topologyVersion()))
-                            && primaryParts.add(part.id())) {
+                        if (part.primary(evtTopVer) && primaryParts.add(part.id())) {
                             if (log.isDebugEnabled())
                                 log.debug("Touching partition entries: " + part);
 
@@ -1461,6 +1470,10 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
             catch (InterruptedException ignored) {
                 // No-op.
             }
+            catch (IgniteCheckedException e) {
+                if (!e.hasCause(InterruptedException.class))
+                    throw new IgniteException(e);
+            }
             catch (IgniteException e) {
                 if (!e.hasCause(InterruptedException.class))
                     throw e;
@@ -1471,7 +1484,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
     /**
      * Wrapper around an entry to be put into queue.
      */
-    private class EvictionInfo {
+    private static class EvictionInfo {
         /** Cache entry. */
         private GridCacheEntryEx entry;
 
@@ -1716,7 +1729,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
                         try {
                             // Touch primary entry (without backup nodes) if not evicted
                             // to keep tracking.
-                            if (!evict0(cctx.cache(), info.entry(), obsoleteVer, versionFilter(info), false) &&
+                            if (!evict0(cctx.cache(), info.entry(), obsoleteVer, versionFilter(info), false, topVer) &&
                                 plcEnabled)
                                 touch0(info.entry());
                         }

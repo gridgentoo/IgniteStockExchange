@@ -395,7 +395,7 @@ public class GridCacheTestEntryEx extends GridMetadataAwareAdapter implements Gr
     }
 
     /** @inheritDoc */
-    @Override public boolean evictInternal(boolean swap, GridCacheVersion obsoleteVer,
+    @Override public boolean evictInternal(boolean swap, GridCacheVersion obsoleteVer, AffinityTopologyVersion topVer,
         @Nullable CacheEntryPredicate[] filter) {
         assert false;
 
@@ -403,8 +403,8 @@ public class GridCacheTestEntryEx extends GridMetadataAwareAdapter implements Gr
     }
 
     /** {@inheritDoc} */
-    @Override public GridCacheBatchSwapEntry evictInBatchInternal(GridCacheVersion obsoleteVer)
-        throws IgniteCheckedException {
+    @Override public GridCacheBatchSwapEntry evictInBatchInternal(GridCacheVersion obsoleteVer,
+        AffinityTopologyVersion topVer) throws IgniteCheckedException {
         assert false;
 
         return null;

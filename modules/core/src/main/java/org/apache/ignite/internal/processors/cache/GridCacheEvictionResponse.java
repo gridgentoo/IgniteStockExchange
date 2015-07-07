@@ -19,6 +19,7 @@ package org.apache.ignite.internal.processors.cache;
 
 import org.apache.ignite.*;
 import org.apache.ignite.internal.*;
+import org.apache.ignite.internal.processors.affinity.*;
 import org.apache.ignite.internal.util.tostring.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.plugin.extensions.communication.*;
@@ -44,6 +45,9 @@ public class GridCacheEvictionResponse extends GridCacheMessage {
 
     /** Flag to indicate whether request processing has finished with error. */
     private boolean err;
+
+    /** */
+    private AffinityTopologyVersion topVer = AffinityTopologyVersion.NONE;
 
     /**
      * Required by {@link Externalizable}.
@@ -112,6 +116,18 @@ public class GridCacheEvictionResponse extends GridCacheMessage {
     }
 
     /**
+     * @param topVer Topology version.
+     */
+    public void topologyVersion(AffinityTopologyVersion topVer) {
+        this.topVer = topVer;
+    }
+
+    /** {@inheritDoc} */
+    @Override public AffinityTopologyVersion topologyVersion() {
+        return topVer == null ? AffinityTopologyVersion.NONE : topVer;
+    }
+
+    /**
      * @return {@code True} if request processing has finished with error.
      */
     boolean error() {
@@ -156,6 +172,12 @@ public class GridCacheEvictionResponse extends GridCacheMessage {
 
                 writer.incrementState();
 
+            case 6:
+                if (!writer.writeMessage("topVer", topVer))
+                    return false;
+
+                writer.incrementState();
+
         }
 
         return true;
@@ -196,6 +218,14 @@ public class GridCacheEvictionResponse extends GridCacheMessage {
 
                 reader.incrementState();
 
+            case 6:
+                topVer = reader.readMessage("topVer");
+
+                if (!reader.isLastRead())
+                    return false;
+
+                reader.incrementState();
+
         }
 
         return true;
@@ -208,7 +238,7 @@ public class GridCacheEvictionResponse extends GridCacheMessage {
 
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
-        return 6;
+        return 7;
     }
 
     /** {@inheritDoc} */

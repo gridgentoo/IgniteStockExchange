@@ -624,7 +624,11 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
     }
 
     /** {@inheritDoc} */
-    @Override protected synchronized boolean hasReaders() throws GridCacheEntryRemovedException {
+    @Override protected synchronized boolean hasReaders(AffinityTopologyVersion topVer)
+        throws GridCacheEntryRemovedException {
+        if (!cctx.affinity().primary(partition(), topVer).id().equals(cctx.localNodeId()))
+            return false;
+
         checkReadersLocked();
 
         return rdrs.length > 0;
