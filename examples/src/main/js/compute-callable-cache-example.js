@@ -15,28 +15,35 @@
  * limitations under the License.
  */
 
-var Ignite = require("../../");
-var assert = require("assert");
+var apacheIgnite = require("apache-ignite");
+var Ignition = apacheIgnite.Ignition;
 
-var Ignition = Ignite.Ignition;
+var cacheName = "ComputeCallableCacheExample";
 
 Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
 function onConnect(err, ignite) {
-    assert(err === null);
-
-    console.log(">>> Compute runnable example started.");
+    console.log(">>> Compute callable example started.");
 
     var f = function (args) {
-        print(">>> Printing '" + args + "' on this node from ignite job.");
+        print(">>> Hello node: " + ignite.name());
+
+        var cache = ignite.getOrCreateCache(args);
+
+        cache.put(ignite.name(), "Hello");
+
+        return ignite.name();
     }
 
-    var onRunScript = function(err, res) {
-        assert(err == null, err);
+    var onRunScript = function(err, igniteName) {
+        var cache = ignite.cache(cacheName);
 
-        console.log(">>> Finished printing words using runnable execution.");
-        console.log(">>> Check all nodes for output (this node is also part of the cluster).");
+        cache.get(igniteName, function(err, res) {
+                console.log(res+ " " + igniteName);
+
+                console.log(">>> Check all nodes for output (this node is also part of the cluster).");
+            });
     }
 
-    ignite.compute().runScript(f, "Hello Ignite Enabled World!", onRunScript);
+    ignite.compute().runScript(f, cacheName, onRunScript);
 }

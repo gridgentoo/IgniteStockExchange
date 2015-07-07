@@ -15,43 +15,38 @@
  * limitations under the License.
  */
 
-var Ignite = require("../../");
-var assert = require("assert");
+var apacheIgnite = require("apache-ignite");
 
-var Ignition = Ignite.Ignition;
+var Ignition = apacheIgnite.Ignition;
+var SqlQuery = apacheIgnite.SqlQuery;
+var SqlFieldsQuery = apacheIgnite.SqlFieldsQuery;
+var CacheEntry = apacheIgnite.CacheEntry;
 
-var cacheName = "ComputeCallableCacheExample";
+var cacheName = "CacheQueryExample";
 
 Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
 function onConnect(err, ignite) {
-    assert(err === null);
+    console.log(">>> Cache query example started.");
 
-    console.log(">>> Compute callable example started.");
+    var entries = [new Entry("key0", "val0"), new Entry("key1", "val1")];
 
-    var f = function (args) {
-        print(">>> Hello node: " + ignite.name());
+    ignite.getOrCreateCache(cacheName).putAll(entries, onCachePut.bind(null, ignite));
+}
 
-        var cache = ignite.getOrCreateCache(args);
+function onCachePut(ignite, err) {
+    var qry = new SqlQuery("Select * from String");
+    qry.setReturnType("String");
 
-        cache.put(ignite.name(), "Hello");
+     var fullRes = [];
 
-        return ignite.name();
-    }
+    qry.on("page", function(res) {
+        fullRes = fullRes.concat(res);
+    });
 
-    var onRunScript = function(err, igniteName) {
-        assert(err == null, err);
+    qry.on("end", function(err) {
+        console.log(fullRes);
+    });
 
-        var cache = ignite.cache(cacheName);
-
-        cache.get(igniteName, function(err, res) {
-                assert(err == null, err);
-
-                console.log(res+ " " + igniteName);
-
-                console.log(">>> Check all nodes for output (this node is also part of the cluster).");
-            });
-    }
-
-    ignite.compute().runScript(f, cacheName, onRunScript);
+    ignite.cache(cacheName).query(qry);
 }

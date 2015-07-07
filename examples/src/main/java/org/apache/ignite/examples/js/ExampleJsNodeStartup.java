@@ -15,13 +15,22 @@
  * limitations under the License.
  */
 
-module.exports = {
-    Cache : require('./cache.js').Cache,
-    CacheEntry : require('./cache.js').CacheEntry,
-    Ignition : require('./ignition.js').Ignition,
-    Server : require('./server.js').Server,
-    Ignite : require('./ignite.js').Ignite,
-    Compute : require('./compute.js').Compute,
-    SqlQuery : require('./sql-query.js').SqlQuery,
-    SqlFieldsQuery : require('./sql-fields-query.js').SqlFieldsQuery
+package org.apache.ignite.examples.js;
+
+import org.apache.ignite.*;
+import org.apache.ignite.spi.discovery.tcp.internal.*;
+
+/**
+ * Starts up an empty node with example compute configuration.
+ */
+public class ExampleJsNodeStartup {
+    /**
+     * Start up an empty node with example compute configuration.
+     *
+     * @param args Command line arguments, none required.
+     * @throws IgniteException If failed.
+     */
+    public static void main(String[] args) throws IgniteException {
+        Ignition.start("examples/config/js/example-js-cache.xml");
+    }
 }

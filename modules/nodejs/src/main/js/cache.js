@@ -144,7 +144,7 @@ Cache.prototype.removeAllFromCache = function(callback) {
  * Put keys to cache
  *
  * @this {Cache}
- * @param {Entry[]} List of entries to put in the cache
+ * @param {CacheEntry[]} List of entries to put in the cache
  * @param {noValue} callback Called on finish
  */
 Cache.prototype.putAll = function(entries, callback) {
@@ -170,7 +170,7 @@ Cache.prototype.getAll = function(keys, callback) {
         var result = [];
 
         for (var key of res) {
-            result.push(new Entry(key["key"], key["value"]));
+            result.push(new CacheEntry(key["key"], key["value"]));
         }
 
         callback.call(null, null, result);
@@ -374,11 +374,11 @@ Cache.prototype._runCacheCommand = function(command, callback) {
     }
 }
 /**
- * @this{Entry}
+ * @this{CacheEntry}
  * @param key Key
  * @param val Value
  */
-function Entry(key0, val0) {
+function CacheEntry(key0, val0) {
     this.key = key0;
     this.value = val0;
 }
@@ -392,4 +392,4 @@ function Entry(key0, val0) {
  */
 
 exports.Cache = Cache
-exports.Entry = Entry
+exports.CacheEntry = CacheEntry

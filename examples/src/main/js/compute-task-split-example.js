@@ -15,16 +15,12 @@
  * limitations under the License.
  */
 
-var Ignite = require("../../");
-var assert = require("assert");
-
-var Ignition = Ignite.Ignition;
+var apacheIgnite = require("apache-ignite");
+var Ignition = apacheIgnite.Ignition;
 
 Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
 function onConnect(err, ignite) {
-    assert(err === null);
-
     console.log(">>> Compute task split example started.");
 
     var map = function(nodes, args) {
@@ -52,8 +48,6 @@ function onConnect(err, ignite) {
     }
 
     var onMapReduce = function(err, cnt) {
-        assert(err === null, err);
-        
         console.log(">>> Total number of characters in the phrase is '" + cnt + "'.");
         console.log(">>> Check all nodes for output (this node is also part of the cluster).");
     }

@@ -18,7 +18,7 @@
 var TestUtils = require("./test-utils").TestUtils;
 
 var Ignite = require(TestUtils.scriptPath());
-var Entry = Ignite.Entry;
+var CacheEntry = Ignite.CacheEntry;
 
 var assert = require("assert");
 
@@ -145,7 +145,7 @@ testComputeRunScriptPutAllGetAll = function() {
         var initKey1 = {"2" : "AAA"};
         var initVal0 = {"1" : ["1", "2"]};
         var initVal1 = {"2" : "AAA"};
-        var initEntries = [new Entry(initKey0, initVal0), new Entry(initKey1, initVal1)];
+        var initEntries = [new CacheEntry(initKey0, initVal0), new CacheEntry(initKey1, initVal1)];
 
         comp.runScript(f, [initEntries, [initKey0, initKey1]],
             onEnd.bind(null));
@@ -172,7 +172,7 @@ testComputeRunScriptRemoveOperations = function() {
             var val0 = {"valName" : 1};
             var val1 = {"valName" : 2};
 
-            var entries = [new Entry(key0, val0), new Entry(key1, val1)];
+            var entries = [new CacheEntry(key0, val0), new CacheEntry(key1, val1)];
             var keys = [key0, key1];
 
             cache.put(key0, val0);
@@ -347,8 +347,8 @@ testComputeMapReduceGetAndRemoveObject = function() {
         var val1 = {"age" : 12, "books" : ["1", "Book"]};
         var val2 = {"age" : 13, "books" : ["1", "Book"]};
 
-        entries.push(new Entry(key1, val1));
-        entries.push(new Entry(key2, val2));
+        entries.push(new CacheEntry(key1, val1));
+        entries.push(new CacheEntry(key2, val2));
 
         ignite.compute().execute(map, reduce, entries, callback);
     }
@@ -362,7 +362,7 @@ function onStart(onPut, error, ignite) {
     var params = [];
 
     for (var i = 900; i < 1000; ++i) {
-        params.push(new Entry("key" + i,  "val" + i));
+        params.push(new CacheEntry("key" + i,  "val" + i));
     }
 
     cache.putAll(params, onPut.bind(null, ignite))
@@ -517,8 +517,8 @@ function computeCacheExecute(error, ignite) {
     var val1 = {"age" : 12, "books" : ["1", "Book"]};
     var val2 = {"age" : 13, "books" : ["1", "Book"]};
 
-    entries.push(new Entry(key1, val1));
-    entries.push(new Entry(key2, val2));
+    entries.push(new CacheEntry(key1, val1));
+    entries.push(new CacheEntry(key2, val2));
 
     ignite.cache("mycache").putAll(entries, function(err) {
         ignite.compute().execute(map, reduce, [key1, val1], callback);

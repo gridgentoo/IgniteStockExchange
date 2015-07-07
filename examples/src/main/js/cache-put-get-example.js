@@ -15,19 +15,16 @@
  * limitations under the License.
  */
 
-var Ignite = require("../../");
+var apacheIgnite = require("apache-ignite");
 
-var Ignition = Ignite.Ignition;
-var Entry = Ignite.Entry;
+var Ignition = apacheIgnite.Ignition;
+var CacheEntry = apacheIgnite.CacheEntry;
 
 Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
-function onConnect(error, ignite) {
-    if (error) {
-        console.log("Error: " + error);
-
-        throw new Error(error);
-    }
+function onConnect(err, ignite) {
+    if (err)
+        throw err;
 
     var cache = ignite.getOrCreateCache("PutGetExampleCache");
 
@@ -93,7 +90,7 @@ putAllGetAll = function(cache) {
         var val = "bulk-" + i;
 
         keys.push(key);
-        batch.push(new Entry(key, val));
+        batch.push(new CacheEntry(key, val));
     }
 
     var onGetAll = function(err, entries) {

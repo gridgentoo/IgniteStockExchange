@@ -63,7 +63,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
 
             script.addEngineFunction(emitFunction);
 
-            String entryFunction = "Entry = function(key, val) {" +
+            String entryFunction = "CacheEntry = function(key, val) {" +
                     "this.key = key; this.value = val}";
 
             script.addEngineFunction(entryFunction);

@@ -18,7 +18,7 @@
 var TestUtils = require("./test-utils").TestUtils;
 
 var Ignite = require(TestUtils.scriptPath());
-var Entry = Ignite.Entry;
+var CacheEntry = Ignite.CacheEntry;
 
 var assert = require("assert");
 
@@ -291,8 +291,8 @@ function objectEntries() {
     var val1 = {"age" : 12, "books" : ["1", "Book"]};
     var val2 = {"age" : 13, "books" : ["1", "Book"]};
 
-    entries.push(new Entry(key1, val1));
-    entries.push(new Entry(key2, val2));
+    entries.push(new CacheEntry(key1, val1));
+    entries.push(new CacheEntry(key2, val2));
 
     return entries;
 }
@@ -300,8 +300,8 @@ function objectEntries() {
 function stringEntries() {
     entries = [];
 
-    entries.push(new Entry("key1", "val1"));
-    entries.push(new Entry("key2", "val2"));
+    entries.push(new CacheEntry("key1", "val1"));
+    entries.push(new CacheEntry("key2", "val2"));
 
     return entries;
 }

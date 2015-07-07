@@ -15,22 +15,30 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.examples;
+var apacheIgnite = require("apache-ignite");
+var Ignition = apacheIgnite.Ignition;
 
-import org.apache.ignite.*;
-import org.apache.ignite.spi.discovery.tcp.internal.*;
+Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
-/**
- * Starts up an empty node with example compute configuration.
- */
-public class ExampleNodeStartup {
-    /**
-     * Start up an empty node with example compute configuration.
-     *
-     * @param args Command line arguments, none required.
-     * @throws IgniteException If failed.
-     */
-    public static void main(String[] args) throws IgniteException {
-        Ignition.start("modules/nodejs/src/main/js/examples/config/example-ignite.xml");
+function onConnect(err, ignite) {
+    console.log(">>> Compute callable example started");
+
+    var f = function (args) {
+        var words = args.split(" ");
+
+        var sum = 0;
+
+        for (var i = 0; i < words.length; ++i) {
+            sum += words[i].length;
+        }
+
+        return sum;
     }
+
+    var onRunScript = function(err, sum) {
+        console.log(">>> Total number of characters in the phrase is '" + sum + "'.");
+        console.log(">>> Check all nodes for output (this node is also part of the cluster).");
+    }
+
+    ignite.compute().runScript(f, "Hello Ignite Enabled World!", onRunScript);
 }
