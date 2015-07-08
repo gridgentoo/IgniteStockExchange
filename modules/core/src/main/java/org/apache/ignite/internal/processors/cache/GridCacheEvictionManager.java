@@ -861,7 +861,7 @@ public class GridCacheEvictionManager extends GridCacheManagerAdapter {
         if (!cctx.isNear() && !explicit && !firstEvictWarn)
             warnFirstEvict();
 
-        AffinityTopologyVersion topVer = cctx.topology().topologyVersion();
+        AffinityTopologyVersion topVer = cctx.affinity().affinityTopologyVersion();
 
         if (evictSyncAgr) {
             assert !cctx.isNear(); // Make sure cache is not NEAR.
