@@ -311,23 +311,38 @@ function startTest(createCache, cacheName, testDescription) {
 }
 
 function onStart(createCache, cacheName, testDescription, error, ignite) {
-    var cache;
     if (createCache) {
-        cache = ignite.getOrCreateCache(cacheName);
+        ignite.getOrCreateCache(cacheName, function(err, cache) {
+            assert(err === null, err);
+
+            function callNext(error) {
+                assert(!error);
+                var next = testDescription.trace.shift();
+                if (next)
+                    next.call(null, cache, testDescription.entry, callNext);
+                else
+                    TestUtils.testDone();
+            }
+
+            callNext();
+        });
     }
     else {
-        cache = ignite.cache(cacheName);
-    }
-    callNext();
+        var cache = ignite.cache(cacheName);
 
-    function callNext(error) {
-        assert(!error);
-        var next = testDescription.trace.shift();
-        if (next)
-            next.call(null, cache, testDescription.entry, callNext);
-        else
-            TestUtils.testDone();
+        function callNext(error) {
+            assert(!error);
+            var next = testDescription.trace.shift();
+            if (next)
+                next.call(null, cache, testDescription.entry, callNext);
+            else
+                TestUtils.testDone();
+        }
+
+        callNext();
     }
+
+
 }
 
 function put(cache, entry, next) {

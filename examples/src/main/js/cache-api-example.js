@@ -23,9 +23,9 @@ Ignition.start(['127.0.0.1:9095'], null, onConnect);
 function onConnect(err, ignite) {
     console.log(">>> Cache API example started.");
 
-    var cache = ignite.getOrCreateCache("ApiExampleCache");
-
-    atomicMapOperations(cache);
+    ignite.getOrCreateCache("ApiExampleCache", function(err, cache) {
+            atomicMapOperations(cache);
+        });
 }
 
 /**

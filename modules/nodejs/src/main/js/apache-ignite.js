@@ -19,7 +19,6 @@ module.exports = {
     Cache : require('./cache.js').Cache,
     CacheEntry : require('./cache.js').CacheEntry,
     Ignition : require('./ignition.js').Ignition,
-    Server : require('./server.js').Server,
     Ignite : require('./ignite.js').Ignite,
     Compute : require('./compute.js').Compute,
     SqlQuery : require('./sql-query.js').SqlQuery,

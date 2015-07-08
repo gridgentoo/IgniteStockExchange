@@ -26,11 +26,11 @@ function onConnect(err, ignite) {
     if (err)
         throw err;
 
-    var cache = ignite.getOrCreateCache("PutGetExampleCache");
+   ignite.getOrCreateCache("PutGetExampleCache", function(err, cache) {
+            putGet(cache);
 
-    putGet(cache);
-
-    putAllGetAll(cache);
+            putAllGetAll(cache);
+        });
 }
 
 putGet = function(cache) {

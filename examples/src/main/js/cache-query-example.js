@@ -31,7 +31,9 @@ function onConnect(err, ignite) {
 
     var entries = [new Entry("key0", "val0"), new Entry("key1", "val1")];
 
-    ignite.getOrCreateCache(cacheName).putAll(entries, onCachePut.bind(null, ignite));
+    ignite.getOrCreateCache(cacheName, function(err, cache) {
+            cache.putAll(entries, onCachePut.bind(null, ignite));
+        });
 }
 
 function onCachePut(ignite, err) {

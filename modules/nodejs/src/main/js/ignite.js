@@ -48,7 +48,7 @@ Ignite.prototype.server = function() {
  * @returns {Cache} Cache
  */
 Ignite.prototype.cache = function(cacheName) {
-    return new Cache(this._server, cacheName, false);
+    return new Cache(this._server, cacheName);
 }
 
 /**
@@ -56,10 +56,21 @@ Ignite.prototype.cache = function(cacheName) {
  *
  * @this {Ignite}
  * @param {string} Cache name
- * @returns {Cache} Cache
+ * @param callback Callback with cache.
  */
-Ignite.prototype.getOrCreateCache = function(cacheName) {
-    return new Cache(this._server, cacheName, true);
+Ignite.prototype.getOrCreateCache = function(cacheName, callback) {
+    var onCreateCallback = function(err) {
+        if (err !== null) {
+            callback.call(null, err, null);
+
+            return;
+        }
+
+        callback.call(null, null, new Cache(this._server, cacheName))
+    }
+
+    this._server.runCommand(new Command("getorcreatecache").addParam("cacheName", cacheName),
+        onCreateCallback.bind(this));
 }
 
 /**
