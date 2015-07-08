@@ -132,6 +132,9 @@ public enum GridRestCommand {
     /** Get or create cache. */
     GET_OR_CREATE_CACHE("getorcreatecache"),
 
+    /** Stops dynamically started cache. */
+    DESTROY_CACHE("destroycache"),
+
     /** Run script. */
     RUN_SCRIPT("runscript"),
 

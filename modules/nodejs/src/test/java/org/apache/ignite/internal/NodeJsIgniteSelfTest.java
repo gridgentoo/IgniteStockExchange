@@ -58,4 +58,11 @@ public class NodeJsIgniteSelfTest extends NodeJsAbstractTest {
     public void testCluster() throws Exception {
         runJsScript("testCluster");
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testDestroyCache() throws Exception {
+        runJsScript("testDestroyCache");
+    }
 }

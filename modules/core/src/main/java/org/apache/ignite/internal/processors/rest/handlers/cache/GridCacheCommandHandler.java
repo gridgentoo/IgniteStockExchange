@@ -53,6 +53,7 @@ import static org.apache.ignite.transactions.TransactionIsolation.*;
 public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(
+        DESTROY_CACHE,
         GET_OR_CREATE_CACHE,
         CACHE_CONTAINS_KEYS,
         CACHE_CONTAINS_KEY,
@@ -156,6 +157,12 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
             IgniteInternalFuture<GridRestResponse> fut;
 
             switch (cmd) {
+                case DESTROY_CACHE: {
+                    fut = ctx.closure().callLocalSafe(new DestroyCacheCommand(ctx, cacheName));
+
+                    break;
+                }
+
                 case GET_OR_CREATE_CACHE: {
                     fut = ctx.closure().callLocalSafe(new GetOrCreateCacheCallable(ctx, cacheName));
 
@@ -1331,14 +1338,36 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
     }
 
     /**
-     * Map reduce callable.
+     * Destroy cache callable.
+     */
+    private static class DestroyCacheCommand extends GetOrCreateCacheCallable {
+
+        public DestroyCacheCommand(GridKernalContext ctx, String cacheName) {
+            super(ctx, cacheName);
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() throws Exception {
+            try {
+                ctx.grid().destroyCache(cacheName);
+
+                return new GridRestResponse();
+            }
+            catch (Exception e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Get or create cache callable.
      */
     private static class GetOrCreateCacheCallable implements Callable<GridRestResponse> {
         /** Kernal context. */
-        private GridKernalContext ctx;
+        protected GridKernalContext ctx;
 
         /** Cache name. */
-        private String cacheName;
+        protected String cacheName;
 
         /**
          * @param ctx Kernal context.

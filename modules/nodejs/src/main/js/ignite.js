@@ -74,6 +74,17 @@ Ignite.prototype.getOrCreateCache = function(cacheName, callback) {
 }
 
 /**
+ * Stops dynamically started cache
+ *
+ * @this {Ignite}
+ * @param {string} cacheName Cache name to stop
+ * @param {noValue} callback Callback contains only error
+ */
+Ignite.prototype.destroyCache = function(cacheName, callback) {
+    this._server.runCommand(new Command("destroycache").addParam("cacheName", cacheName), callback);
+}
+
+/**
  * Get an instance of compute
  *
  * @this {Ignite}

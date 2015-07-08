@@ -79,3 +79,39 @@ testCluster = function() {
 
     TestUtils.startIgniteNode(onStart.bind(null));
 }
+
+testDestroyCache = function() {
+    var cacheName = "NEW_CACHE";
+
+    function onErrorPut(err) {
+        assert(err !== null);
+
+        TestUtils.testDone();
+    }
+
+    function onDestroy(cache, err) {
+        assert(err === null, err);
+
+        cache.put("1", "1", onErrorPut);
+    }
+
+    function onPut(ignite, cache, err) {
+        assert(err === null, err);
+
+        ignite.destroyCache(cacheName, onDestroy.bind(null, cache));
+    }
+
+    function onGetOrCreateCache(ignite, err, cache) {
+        assert(err === null, err);
+
+        cache.put("1", "1", onPut.bind(null, ignite, cache));
+    }
+
+    function onStart(err, ignite) {
+        assert.equal(err, null);
+
+        ignite.getOrCreateCache(cacheName, onGetOrCreateCache.bind(null, ignite));
+    }
+
+    TestUtils.startIgniteNode(onStart.bind(null));
+}
