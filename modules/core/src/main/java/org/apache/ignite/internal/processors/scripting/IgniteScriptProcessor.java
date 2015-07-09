@@ -144,31 +144,4 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
                     ", err= " + e.getMessage() + "].");
         }
     }
-
-    /**
-     * @param src Script src.
-     * @param arg Argument.
-     * @return Result of the function.
-     * @throws IgniteCheckedException If script failed.
-     */
-    public Object invokeJSFunction(String src, Object arg, Object arg2) throws IgniteCheckedException {
-        try {
-            Invocable invocable = (Invocable) jsEngine;
-            if (arg != null && arg2 != null)
-                return invocable.invokeFunction("__internalJSCall", src, arg.toString(), arg2.toString());
-            if (arg != null && arg2 == null)
-                return invocable.invokeFunction("__internalJSCall", src, arg.toString(), arg2);
-
-            return invocable.invokeFunction("__internalJSCall", src, arg, arg2);
-
-        }
-        catch (ScriptException e) {
-            throw new IgniteCheckedException("Function evaluation failed [funcName=" + src +
-                ", err= " + e.getMessage() + "].");
-        }
-        catch (NoSuchMethodException e) {
-            throw new IgniteCheckedException("Cannot find function [func=__internalCall" +
-                ", err= " + e.getMessage() + "].");
-        }
-    }
 }
