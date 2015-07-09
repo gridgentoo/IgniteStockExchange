@@ -55,7 +55,7 @@ function main() {
             cache.getAndPut(1, "1", onGetAndPut)
         });
 
-        onGetAndPut = function(err, entry) {
+        function onGetAndPut(err, entry) {
             console.log(">>> Get and put finished [result=" + entry + "]");
 
             // Put and do not return previous value.
