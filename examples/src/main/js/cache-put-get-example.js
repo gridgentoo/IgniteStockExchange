@@ -55,7 +55,7 @@ function main() {
         }
 
         function onGet(err, res) {
-            console.log("Get val=" + res);
+            console.log("Get value=" + res);
 
             putAllGetAll(ignite, cache);
         }
@@ -79,23 +79,23 @@ function main() {
             batch.push(new CacheEntry(key, val));
         }
 
+        // Bulk-store entries in cache.
         cache.putAll(batch, onPutAll);
 
         function onPutAll(err) {
             console.log(">>> Stored values in cache.");
 
+            // Bulk-get values from cache.
             cache.getAll(keys, onGetAll);
         }
 
         function onGetAll(err, entries) {
             for (var e of entries) {
-                console.log("Got entry [key=" + e.key + ", val=" + e.value + ']');
+                console.log("Got entry [key=" + e.key + ", value=" + e.value + ']');
             }
 
             // Destroying cache.
-            ignite.destroyCache(cacheName, function(err) {
-                    console.log(">>> End of cache put-get example.");
-                });
+            ignite.destroyCache(cacheName, function(err) { console.log(">>> End of cache put-get example."); });
         }
     }
 }
