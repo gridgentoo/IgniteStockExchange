@@ -29,7 +29,7 @@ Ignition.start(['127.0.0.1:9095'], null, onConnect);
 function onConnect(err, ignite) {
     console.log(">>> Cache query example started.");
 
-    var entries = [new Entry("key0", "val0"), new Entry("key1", "val1")];
+    var entries = [new CacheEntry("key0", "val0"), new CacheEntry("key1", "val1")];
 
     ignite.getOrCreateCache(cacheName, function(err, cache) {
             cache.putAll(entries, onCachePut.bind(null, ignite));

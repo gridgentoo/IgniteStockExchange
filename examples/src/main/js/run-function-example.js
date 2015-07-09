@@ -51,13 +51,13 @@ function main() {
             return sum;
         }
 
-        // Execute job on ignite server node.
-        ignite.compute().runScript(job, "Hello Ignite Enabled World!", onRun);
-
-        function onRun(err, sum) {
+        var onRun = function(err, sum) {
             console.log(">>> Total number of characters in the phrase is '" + sum + "'.");
             console.log(">>> End of compute callable example.");
         }
+
+        // Execute job on ignite server node.
+        ignite.compute().run(job, "Hello Ignite Enabled World!", onRun);
     }
 }
 

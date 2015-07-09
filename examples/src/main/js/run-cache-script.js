@@ -63,15 +63,15 @@ function main() {
                 return val.salary;
             }
 
-            /** Run remote job on server ignite node with arguments [cacheName, key]. */
-            ignite.compute().runScript(job, [cacheName, key], onRun);
-
             var onRun = function(err, salary) {
                console.log(">>> " + key + "'s salary is " + salary);
 
                // Destroying cache.
                ignite.destroyCache(cacheName, function(err) { console.log(">>> End of run cache script example."); });
             }
+
+            /** Run remote job on server ignite node with arguments [cacheName, key]. */
+            ignite.compute().run(job, [cacheName, key], onRun);
         }
     }
 }

@@ -75,7 +75,7 @@ function main() {
             console.log(">>> End of compute map reduce example.");
         }
 
-        ignite.compute().execute(map, reduce, "Hello Ignite Enabled World!", onMapReduce);
+        ignite.compute().mapReduce(map, reduce, "Hello Ignite Enabled World!", onMapReduce);
     }
 }
 

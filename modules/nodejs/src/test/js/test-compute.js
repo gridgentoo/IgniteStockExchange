@@ -71,7 +71,7 @@ testComputeRunScriptContainsKey = function() {
 
         var initKey = {"1" : ["1", "2"]};
 
-        comp.runScript(f, initKey, onEnd.bind(null));
+        comp.run(f, initKey, onEnd.bind(null));
     }
 
     TestUtils.startIgniteNode(computeRunScriptContainsKey);
@@ -108,7 +108,7 @@ testComputeRunScriptContainsKeys = function() {
         var initKey0 = {"1" : ["1", "2"]};
         var initKey1 = {"2" : "AAA"};
 
-        comp.runScript(f, [initKey0, initKey1], onEnd.bind(null));
+        comp.run(f, [initKey0, initKey1], onEnd.bind(null));
     }
 
     TestUtils.startIgniteNode(computeRunScriptContainsKey);
@@ -147,7 +147,7 @@ testComputeRunScriptPutAllGetAll = function() {
         var initVal1 = {"2" : "AAA"};
         var initEntries = [new CacheEntry(initKey0, initVal0), new CacheEntry(initKey1, initVal1)];
 
-        comp.runScript(f, [initEntries, [initKey0, initKey1]],
+        comp.run(f, [initEntries, [initKey0, initKey1]],
             onEnd.bind(null));
     }
 
@@ -236,7 +236,7 @@ testComputeRunScriptRemoveOperations = function() {
             TestUtils.testDone();
         }
 
-        comp.runScript(f, [], onEnd.bind(null));
+        comp.run(f, [], onEnd.bind(null));
     }
 
     TestUtils.startIgniteNode(computeRunScriptRemoveOperations);
@@ -289,7 +289,7 @@ testComputeMapReduceGetAndPut = function() {
             TestUtils.testDone();
         }
 
-        ignite.compute().execute(map, reduce, [], callback);
+        ignite.compute().mapReduce(map, reduce, [], callback);
     }
 
     TestUtils.startIgniteNode(computeMapReduceGetAndPut);
@@ -350,7 +350,7 @@ testComputeMapReduceGetAndRemoveObject = function() {
         entries.push(new CacheEntry(key1, val1));
         entries.push(new CacheEntry(key2, val2));
 
-        ignite.compute().execute(map, reduce, entries, callback);
+        ignite.compute().mapReduce(map, reduce, entries, callback);
     }
 
     TestUtils.startIgniteNode(computeMapReduceGetAndRemove);
@@ -386,7 +386,7 @@ function computeRunScript(ignite, error) {
         TestUtils.testDone();
     }
 
-    comp.runScript(f, "GridGain", onEnd.bind(null));
+    comp.run(f, "GridGain", onEnd.bind(null));
 }
 
 function computeExecute(error, ignite) {
@@ -423,7 +423,7 @@ function computeExecute(error, ignite) {
         TestUtils.testDone();
     }
 
-    ignite.compute().execute(map, reduce, "Hi Alice", callback);
+    ignite.compute().mapReduce(map, reduce, "Hi Alice", callback);
 }
 
 function computeAllNodeExecute(error, ignite) {
@@ -448,7 +448,7 @@ function computeAllNodeExecute(error, ignite) {
         TestUtils.testDone();
     }
 
-    ignite.compute().execute(map, reduce, "", callback);
+    ignite.compute().mapReduce(map, reduce, "", callback);
 }
 
 function computeCacheExecute(error, ignite) {
@@ -521,7 +521,7 @@ function computeCacheExecute(error, ignite) {
     entries.push(new CacheEntry(key2, val2));
 
     ignite.cache("mycache").putAll(entries, function(err) {
-        ignite.compute().execute(map, reduce, [key1, val1], callback);
+        ignite.compute().mapReduce(map, reduce, [key1, val1], callback);
     });
 }
 
@@ -561,7 +561,7 @@ function computeCacheSizeExecute(error, ignite) {
 
     ignite.cache("mycache").put("key", "val",
         function(err) {
-            ignite.compute().execute(map, reduce, "", callback);
+            ignite.compute().mapReduce(map, reduce, "", callback);
         });
 }
 
@@ -616,7 +616,7 @@ function testComputeWithErrors(map) {
             TestUtils.testDone();
         }
 
-        ignite.compute().execute(map, function (args) {}, "Hi Alice", callback);
+        ignite.compute().mapReduce(map, function (args) {}, "Hi Alice", callback);
     }
 
     TestUtils.startIgniteNode(computeErrorExecute);
