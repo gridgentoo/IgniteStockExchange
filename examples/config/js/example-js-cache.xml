@@ -31,6 +31,9 @@
     <bean id="ignite.cfg" class="org.apache.ignite.configuration.IgniteConfiguration">
         <property name="gridName" value="ServerNode" />
 
+        <!-- Set to true to enable distributed class loading for examples, default is false. -->
+        <property name="peerClassLoadingEnabled" value="true"/>
+
         <property name="connectorConfiguration">
             <bean class="org.apache.ignite.configuration.ConnectorConfiguration">
                 <property name="jettyPath" value="examples/config/js/rest-jetty.xml"/>

@@ -18,50 +18,81 @@
 var apacheIgnite = require("apache-ignite");
 var Ignition = apacheIgnite.Ignition;
 
-Ignition.start(['127.0.0.1:9095'], null, onConnect);
-
-function onConnect(err, ignite) {
-    console.log(">>> Cache API example started.");
-
-    ignite.getOrCreateCache("ApiExampleCache", function(err, cache) {
-            atomicMapOperations(cache);
-        });
-}
-
 /**
- * Demonstrates cache operations similar to {@link ConcurrentMap} API. Note that
- * cache API is a lot richer than the JDK {@link ConcurrentMap}.
- */
-atomicMapOperations = function(cache) {
-    console.log(">>> Cache atomic map operation examples.");
+  * This example demonstrates some of the cache rich API capabilities.
+  * <p>
+  * Remote nodes should always be started with special configuration file which
+  * enables P2P class loading: {@code 'ignite.{sh|bat} examples/config/js/example-js-cache.xml'}.
+  * <p>
+  * Alternatively you can run {@link ExampleJsNodeStartup} in another JVM which will
+  * start node with {@code examples/config/js/example-js-cache.xml} configuration.
+  */
+function main() {
+    /** Cache name. */
+    var cacheName = "ApiExampleCache";
 
-    cache.removeAllFromCache(function(err) {
-        cache.getAndPut(1, "1", onGetAndPut.bind(null, cache))
-    });
-}
+    /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
+    Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
-function onGetAndPut(cache, err, entry) {
-    cache.put(2, "2", onPut.bind(null, cache));
-}
+    function onConnect(err, ignite) {
+        console.log(">>> Cache API example started.");
 
-function onPut(cache, err) {
-    cache.putIfAbsent(4, "44", onPutIfAbsent.bind(null, cache, true));
-}
-
-function onPutIfAbsent(cache, expRes, err, res) {
-    if (expRes) {
-        cache.putIfAbsent(4, "44", onPutIfAbsent.bind(null, cache, false));
+        // Create cache on server with cacheName.
+        ignite.getOrCreateCache(cacheName, function(err, cache) {
+                atomicMapOperations(ignite, cache);
+            });
     }
-    else {
-        cache.replaceValue(4, "55", "44", onReplaceValue.bind(null, cache, true));
+
+    /**
+     * Demonstrates cache operations similar to {@link ConcurrentMap} API. Note that
+     * cache API is a lot richer than the JDK {@link ConcurrentMap}.
+     */
+    atomicMapOperations = function(ignite, cache) {
+        console.log(">>> Cache atomic map operation examples.");
+
+        cache.removeAllFromCache(function(err) {
+            // Put and return previous value.
+            cache.getAndPut(1, "1", onGetAndPut)
+        });
+
+        onGetAndPut = function(err, entry) {
+            console.log(">>> Get and put finished [result=" + entry + "]");
+
+            // Put and do not return previous value.
+            // Performs better when previous value is not needed.
+            cache.put(2, "2", onPut);
+        }
+
+        onPut = function(err) {
+            console.log(">>> Put finished.");
+
+            // Put-if-absent.
+            cache.putIfAbsent(4, "44", onPutIfAbsent);
+        }
+
+        onPutIfAbsent = function(err, res) {
+            console.log(">>> Put if absent finished [result=" + res + "]");
+
+            // Replace.
+            cache.replaceValue(4, "55", "44", onReplaceValue);
+        }
+
+        onReplaceValue = function(err, res) {
+            console.log(">>> Replace value finished [result=" + res + "]");
+
+            // Replace not correct value.
+            cache.replaceValue(4, "555", "44", onEnd);
+        }
+
+        onEnd = function(err) {
+            console.log(">>> Replace finished.");
+
+            // Destroying cache.
+            ignite.destroyCache(cacheName, function(err) {
+                    console.log(">>> End of Cache API example.");
+                });
+        }
     }
 }
 
-function onReplaceValue(cache, expRes, err, res) {
-    if (expRes) {
-        cache.replaceValue(4, "555", "44", onReplaceValue.bind(null, cache, false));
-    }
-    else {
-        console.log("End of the example.")
-    }
-}
+main();

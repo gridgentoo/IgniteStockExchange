@@ -59,7 +59,7 @@ Ignite.prototype.cache = function(cacheName) {
  * @param callback Callback with cache.
  */
 Ignite.prototype.getOrCreateCache = function(cacheName, callback) {
-    var onCreateCallback = function(err) {
+    var onCreateCallback = function(callback, err, res) {
         if (err !== null) {
             callback.call(null, err, null);
 
@@ -70,7 +70,7 @@ Ignite.prototype.getOrCreateCache = function(cacheName, callback) {
     }
 
     this._server.runCommand(new Command("getorcreatecache").addParam("cacheName", cacheName),
-        onCreateCallback.bind(this));
+        onCreateCallback.bind(this, callback));
 }
 
 /**
