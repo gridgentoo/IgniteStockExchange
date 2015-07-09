@@ -18,27 +18,47 @@
 var apacheIgnite = require("apache-ignite");
 var Ignition = apacheIgnite.Ignition;
 
-Ignition.start(['127.0.0.1:9095'], null, onConnect);
+/**
+  * Demonstrates using of Compute job execution on the cluster.
+  * <p>
+  * This example takes a sentence composed of multiple words and counts number of non-space
+  * characters in the sentence by having each compute job count characters in each individual
+  * word.
+* <p>
+  * <p>
+  * Remote nodes should always be started with special configuration file which
+  * enables P2P class loading: {@code 'ignite.{sh|bat} examples/config/js/example-js-cache.xml'}.
+  * <p>
+  * Alternatively you can run ExampleJsNodeStartup in another JVM which will
+  * start node with {@code examples/config/js/example-js-cache.xml} configuration.
+  */
+function main() {
+    /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
+    Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
-function onConnect(err, ignite) {
-    console.log(">>> Compute callable example started");
+    function onConnect(err, ignite) {
+        console.log(">>> Compute callable example started");
 
-    var f = function (args) {
-        var words = args.split(" ");
+        var job = function (args) {
+            var words = args.split(" ");
 
-        var sum = 0;
+            var sum = 0;
 
-        for (var i = 0; i < words.length; ++i) {
-            sum += words[i].length;
+            for (var i = 0; i < words.length; ++i) {
+                sum += words[i].length;
+            }
+
+            return sum;
         }
 
-        return sum;
-    }
+        // Execute job on ignite server node.
+        ignite.compute().runScript(job, "Hello Ignite Enabled World!", onRun);
 
-    var onRunScript = function(err, sum) {
-        console.log(">>> Total number of characters in the phrase is '" + sum + "'.");
-        console.log(">>> Check all nodes for output (this node is also part of the cluster).");
+        function onRun(err, sum) {
+            console.log(">>> Total number of characters in the phrase is '" + sum + "'.");
+            console.log(">>> End of compute callable example.");
+        }
     }
-
-    ignite.compute().runScript(f, "Hello Ignite Enabled World!", onRunScript);
 }
+
+main();
