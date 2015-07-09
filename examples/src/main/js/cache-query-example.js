@@ -27,6 +27,9 @@ var cacheName = "CacheQueryExample";
 Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
 function onConnect(err, ignite) {
+    if (err !== null)
+        throw "Start remote node with config examples/config/js/example-js-cache.xml.";
+
     console.log(">>> Cache query example started.");
 
     var entries = [new CacheEntry("key0", "val0"), new CacheEntry("key1", "val1")];

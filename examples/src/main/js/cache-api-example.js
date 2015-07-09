@@ -35,6 +35,9 @@ function main() {
     Ignition.start(['127.0.0.1:9095'], null, onConnect);
 
     function onConnect(err, ignite) {
+        if (err !== null)
+            throw "Start remote node with config examples/config/js/example-js-cache.xml.";
+
         console.log(">>> Cache API example started.");
 
         // Create cache on server with cacheName.
