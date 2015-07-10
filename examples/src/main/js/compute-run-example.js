@@ -21,17 +21,17 @@ var Ignition = apacheIgnite.Ignition;
 /**
   * This example demonstrates very basic operations on cache in functions for Compute.run.
   * <p>
-  * Start Ignite node with {@code examples/config/js/example-js-cache.xml} configuration before running example.
+  * Start Ignite node with {@code examples/config/example-ignite.xml} configuration before running example.
   * <p>
   * Alternatively you can run ExampleJsNodeStartup which will
-  * start node with {@code examples/config/js/example-js-cache.xml} configuration.
+  * start node with {@code examples/config/example-ignite.xml} configuration.
   */
 function main() {
     /** Cache name. */
     var cacheName = "RunCacheScriptCache";
 
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
-    Ignition.start(['127.0.0.1:9095'], null, onConnect);
+    Ignition.start(['127.0.0.1:8000..9000'], null, onConnect);
 
     function onConnect(err, ignite) {
         if (err !== null)
