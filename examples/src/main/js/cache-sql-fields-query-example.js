@@ -22,7 +22,6 @@ var SqlQuery = apacheIgnite.SqlQuery;
 var SqlFieldsQuery = apacheIgnite.SqlFieldsQuery;
 var CacheEntry = apacheIgnite.CacheEntry;
 
-
 /**
   * Cache queries example. This example demonstrates SQL queries over cache.
   * <p>
@@ -34,7 +33,7 @@ var CacheEntry = apacheIgnite.CacheEntry;
   */
 main() {
     /** Cache name. */
-    var cacheName = "CacheQueryExample";
+    var cacheName = "CacheSqlFieldsQueryExample";
 
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
     Ignition.start(['127.0.0.1:9095'], null, onConnect);
@@ -43,30 +42,26 @@ main() {
         if (err !== null)
             throw "Start remote node with config examples/config/js/example-js-cache.xml.";
 
-        console.log(">>> Cache query example started.");
+        console.log(">>> Cache sql fields query example started.");
 
         var entries = initializeEntries();
 
         ignite.getOrCreateCache(cacheName, function(err, cache) {
-                cacheQuery(ignite, cache, entries);
+                cacheSqlFieldsQuery(ignite, cache, entries);
             });
     }
 
-    function cacheQuery(ignite, cache, entries) {
+    function cacheSqlFieldsQuery(ignite, cache, entries) {
         cache.putAll(entries, onCachePut.bind(null, ignite));
 
         function onCachePut(ignite, err) {
             console.log(">>> Create cache for people.")
 
-            //SQL clause which selects salaries based on range.
-            var qry = new SqlQuery("salary > ? and salary <= ?");
-            qry.setReturnType("Object");
+            //Sql query to get names of all employees.
+            var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
 
             // Set page size for query.
             qry.setPageSize(2);
-
-            //Set salary range.
-            qry.setArguments([0, 2000]);
 
             var fullRes = [];
 
@@ -79,12 +74,11 @@ main() {
 
             //This function is called when query is finished.
             qry.on("end", function(err) {
-                console.log(">>> People with salaries between 0 and 2000 (queried with SQL query): " +
-                    JSON.stringify(fullRes));
-
+                console.log(">>> Names of all employees:): " + JSON.stringify(fullRes));
+                    
                 // Destroying cache.
                 ignite.destroyCache(cacheName, function(err) {
-                        console.log(">>> End of query example.");
+                        console.log(">>> End of sql fields query example.");
                     });
             });
 
