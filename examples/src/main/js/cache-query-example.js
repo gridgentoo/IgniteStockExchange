@@ -26,10 +26,9 @@ var CacheEntry = apacheIgnite.CacheEntry;
 /**
   * Cache queries example. This example demonstrates SQL queries over cache.
   * <p>
-  * Remote nodes should always be started with special configuration file which
-  * enables P2P class loading: {@code 'ignite.{sh|bat} examples/config/js/example-js-cache.xml'}.
+  * Start Ignite node with {@code examples/config/js/example-js-cache.xml} configuration before running example.
   * <p>
-  * Alternatively you can run ExampleJsNodeStartup in another JVM which will
+  * Alternatively you can run ExampleJsNodeStartup which will
   * start node with {@code examples/config/js/example-js-cache.xml} configuration.
   */
 main() {
@@ -48,12 +47,12 @@ main() {
         var entries = initializeEntries();
 
         ignite.getOrCreateCache(cacheName, function(err, cache) {
-                cacheQuery(ignite, cache, entries);
-            });
+            cacheQuery(ignite, cache, entries);
+        });
     }
 
     function cacheQuery(ignite, cache, entries) {
-        cache.putAll(entries, onCachePut.bind(null, ignite));
+        cache.putAll(entries, onCachePut);
 
         function onCachePut(ignite, err) {
             console.log(">>> Create cache for people.")
@@ -84,8 +83,8 @@ main() {
 
                 // Destroying cache.
                 ignite.destroyCache(cacheName, function(err) {
-                        console.log(">>> End of query example.");
-                    });
+                    console.log(">>> End of query example.");
+                });
             });
 
             //Run query.

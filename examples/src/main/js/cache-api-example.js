@@ -21,10 +21,9 @@ var Ignition = apacheIgnite.Ignition;
 /**
   * This example demonstrates some of the cache rich API capabilities.
   * <p>
-  * Remote nodes should always be started with special configuration file which
-  * enables P2P class loading: {@code 'ignite.{sh|bat} examples/config/js/example-js-cache.xml'}.
+  * Start Ignite node with {@code examples/config/js/example-js-cache.xml} configuration before running example.
   * <p>
-  * Alternatively you can run ExampleJsNodeStartup in another JVM which will
+  * Alternatively you can run ExampleJsNodeStartup which will
   * start node with {@code examples/config/js/example-js-cache.xml} configuration.
   */
 function main() {
@@ -42,8 +41,8 @@ function main() {
 
         // Create cache on server with cacheName.
         ignite.getOrCreateCache(cacheName, function(err, cache) {
-                atomicMapOperations(ignite, cache);
-            });
+            atomicMapOperations(ignite, cache);
+        });
     }
 
     /**
@@ -92,8 +91,8 @@ function main() {
 
             // Destroying cache.
             ignite.destroyCache(cacheName, function(err) {
-                    console.log(">>> End of Cache API example.");
-                });
+                console.log(">>> End of Cache API example.");
+            });
         }
     }
 }

@@ -24,13 +24,12 @@ var Ignition = apacheIgnite.Ignition;
  * Phrase passed as task argument is split into jobs each taking one word. Then jobs are distributed among
  * cluster nodes. Each node computes word length and returns result to master node where total phrase length
  * is calculated on reduce stage.
- * <p>
- * Remote nodes should always be started with special configuration file which
- * enables P2P class loading: {@code examples/config/js/example-js-cache.xml}.
- * <p>
- * Alternatively you can run ExampleJsNodeStartup in another JVM which will start node
- * with {@code examples/config/js/example-js-cache.xml} configuration.
- */
+  * <p>
+  * Start Ignite node with {@code examples/config/js/example-js-cache.xml} configuration before running example.
+  * <p>
+  * Alternatively you can run ExampleJsNodeStartup which will
+  * start node with {@code examples/config/js/example-js-cache.xml} configuration.
+  */
 function main() {
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
     Ignition.start(['127.0.0.1:9095'], null, onConnect);
@@ -55,6 +54,7 @@ function main() {
                     return word.length;
                 };
 
+                //Add job to node with arguments.
                 emit(job, words[i], nodes[i %  nodes.length]);
             }
         }
