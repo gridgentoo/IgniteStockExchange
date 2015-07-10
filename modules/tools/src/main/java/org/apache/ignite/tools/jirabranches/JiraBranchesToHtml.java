@@ -40,7 +40,7 @@ public class JiraBranchesToHtml {
     public static final String SCRIPT_PATH = U.getIgniteHome() + "/scripts/jira-branches.sh";
 
     /** */
-    private static final URI JIRA_URL = URI.create("http://atlassian.gridgain.com/jira");
+    private static final URI JIRA_URL = URI.create("https://issues.apache.org/jira");
 
     /** */
     private static final String INPUT_FILE = U.getIgniteHome() + "/scripts/jira-branches.js";
@@ -74,6 +74,10 @@ public class JiraBranchesToHtml {
      * @throws Exception If failed.
      */
     public static void main(String[] args) throws Exception {
+        execute();
+    }
+
+    private static void execute() throws Exception {
         System.out.println("Need to enter JIRA credentials.");
         System.out.print("JIRA user: ");
 
@@ -125,14 +129,14 @@ public class JiraBranchesToHtml {
             for (String line; (line = br.readLine()) != null; ) {
                 String branchName = line.replace("\\", "").trim();
 
-                if (branchName.startsWith("GG")) {
+                if (branchName.startsWith("IGNITE")) {
                     Result r = result(restClient, branchName);
 
                     if (r.error != null) {
                         Matcher m = TICKET_PATTERN.matcher(branchName);
 
                         if (m.find()) {
-                            Result r0 = result(restClient, "GG-" + m.group(0));
+                            Result r0 = result(restClient, "IGNITE-" + m.group(0));
 
                             if (r0.error == null)
                                 r = new Result(branchName, r0.issue, null);

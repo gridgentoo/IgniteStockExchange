@@ -1,6 +1,6 @@
 git fetch --all
 
-echo Delete stale remote-tracking branches under 'origin' repository. 
+echo Delete stale remote-tracking branches under 'origin' repository.
 git remote prune origin
 
 FILE=$(cd $(dirname "$0"); pwd)/jira-branches.js
@@ -9,7 +9,7 @@ echo Update git branches list file.
 
 echo "var \$branches = \"\\" > $FILE
 
-git branch -a | grep remotes/origin/gg- | sed 's/remotes\/origin\/gg\-\(.*\)$/GG-\1 \\/g' >> $FILE
+git branch -a | grep remotes/origin/ignite- | sed 's/remotes\/origin\/ignite\-\(.*\)$/IGNITE-\1 \\/g' >> $FILE
 
 echo '";' >> $FILE
 
