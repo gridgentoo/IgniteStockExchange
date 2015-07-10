@@ -28,7 +28,6 @@ import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.json.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.resources.*;
 import org.jetbrains.annotations.*;
@@ -214,8 +213,9 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         public JsCallFunctionJob(String func, Object argv) {
             this.func = func;
 
-            this.argv = ScriptingObjectConverter8.convertToRestObject(
-                JSONCacheObject.toSimpleObject(argv));
+            IgniteScriptingProcessor proc = ((IgniteKernal) ignite).context().scripting();
+
+            this.argv = proc.toScriptingObject(proc.toJavaObject(argv));
         }
 
         /** {@inheritDoc} */

@@ -26,7 +26,6 @@ import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.json.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.plugin.security.*;
 import org.eclipse.jetty.server.*;
@@ -73,20 +72,26 @@ public class GridJettyRestHandler extends AbstractHandler {
     /** Authentication checker. */
     private final IgniteClosure<String, Boolean> authChecker;
 
+    /** Ignite scripting processor. */
+    IgniteScriptingProcessor proc;
+
     /**
      * Creates new HTTP requests handler.
      *
+     * @param proc Scripting processor.
      * @param hnd Handler.
      * @param authChecker Authentication checking closure.
      * @param log Logger.
      */
-    GridJettyRestHandler(GridRestProtocolHandler hnd, IgniteClosure<String, Boolean> authChecker, IgniteLogger log) {
+    GridJettyRestHandler(IgniteScriptingProcessor proc, GridRestProtocolHandler hnd,
+        IgniteClosure<String, Boolean> authChecker, IgniteLogger log) {
         assert hnd != null;
         assert log != null;
 
         this.hnd = hnd;
         this.log = log;
         this.authChecker = authChecker;
+        this.proc = proc;
 
         // Init default page and favicon.
         try {
@@ -330,10 +335,10 @@ public class GridJettyRestHandler extends AbstractHandler {
         if (cmd == CACHE_GET_ALL) {
             Map o = (Map)cmdRes.getResponse();
 
-            List<ScriptingCacheEntry> res = new ArrayList<>();
+            List<Object> res = new ArrayList<>();
 
             for (Object k : o.keySet())
-                res.add(new ScriptingCacheEntry(k, o.get(k)));
+                res.add(proc.createScriptingEntry(k, o.get(k)));
 
             cmdRes.setResponse(res);
 
@@ -341,8 +346,7 @@ public class GridJettyRestHandler extends AbstractHandler {
         else {
             Object o = cmdRes.getResponse();
 
-            if (o instanceof ScriptingObjectConverter8)
-                cmdRes.setResponse(((ScriptingObjectConverter8)o).getFields());
+            cmdRes.setResponse(proc.getFields(o));
         }
     }
 
@@ -411,19 +415,17 @@ public class GridJettyRestHandler extends AbstractHandler {
                 String cacheName = (String)params.get("cacheName");
 
                 if (req.getHeader("JSONObject") != null) {
-                    JSONObject o = parseRequest(req);
+                    Object o = proc.toJavaObject(parseRequest(req));
 
-                    Map<Object, Object> map = U.newHashMap(o.keySet().size());
+                    Map<Object, Object> map = new HashMap<>();
 
                     switch (cmd) {
                         case CACHE_PUT_ALL: {
-                            List entries = (List) o.get("entries");
+                            List entries = (List)proc.getField("entries", o);
 
                             for (Object entry : entries) {
-                                JSONCacheObject cacheEntry = new JSONCacheObject((JSONObject) entry);
-
-                                Object key = cacheEntry.getField("key");
-                                Object val = cacheEntry.getField("value");
+                                Object key = proc.getField("key", entry);
+                                Object val = proc.getField("value", entry);
 
                                 map.put(key, val);
                             }
@@ -438,9 +440,9 @@ public class GridJettyRestHandler extends AbstractHandler {
                         case CACHE_GET_ALL:
                         case CACHE_REMOVE_ALL:
                         case CACHE_CONTAINS_KEYS: {
-                            JSONCacheObject cacheObj = new JSONCacheObject(o);
+                            Object cacheObj = proc.toJavaObject(o);
 
-                            List keys = (List) cacheObj.getField("keys");
+                            List keys = (List)proc.getField("keys", cacheObj);
 
                             for (Object key : keys)
                                 map.put(key, null);
@@ -464,13 +466,13 @@ public class GridJettyRestHandler extends AbstractHandler {
                         case CACHE_REPLACE:
                         case CACHE_GET_AND_REPLACE:
                         case CACHE_REPLACE_VALUE: {
-                            JSONCacheObject cacheObj = new JSONCacheObject(o);
+                            Object cacheObj = proc.toJavaObject(o);
 
                             restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
 
-                            restReq0.key(cacheObj.getField("key"));
-                            restReq0.value(cacheObj.getField("val"));
-                            restReq0.value2(cacheObj.getField("oldVal"));
+                            restReq0.key(proc.getField("key", cacheObj));
+                            restReq0.value(proc.getField("val", cacheObj));
+                            restReq0.value2(proc.getField("oldVal", cacheObj));
                             break;
                         }
 
@@ -588,12 +590,12 @@ public class GridJettyRestHandler extends AbstractHandler {
                 RestRunScriptRequest restReq0 = new RestRunScriptRequest();
 
                 restReq0.script((String)params.get("func"));
-                restReq0.cacheName((String)params.get("cacheName"));
+                restReq0.cacheName((String) params.get("cacheName"));
 
                 JSONObject o = parseRequest(req);
                 restReq0.argument(o.get("arg"));
 
-                Object cacheObj = JSONCacheObject.toSimpleObject(o.get("key"));
+                Object cacheObj = proc.toJavaObject(o.get("key"));
                 restReq0.affinityKey(cacheObj);
 
                 restReq = restReq0;

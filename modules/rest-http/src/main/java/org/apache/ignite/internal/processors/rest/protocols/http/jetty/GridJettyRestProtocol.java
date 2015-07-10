@@ -116,7 +116,7 @@ public class GridJettyRestProtocol extends GridRestProtocolAdapter {
 
         System.setProperty(IGNITE_JETTY_HOST, locHost.getHostAddress());
 
-        jettyHnd = new GridJettyRestHandler(hnd, new C1<String, Boolean>() {
+        jettyHnd = new GridJettyRestHandler(ctx.scripting(), hnd, new C1<String, Boolean>() {
             @Override public Boolean apply(String tok) {
                 return F.isEmpty(secretKey) || authenticate(tok);
             }

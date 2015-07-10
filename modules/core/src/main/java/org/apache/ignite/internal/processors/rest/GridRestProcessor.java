@@ -248,7 +248,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
     }
 
     /** {@inheritDoc} */
-    @Override public void start() throws IgniteCheckedException {
+    @Override public void onKernalStart() throws IgniteCheckedException {
         if (isRestEnabled()) {
             // Start protocols.
             startTcpProtocol();
@@ -273,10 +273,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
                 }
             }
         }
-    }
 
-    /** {@inheritDoc} */
-    @Override public void onKernalStart() throws IgniteCheckedException {
         if (isRestEnabled()) {
             for (GridRestProtocol proto : protos)
                 proto.onKernalStart();

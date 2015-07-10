@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.scripting;
 
 import org.apache.ignite.*;
+import org.apache.ignite.internal.*;
 
 /**
  * Node js ignite.
@@ -38,7 +39,7 @@ public class ScriptingJSIgnite {
      * @return Node js cache.
      */
     public ScriptingJsCache cache(String cache) {
-        return new ScriptingJsCache(ignite.cache(cache));
+        return new ScriptingJsCache(ignite.cache(cache), ((IgniteKernal)ignite).context().scripting());
     }
 
     /**
@@ -46,7 +47,7 @@ public class ScriptingJSIgnite {
      * @return Node js cache.
      */
     public ScriptingJsCache getOrCreateCache(String cache) {
-        return new ScriptingJsCache(ignite.getOrCreateCache(cache));
+        return new ScriptingJsCache(ignite.getOrCreateCache(cache), ((IgniteKernal)ignite).context().scripting());
     }
 
     /**

@@ -54,6 +54,6 @@ public class ScriptingObjectConverter {
      * @return Object to store in cache.
      */
     public Object getFields(Object o) {
-        return JSONCacheObject.toSimpleObject(o);
+        return o;
     }
 }

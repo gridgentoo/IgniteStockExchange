@@ -34,9 +34,11 @@ public class ScriptingJsCache {
 
     /**
      * @param cache Ignite cache.
+     * @param proc Ignite scripting processor.
      */
     public ScriptingJsCache(IgniteCache cache, IgniteScriptingProcessor proc) {
         this.cache = cache;
+        this.proc = proc;
     }
 
     /**
@@ -83,16 +85,15 @@ public class ScriptingJsCache {
      * @param keys Keys.
      * @return Cache entries.
      */
-    public List<ScriptingCacheEntry> getAll(List keys) {
+    public List<Object> getAll(List keys) {
         List cacheKeys = (List)proc.toJavaObject(keys);
 
         Map<Object, Object> entries = cache.getAll(new HashSet<>(cacheKeys));
 
-        List<ScriptingCacheEntry> res = new ArrayList<>();
+        List<Object> res = new ArrayList<>();
 
         for (Map.Entry<Object, Object> e : entries.entrySet())
-            res.add(new ScriptingCacheEntry(
-                proc.toScriptingObject(e.getKey()),
+            res.add(proc.createScriptingEntry(proc.toScriptingObject(e.getKey()),
                 proc.toScriptingObject(e.getValue())));
 
         return res;
@@ -115,10 +116,8 @@ public class ScriptingJsCache {
 
         Map<Object, Object> cacheEntries = U.newHashMap(entries.size());
 
-        for (Object e : cacheKeys) {
-            JSONCacheObject e0 = (JSONCacheObject)e;
-            cacheEntries.put(e0.getField("key"), e0.getField("value"));
-        }
+        for (Object e : cacheKeys)
+            cacheEntries.put(proc.getField("key", e), proc.getField("value", e));
 
         cache.putAll(cacheEntries);
     }

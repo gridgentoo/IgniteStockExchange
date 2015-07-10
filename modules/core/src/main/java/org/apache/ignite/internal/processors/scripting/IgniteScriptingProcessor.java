@@ -32,7 +32,7 @@ import static javax.script.ScriptContext.*;
  */
 public class IgniteScriptingProcessor extends GridProcessorAdapter {
     /** Javascript engine name. */
-    public static final String JAVA_SCRIPT_ENGINE_NAME = "javascript";
+    public static final String JAVA_SCRIPT_ENGINE_NAME = "rhino";
 
     /** Java8 scripting converter class. */
     private static final String CONV_CLS_JAVA8 =
@@ -59,8 +59,10 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
             Constructor<?> ctor = cls.getConstructor(GridKernalContext.class);
 
             converter = (ScriptingObjectConverter)ctor.newInstance(ctx);
+            System.out.println("JDK 8 is found!!!!");
         }
         catch (ClassNotFoundException ignored) {
+            System.out.println("JDK 8 is not found!!!!");
             converter = new ScriptingObjectConverter();
         }
         catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
@@ -69,7 +71,9 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
 
         ScriptEngineManager factory = new ScriptEngineManager();
 
+        System.out.println("ENGINE!!!!");
         jsEngine = factory.getEngineByName(JAVA_SCRIPT_ENGINE_NAME);
+        System.out.println("ENGINE FOUND!!!!");
 
         addBinding("ignite", new ScriptingJSIgnite(ctx.grid()));
 
@@ -182,5 +186,85 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
      */
     public Object toJavaObject(Object o) {
         return converter.toJavaObject(o);
+    }
+
+    /**
+     * @param o Object from script.
+     * @return Object to store in cache.
+     */
+    public Object getField(String key, Object o) {
+        return converter.getField(key, o);
+    }
+
+    /**
+     * @param o Object from script.
+     * @return Object to store in cache.
+     */
+    public Object getFields(Object o) {
+        return converter.getFields(o);
+    }
+
+    /**
+     * @param key Key.
+     * @param val Value.
+     * @return Scripting entry.
+     */
+    public Object createScriptingEntry(Object key, Object val) {
+        return new ScriptingCacheEntry(getFields(key), getFields(val));
+    }
+
+    /**
+     * Scripting cache entry.
+     */
+    public static class ScriptingCacheEntry {
+        /** Key. */
+        private Object key;
+
+        /** Value. */
+        private Object val;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         */
+        public ScriptingCacheEntry(Object key, Object val) {
+            if (key instanceof ScriptingObjectConverter)
+                this.key = key;
+            else
+                this.key = key;
+
+            if (val instanceof ScriptingObjectConverter)
+                this.val = val;
+            else
+                this.val = val;
+        }
+
+        /**
+         * @return Key.
+         */
+        public Object getKey() {
+            return key;
+        }
+
+        /**
+         * @param key Key.
+         */
+        public void setKey(Object key) {
+            this.key = key;
+        }
+
+        /**
+         * @return Value.
+         */
+        public Object getValue() {
+            return val;
+        }
+
+        /**
+         * @param val Value.
+         */
+        public void setValue(Object val) {
+            this.val = val;
+        }
     }
 }

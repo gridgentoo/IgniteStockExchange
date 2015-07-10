@@ -68,6 +68,30 @@ public class ScriptingObjectConverter8 extends ScriptingObjectConverter implemen
         return fields.get(key);
     }
 
+    /**
+     * @param o Object from script.
+     * @return Object to store in cache.
+     */
+    public Object getField(String key, Object o) {
+        if (o instanceof JSONCacheObject)
+            return ((JSONCacheObject)o).getField(key);
+        if (o instanceof ScriptingObjectConverter8)
+            return ((ScriptingObjectConverter8)o).getField(key);
+
+        return null;
+    }
+
+    /**
+     * @param o Object from script.
+     * @return Object to store in cache.
+     */
+    public Object getFields(Object o) {
+        if (o instanceof ScriptingObjectConverter8)
+            return ((ScriptingObjectConverter8)o).getFields();
+
+        return o;
+    }
+
     @Override public Object call(Object o, Object... objects) {
         System.out.println("!!!!CALL");
         return null;
