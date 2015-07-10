@@ -37,19 +37,19 @@ import java.util.regex.*;
  */
 public class JiraBranchesToHtml {
     /** */
-    public static final String SCRIPT_PATH = U.getIgniteHome() + "/scripts/jira-branches.sh";
-
-    /** */
-    private static final URI JIRA_URL = URI.create("https://issues.apache.org/jira");
-
-    /** */
-    private static final String INPUT_FILE = U.getIgniteHome() + "/scripts/jira-branches.js";
-
-    /** */
-    private static final String OUTPUT_FILE = U.getIgniteHome() + "/scripts/jira-branches-results.html";
-
-    /** */
     private static final SimpleDateFormat FORMAT = new SimpleDateFormat("MM/dd/yyyy");
+
+    /** Jira url. */
+    private String jiraUrl;
+
+    /** Script path. */
+    private String scriptPath;
+
+    /** Input file. */
+    private String inputFile;
+
+    /** Output file. */
+    private String outputFile;
 
     /** */
     private static final Pattern TICKET_PATTERN = Pattern.compile("\\d{5}|\\d{4}");
@@ -68,17 +68,29 @@ public class JiraBranchesToHtml {
                 return o1.issue == null ? 1 : -1;
         }
     };
+    private String prefix;
 
     /**
      * @param args Arguments.
      * @throws Exception If failed.
      */
     public static void main(String[] args) throws Exception {
-        execute();
+        new JiraBranchesToHtml()
+            .setJiraUrl("https://issues.apache.org/jira")
+            .setPrefix("IGNITE")
+            .setScriptPath(U.getIgniteHome() + "/scripts/jira-branches.sh")
+            .setInputFile(U.getIgniteHome() + "/scripts/jira-branches.js")
+            .setOutputFile(U.getIgniteHome() + "/scripts/jira-branches-results.html")
+            .generateReport();
     }
 
-    private static void execute() throws Exception {
-        System.out.println("Need to enter JIRA credentials.");
+    /**
+     * Generate report about git branches and related Jira issues.
+     *
+     * @throws Exception
+     */
+    protected void generateReport() throws Exception {
+        System.out.println("Need to enter credentials for JIRA [" + jiraUrl + "]");
         System.out.print("JIRA user: ");
 
         BufferedReader rdr = new BufferedReader(new InputStreamReader(System.in));
@@ -101,11 +113,11 @@ public class JiraBranchesToHtml {
         boolean closedOnly = "y".equalsIgnoreCase(rdr.readLine());
 
         System.out.println();
-        System.out.println(">>> Executing script: " + SCRIPT_PATH);
+        System.out.println(">>> Executing script: " + scriptPath);
         System.out.println();
 
-        Process proc = new ProcessBuilder(SCRIPT_PATH)
-            .directory(new File(SCRIPT_PATH).getParentFile())
+        Process proc = new ProcessBuilder(scriptPath)
+            .directory(new File(scriptPath).getParentFile())
             .redirectOutput(Redirect.INHERIT)
             .redirectError(Redirect.INHERIT)
             .start();
@@ -113,30 +125,30 @@ public class JiraBranchesToHtml {
         proc.waitFor();
 
         System.out.println();
-        System.out.println(">>> Finished executing script [script=" + SCRIPT_PATH +
+        System.out.println(">>> Finished executing script [script=" + scriptPath +
             ", exitCode=" + proc.exitValue() + ']');
         System.out.println();
 
         if (proc.exitValue() != 0)
-            throw new Exception("Failed to run script [script=" + SCRIPT_PATH +
+            throw new Exception("Failed to run script [script=" + scriptPath +
                 ", exitCode=" + proc.exitValue() + ']');
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(INPUT_FILE)));
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile)));
              JiraRestClient restClient = new AsynchronousJiraRestClientFactory().
-                 createWithBasicHttpAuthentication(JIRA_URL, user, pswd)) {
+                 createWithBasicHttpAuthentication(URI.create(jiraUrl), user, pswd)) {
             List<Result> res = new ArrayList<>();
 
             for (String line; (line = br.readLine()) != null; ) {
                 String branchName = line.replace("\\", "").trim();
 
-                if (branchName.startsWith("IGNITE")) {
+                if (branchName.startsWith(prefix)) {
                     Result r = result(restClient, branchName);
 
                     if (r.error != null) {
                         Matcher m = TICKET_PATTERN.matcher(branchName);
 
                         if (m.find()) {
-                            Result r0 = result(restClient, "IGNITE-" + m.group(0));
+                            Result r0 = result(restClient, prefix + "-" + m.group(0));
 
                             if (r0.error == null)
                                 r = new Result(branchName, r0.issue, null);
@@ -155,15 +167,60 @@ public class JiraBranchesToHtml {
 
             System.out.println(s);
 
-            try (OutputStreamWriter bw = new OutputStreamWriter(new FileOutputStream(OUTPUT_FILE))) {
+            try (OutputStreamWriter bw = new OutputStreamWriter(new FileOutputStream(outputFile))) {
                 bw.write(s);
             }
 
             if (Desktop.isDesktopSupported())
-                Desktop.getDesktop().open(new File(OUTPUT_FILE));
+                Desktop.getDesktop().open(new File(outputFile));
             else
-                System.out.println("Results have been written to: " + OUTPUT_FILE);
+                System.out.println("Results have been written to: " + outputFile);
         }
+    }
+
+    /**
+     * @param jiraUrl Jira url.
+     */
+    public JiraBranchesToHtml setJiraUrl(String jiraUrl) {
+        this.jiraUrl = jiraUrl;
+
+        return this;
+    }
+
+    /**
+     * @param scriptPath Script path.
+     */
+    public JiraBranchesToHtml setScriptPath(String scriptPath) {
+        this.scriptPath = scriptPath;
+
+        return this;
+    }
+
+    /**
+     * @param inputFile Input file.
+     */
+    public JiraBranchesToHtml setInputFile(String inputFile) {
+        this.inputFile = inputFile;
+
+        return this;
+    }
+
+    /**
+     * @param outputFile Output file.
+     */
+    public JiraBranchesToHtml setOutputFile(String outputFile) {
+        this.outputFile = outputFile;
+
+        return this;
+    }
+
+    /**
+     * @param prefix Jira prefix.
+     */
+    public JiraBranchesToHtml setPrefix(String prefix) {
+        this.prefix = prefix;
+
+        return this;
     }
 
     /**
@@ -186,7 +243,7 @@ public class JiraBranchesToHtml {
      * @param res Results.
      * @return Output.
      */
-    private static String printIssueDetails(List<Result> res) {
+    private String printIssueDetails(List<Result> res) {
         StringBuilder sb = new StringBuilder();
 
         println(sb, "<html>\n<head></head>\n<body>");
@@ -204,7 +261,8 @@ public class JiraBranchesToHtml {
                 continue;
             }
 
-            print(sb, "<th colspan=7 align=\"left\"><a href=" + JIRA_URL + "/browse/" + r.issue.getKey() + ">" +
+            print(sb, "<th colspan=7 align=\"left\">" +
+                "<a href=" + URI.create(jiraUrl) + "/browse/" + r.issue.getKey() + ">" +
                 r.issueKey + ' ' + r.issue.getSummary() + "<a></th>");
 
             print(sb, "</tr><tr>");
