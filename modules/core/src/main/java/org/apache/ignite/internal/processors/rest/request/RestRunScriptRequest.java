@@ -27,6 +27,12 @@ public class RestRunScriptRequest extends GridRestRequest {
     /** Function arguments. */
     private Object arg;
 
+    /** Key for affinity run. */
+    private Object key;
+
+    /** Cache name for affinity run. */
+    private String cacheName;
+
     /**
      * @return Java script function.
      */
@@ -53,5 +59,33 @@ public class RestRunScriptRequest extends GridRestRequest {
      */
     public void argument(Object arg) {
         this.arg = arg;
+    }
+
+    /**
+     * @return Key for affinity run.
+     */
+    public Object affinityKey() {
+        return key;
+    }
+
+    /**
+     * @param key Key for affinity run.
+     */
+    public void affinityKey(Object key) {
+        this.key = key;
+    }
+
+    /**
+     * @return Cache name for affinity run.
+     */
+    public String cacheName() {
+        return cacheName;
+    }
+
+    /**
+     * @param cacheName Cache name for affinity run.
+     */
+    public void cacheName(String cacheName) {
+        this.cacheName = cacheName;
     }
 }

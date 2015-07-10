@@ -44,7 +44,8 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(
         EXECUTE_MAP_REDUCE_SCRIPT,
-        RUN_SCRIPT);
+        RUN_SCRIPT,
+        AFFINITY_RUN_SCRIPT);
 
     /** Emit result. */
     private IgniteJsEmitResult emitRes;
@@ -95,7 +96,13 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                 assert req instanceof RestRunScriptRequest : "Invalid type of run script request.";
 
                 return ctx.closure().callLocalSafe(
-                        new RunScriptCallable(ctx, (RestRunScriptRequest) req), false);
+                        new RunScriptCallable(ctx, (RestRunScriptRequest)req), false);
+            }
+
+            case AFFINITY_RUN_SCRIPT: {
+                assert req instanceof RestRunScriptRequest : "Invalid type of run script request.";
+
+                return ctx.closure().callLocalSafe(new AffinityRunScriptCallable(ctx, (RestRunScriptRequest)req));
             }
 
             case EXECUTE_MAP_REDUCE_SCRIPT: {
@@ -291,6 +298,48 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         @Override public GridRestResponse call() throws Exception {
             try {
                 return new GridRestResponse(ctx.grid().compute().call(
+                    new JsFunctionCallable(req.script(), req.argument())));
+            }
+            catch (Exception e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Affinity run script callable.
+     */
+    private static class AffinityRunScriptCallable implements IgniteCallable<GridRestResponse> {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** Kernal context. */
+        private GridKernalContext ctx;
+
+        /** Run script request. */
+        private RestRunScriptRequest req;
+
+        /** Cache name. */
+        private String cacheName;
+
+        /** Key. */
+        private Object key;
+
+        /**
+         * @param ctx Kernal context.
+         * @param req Run script request.
+         */
+        public AffinityRunScriptCallable(GridKernalContext ctx, RestRunScriptRequest req) {
+            this.cacheName = req.cacheName();
+            this.key = req.affinityKey();
+            this.ctx = ctx;
+            this.req = req;
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() throws Exception {
+            try {
+                return new GridRestResponse(ctx.grid().compute().affinityCall(cacheName, key,
                     new JsFunctionCallable(req.script(), req.argument())));
             }
             catch (Exception e) {

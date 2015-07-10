@@ -138,6 +138,9 @@ public enum GridRestCommand {
     /** Run script. */
     RUN_SCRIPT("runscript"),
 
+    /** Affinity run script. */
+    AFFINITY_RUN_SCRIPT("affrun"),
+
     /** Execute map reduce script. */
     EXECUTE_MAP_REDUCE_SCRIPT("excmapreduce"),
 

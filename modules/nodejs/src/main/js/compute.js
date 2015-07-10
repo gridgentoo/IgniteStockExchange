@@ -35,7 +35,22 @@ function Compute(server) {
  */
 Compute.prototype.run = function(job, args, callback) {
     this._server.runCommand(new Command("runscript").addParam("func", job).
-    setPostData(JSON.stringify({"arg" : args})), callback);
+        setPostData(JSON.stringify({"arg" : args})), callback);
+}
+
+/**
+ * Executes given job on the node where data for provided affinity key is located.
+ *
+ * @this {Compute}
+ * @param {string} cacheName Cache name
+ * @param {string|number|JSONObject} key Key.
+ * @param job Function
+ * @param args Function arguments
+ * @param {onGet} callback Callback
+ */
+Compute.prototype.affinityRun = function(cacheName, key, job, args, callback) {
+    this._server.runCommand(new Command("affrun").addParam("func", job).addParam("cacheName", cacheName).
+        setPostData(JSON.stringify({"arg" : args, "key" : key})), callback);
 }
 
 /**

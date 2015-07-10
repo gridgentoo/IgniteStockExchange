@@ -77,6 +77,41 @@ testComputeRunScriptContainsKey = function() {
     TestUtils.startIgniteNode(computeRunScriptContainsKey);
 }
 
+testComputeAffinityRunScriptContainsKey = function() {
+    function computeRunScriptContainsKey(error, ignite) {
+        assert(error == null, "Error on start:" + error);
+
+        var comp = ignite.compute();
+
+        var f = function(key) {
+            var cache = ignite.cache("mycache");
+            cache.put(key, "[AAAAAAA]");
+
+            if (!cache.containsKey(key))
+                throw "Contains key does not work."
+
+            return key;
+        }
+
+        function onEnd(err, res) {
+            assert(err == null, err);
+            assert(TestUtils.compareObject(initKey, res), "Incorrect result after script.")
+
+            ignite.cache("mycache").containsKey(initKey, function(err0, res0) {
+                assert(err0 === null, "Get error on js contatins key [err=" + err0 + "]");
+                assert(res0 === true, "Incorrect value on js contains key [res=" + res0 + "]");
+                TestUtils.testDone();
+            });
+        }
+
+        var initKey = {"1" : ["1", "2"]};
+
+        comp.affinityRun("mycache", initKey, f, initKey, onEnd.bind(null));
+    }
+
+    TestUtils.startIgniteNode(computeRunScriptContainsKey);
+}
+
 testComputeRunScriptContainsKeys = function() {
     function computeRunScriptContainsKey(error, ignite) {
         assert(error == null, "Error on start:" + error);

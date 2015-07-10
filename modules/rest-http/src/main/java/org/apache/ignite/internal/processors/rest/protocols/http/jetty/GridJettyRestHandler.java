@@ -584,6 +584,23 @@ public class GridJettyRestHandler extends AbstractHandler {
                 break;
             }
 
+            case AFFINITY_RUN_SCRIPT: {
+                RestRunScriptRequest restReq0 = new RestRunScriptRequest();
+
+                restReq0.script((String)params.get("func"));
+                restReq0.cacheName((String)params.get("cacheName"));
+
+                JSONObject o = parseRequest(req);
+                restReq0.argument(o.get("arg"));
+
+                Object cacheObj = JSONCacheObject.toSimpleObject(o.get("key"));
+                restReq0.affinityKey(cacheObj);
+
+                restReq = restReq0;
+
+                break;
+            }
+
             case EXECUTE_MAP_REDUCE_SCRIPT: {
                 RestMapReduceScriptRequest restReq0 = new RestMapReduceScriptRequest();
 
