@@ -156,7 +156,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
                 List<T3<Object, Object, Object>> jsMapRes = emitRes.getEmitResult();
 
                 for (T3<Object, Object, Object> task : jsMapRes) {
-                    map.put(new JsCallFunctionJob((String)task.get1(), task.get2()),
+                    map.put(new JsCallFunctionJob(ctx.scripting(), (String)task.get1(), task.get2()),
                         (ClusterNode)task.get3());
                 }
 
@@ -207,13 +207,12 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         private Ignite ignite;
 
         /**
+         * @param proc Scripting processor.
          * @param func Function to call.
          * @param argv Function argument.
          */
-        public JsCallFunctionJob(String func, Object argv) {
+        public JsCallFunctionJob(IgniteScriptingProcessor proc, String func, Object argv) {
             this.func = func;
-
-            IgniteScriptingProcessor proc = ((IgniteKernal) ignite).context().scripting();
 
             this.argv = proc.toScriptingObject(proc.toJavaObject(argv));
         }

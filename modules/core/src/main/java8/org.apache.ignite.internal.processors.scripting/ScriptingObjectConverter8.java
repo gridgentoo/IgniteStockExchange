@@ -31,6 +31,13 @@ public class ScriptingObjectConverter8 extends ScriptingObjectConverter implemen
     private final JSONCacheObject fields;
 
     /**
+     * Default constructor.
+     */
+    public ScriptingObjectConverter8() {
+        fields = null;
+    }
+
+    /**
      * @param o JSON object.
      */
     private ScriptingObjectConverter8(JSONCacheObject o) {

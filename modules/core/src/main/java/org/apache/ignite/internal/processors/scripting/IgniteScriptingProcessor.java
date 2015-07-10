@@ -32,7 +32,7 @@ import static javax.script.ScriptContext.*;
  */
 public class IgniteScriptingProcessor extends GridProcessorAdapter {
     /** Javascript engine name. */
-    public static final String JAVA_SCRIPT_ENGINE_NAME = "rhino";
+    public static final String JAVA_SCRIPT_ENGINE_NAME = "JavaScript";
 
     /** Java8 scripting converter class. */
     private static final String CONV_CLS_JAVA8 =
@@ -56,9 +56,9 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
         try {
             Class<?> cls = Class.forName(CONV_CLS_JAVA8);
 
-            Constructor<?> ctor = cls.getConstructor(GridKernalContext.class);
+            Constructor<?> ctor = cls.getConstructor();
 
-            converter = (ScriptingObjectConverter)ctor.newInstance(ctx);
+            converter = (ScriptingObjectConverter)ctor.newInstance();
             System.out.println("JDK 8 is found!!!!");
         }
         catch (ClassNotFoundException ignored) {
