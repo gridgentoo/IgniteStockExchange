@@ -32,14 +32,6 @@ public class JSONCacheObject extends HashMap<Object, Object> {
 
     /**
      * @param key Field name.
-     * @param val Field value.
-     */
-    public void addField(Object key, Object val) {
-        put(key, val);
-    }
-
-    /**
-     * @param key Field name.
      * @return Field value.
      */
     public Object getField(Object key) {
@@ -62,7 +54,7 @@ public class JSONCacheObject extends HashMap<Object, Object> {
             JSONCacheObject res = new JSONCacheObject();
 
             for (Object key : o1.keySet())
-                res.addField(toSimpleObject(key), toSimpleObject(o1.get(key)));
+                res.put(toSimpleObject(key), toSimpleObject(o1.get(key)));
 
             return res;
         }
