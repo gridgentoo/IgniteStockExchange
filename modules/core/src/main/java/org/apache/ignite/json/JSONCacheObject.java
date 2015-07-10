@@ -26,16 +26,8 @@ public class JSONCacheObject extends HashMap<Object, Object> {
     /**
      * Empty constructor.
      */
-    public JSONCacheObject() {
+    private JSONCacheObject() {
         // No-op.
-    }
-
-    /**
-     * @param o Map.
-     */
-    public JSONCacheObject(Map o) {
-        for (Object key : o.keySet())
-            addField(JSONCacheObject.toSimpleObject(key), JSONCacheObject.toSimpleObject(o.get(key)));
     }
 
     /**
