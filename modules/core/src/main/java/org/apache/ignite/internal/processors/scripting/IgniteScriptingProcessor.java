@@ -28,7 +28,7 @@ import static javax.script.ScriptContext.*;
 /**
  * Ignite scripting processor.
  */
-public class IgniteScriptProcessor extends GridProcessorAdapter {
+public class IgniteScriptingProcessor extends GridProcessorAdapter {
     /** Javascript engine name. */
     public static final String JAVA_SCRIPT_ENGINE_NAME = "nashorn";
 
@@ -38,7 +38,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
     /**
      * @param ctx Kernal context.
      */
-    public IgniteScriptProcessor(GridKernalContext ctx) {
+    public IgniteScriptingProcessor(GridKernalContext ctx) {
         super(ctx);
     }
 
@@ -48,11 +48,7 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
 
         jsEngine = factory.getEngineByName(JAVA_SCRIPT_ENGINE_NAME);
 
-        Bindings bind = jsEngine.createBindings();
-
-        bind.put("ignite", ctx.grid());
-
-        jsEngine.setBindings(bind, ENGINE_SCOPE);
+        addBinding("ignite", new ScriptingJSIgnite(ctx.grid()));
 
         String createJSFunction = "function __createJSFunction(mapFunc) {" +
                 "return eval('(function() { return ' + mapFunc.trim() + '})()'); }";
@@ -65,6 +61,10 @@ public class IgniteScriptProcessor extends GridProcessorAdapter {
                 "var func = __createJSFunction(funcSource); " +
                 "return func.apply(null, [JSON.parse(arg1), arg2]); }";
 
+        String entryFunction = "CacheEntry = function(key, val) {" +
+            "this.key = key; this.value = val}";
+
+        addEngineFunction(entryFunction);
         addEngineFunction(createJSFunction);
         addEngineFunction(internalCall);
         addEngineFunction(internalJSCall);

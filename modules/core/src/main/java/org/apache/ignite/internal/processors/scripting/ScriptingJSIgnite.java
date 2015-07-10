@@ -15,21 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.rest.handlers.scripting;
+package org.apache.ignite.internal.processors.scripting;
 
 import org.apache.ignite.*;
 
 /**
  * Node js ignite.
  */
-public class NodeJSIgnite {
+public class ScriptingJSIgnite {
     /** Ignite. */
     private Ignite ignite;
 
     /**
      * @param ignite Ignite.
      */
-    public NodeJSIgnite(Ignite ignite) {
+    public ScriptingJSIgnite(Ignite ignite) {
         this.ignite = ignite;
     }
 
@@ -37,23 +37,23 @@ public class NodeJSIgnite {
      * @param cache Cache name.
      * @return Node js cache.
      */
-    public NodeJsCache cache(String cache) {
-        return new NodeJsCache(ignite.cache(cache));
+    public ScriptingJsCache cache(String cache) {
+        return new ScriptingJsCache(ignite.cache(cache));
     }
 
     /**
      * @param cache Cache name.
      * @return Node js cache.
      */
-    public NodeJsCache getOrCreateCache(String cache) {
-        return new NodeJsCache(ignite.getOrCreateCache(cache));
+    public ScriptingJsCache getOrCreateCache(String cache) {
+        return new ScriptingJsCache(ignite.getOrCreateCache(cache));
     }
 
     /**
      * @return Local node.
      */
-    public NodeJsClusterNode localNode() {
-        return new NodeJsClusterNode(ignite.cluster().localNode());
+    public ScriptingClusterNode localNode() {
+        return new ScriptingClusterNode(ignite.cluster().localNode());
     }
 
     /**

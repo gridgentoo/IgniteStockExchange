@@ -240,7 +240,7 @@ public interface GridKernalContext extends Iterable<GridComponent> {
      *
      * @return Scripting processor.
      */
-    public IgniteScriptProcessor scripting();
+    public IgniteScriptingProcessor scripting();
 
     /**
      * Gets segmentation processor.

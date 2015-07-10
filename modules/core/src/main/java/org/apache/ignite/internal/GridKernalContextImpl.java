@@ -199,7 +199,7 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
 
     /** */
     @GridToStringInclude
-    private IgniteScriptProcessor scriptProc;
+    private IgniteScriptingProcessor scriptProc;
 
     /** */
     @GridToStringInclude
@@ -482,8 +482,8 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
             dataStructuresProc = (DataStructuresProcessor)comp;
         else if (comp instanceof ClusterProcessor)
             cluster = (ClusterProcessor)comp;
-        else if (comp instanceof IgniteScriptProcessor)
-            scriptProc = (IgniteScriptProcessor) comp;
+        else if (comp instanceof IgniteScriptingProcessor)
+            scriptProc = (IgniteScriptingProcessor) comp;
         else if (!(comp instanceof DiscoveryNodeValidationProcessor))
             assert (comp instanceof GridPluginComponent) : "Unknown manager class: " + comp.getClass();
 
@@ -664,7 +664,7 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
     }
 
     /** {@inheritDoc} */
-    @Override public IgniteScriptProcessor scripting() {
+    @Override public IgniteScriptingProcessor scripting() {
         return scriptProc;
     }
 

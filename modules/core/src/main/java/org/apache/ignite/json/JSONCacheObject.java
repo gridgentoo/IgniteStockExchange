@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.scripting;
+package org.apache.ignite.json;
 
 import java.util.*;
 

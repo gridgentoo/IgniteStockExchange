@@ -15,25 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.rest.handlers.scripting;
+package org.apache.ignite.internal.processors.scripting;
 
 import org.apache.ignite.*;
-import org.apache.ignite.internal.processors.scripting.*;
+import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
+import org.apache.ignite.json.*;
 
 import java.util.*;
 
 /**
- * Node js cache.
+ * Scripting cache.
  */
-public class NodeJsCache {
+public class ScriptingJsCache {
     /** Ignite cache. */
     private IgniteCache<Object, Object> cache;
 
     /**
      * @param cache Ignite cache.
      */
-    public NodeJsCache(IgniteCache cache) {
+    public ScriptingJsCache(IgniteCache cache) {
         this.cache = cache;
     }
 
@@ -54,7 +55,7 @@ public class NodeJsCache {
     public Object get(Object key) {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
 
-        return RestJSONCacheObject.convertToRestObject(cache.get(cacheKey));
+        return ScriptingJSONCacheObject.convertToRestObject(cache.get(cacheKey));
     }
 
     /**
@@ -81,17 +82,17 @@ public class NodeJsCache {
      * @param keys Keys.
      * @return Cache entries.
      */
-    public List<RestEntry> getAll(List keys) {
+    public List<ScriptingCacheEntry> getAll(List keys) {
         List cacheKeys = (List)JSONCacheObject.toSimpleObject(keys);
 
         Map<Object, Object> entries = cache.getAll(new HashSet<>(cacheKeys));
 
-        List<RestEntry> res = new ArrayList<>();
+        List<ScriptingCacheEntry> res = new ArrayList<>();
 
         for (Map.Entry<Object, Object> e : entries.entrySet())
-            res.add(new RestEntry(
-                RestJSONCacheObject.convertToRestObject(e.getKey()),
-                RestJSONCacheObject.convertToRestObject(e.getValue())));
+            res.add(new ScriptingCacheEntry(
+                ScriptingJSONCacheObject.convertToRestObject(e.getKey()),
+                ScriptingJSONCacheObject.convertToRestObject(e.getValue())));
 
         return res;
     }
@@ -130,7 +131,7 @@ public class NodeJsCache {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
         Object cacheVal = JSONCacheObject.toSimpleObject(val);
 
-        return RestJSONCacheObject.convertToRestObject(cache.getAndPut(cacheKey, cacheVal));
+        return ScriptingJSONCacheObject.convertToRestObject(cache.getAndPut(cacheKey, cacheVal));
     }
 
     /**
@@ -142,7 +143,7 @@ public class NodeJsCache {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
         Object cacheVal = JSONCacheObject.toSimpleObject(val);
 
-        Object o = RestJSONCacheObject.convertToRestObject(cache.getAndReplace(cacheKey, cacheVal));
+        Object o = ScriptingJSONCacheObject.convertToRestObject(cache.getAndReplace(cacheKey, cacheVal));
 
         return o;
     }
@@ -156,7 +157,7 @@ public class NodeJsCache {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
         Object cacheVal = JSONCacheObject.toSimpleObject(val);
 
-        return RestJSONCacheObject.convertToRestObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
+        return ScriptingJSONCacheObject.convertToRestObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
     }
 
     /**
@@ -166,7 +167,7 @@ public class NodeJsCache {
     public Object getAndRemove(Object key) {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
 
-        return RestJSONCacheObject.convertToRestObject(cache.getAndRemove(cacheKey));
+        return ScriptingJSONCacheObject.convertToRestObject(cache.getAndRemove(cacheKey));
     }
 
     /**

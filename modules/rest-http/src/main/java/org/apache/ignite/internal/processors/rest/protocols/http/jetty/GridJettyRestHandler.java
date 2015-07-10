@@ -27,6 +27,7 @@ import org.apache.ignite.internal.processors.rest.request.*;
 import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
+import org.apache.ignite.json.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.plugin.security.*;
 import org.eclipse.jetty.server.*;
@@ -330,10 +331,10 @@ public class GridJettyRestHandler extends AbstractHandler {
         if (cmd == CACHE_GET_ALL) {
             Map o = (Map)cmdRes.getResponse();
 
-            List<RestEntry> res = new ArrayList<>();
+            List<ScriptingCacheEntry> res = new ArrayList<>();
 
             for (Object k : o.keySet())
-                res.add(new RestEntry(k, o.get(k)));
+                res.add(new ScriptingCacheEntry(k, o.get(k)));
 
             cmdRes.setResponse(res);
 
@@ -341,8 +342,8 @@ public class GridJettyRestHandler extends AbstractHandler {
         else {
             Object o = cmdRes.getResponse();
 
-            if (o instanceof RestJSONCacheObject)
-                cmdRes.setResponse(((RestJSONCacheObject)o).getFields());
+            if (o instanceof ScriptingJSONCacheObject)
+                cmdRes.setResponse(((ScriptingJSONCacheObject)o).getFields());
         }
     }
 

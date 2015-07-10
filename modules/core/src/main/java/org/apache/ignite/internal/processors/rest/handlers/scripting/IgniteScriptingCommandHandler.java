@@ -28,6 +28,7 @@ import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
+import org.apache.ignite.json.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.resources.*;
 import org.jetbrains.annotations.*;
@@ -57,23 +58,16 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         super(ctx);
 
         try {
-            IgniteScriptProcessor script = ctx.scripting();
+            IgniteScriptingProcessor script = ctx.scripting();
 
             String emitFunction = "function emit(f, args, nodeId) {" +
                 "__emitResult.add(f.toString(), args, nodeId);}";
 
             script.addEngineFunction(emitFunction);
 
-            String entryFunction = "CacheEntry = function(key, val) {" +
-                    "this.key = key; this.value = val}";
-
-            script.addEngineFunction(entryFunction);
-
             emitRes = new IgniteJsEmitResult();
 
             script.addBinding("__emitResult", emitRes);
-
-            script.addBinding("ignite", new NodeJSIgnite(ctx.grid()));
         }
         catch (IgniteCheckedException e) {
             ctx.log().error(e.getMessage());
@@ -102,7 +96,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             case AFFINITY_RUN_SCRIPT: {
                 assert req instanceof RestRunScriptRequest : "Invalid type of run script request.";
 
-                return ctx.closure().callLocalSafe(new AffinityRunScriptCallable(ctx, (RestRunScriptRequest)req));
+                return ctx.closure().callLocalSafe(new AffinityRunScriptCallable(ctx, (RestRunScriptRequest) req));
             }
 
             case EXECUTE_MAP_REDUCE_SCRIPT: {
@@ -220,7 +214,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         public JsCallFunctionJob(String func, Object argv) {
             this.func = func;
 
-            this.argv = RestJSONCacheObject.convertToRestObject(
+            this.argv = ScriptingJSONCacheObject.convertToRestObject(
                 JSONCacheObject.toSimpleObject(argv));
         }
 

@@ -1,10 +1,12 @@
-package org.apache.ignite.internal.processors.rest.handlers.scripting;
+package org.apache.ignite.internal.processors.scripting;
 
+
+import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 
 /**
- * Rest entry.
+ * Scripting cache entry.
  */
-public class RestEntry {
+public class ScriptingCacheEntry {
     /** Key. */
     private Object key;
 
@@ -15,14 +17,14 @@ public class RestEntry {
      * @param key Key.
      * @param val Value.
      */
-    public RestEntry(Object key, Object val) {
-        if (key instanceof RestJSONCacheObject)
-            this.key = ((RestJSONCacheObject)key).getFields();
+    public ScriptingCacheEntry(Object key, Object val) {
+        if (key instanceof ScriptingJSONCacheObject)
+            this.key = ((ScriptingJSONCacheObject)key).getFields();
         else
             this.key = key;
 
-        if (val instanceof RestJSONCacheObject)
-            this.val = ((RestJSONCacheObject)val).getFields();
+        if (val instanceof ScriptingJSONCacheObject)
+            this.val = ((ScriptingJSONCacheObject)val).getFields();
         else
             this.val = val;
     }

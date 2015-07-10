@@ -15,21 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.rest.handlers.scripting;
+package org.apache.ignite.internal.processors.scripting;
 
 import org.apache.ignite.cluster.*;
 
 /**
  * Node js cluster node.
  */
-public class NodeJsClusterNode {
+public class ScriptingClusterNode {
     /** Cluster node. */
     private String id;
 
     /**
      * @param node Cluster node.
      */
-    public NodeJsClusterNode(ClusterNode node) {
+    public ScriptingClusterNode(ClusterNode node) {
        this.id = node.id().toString();
     }
 

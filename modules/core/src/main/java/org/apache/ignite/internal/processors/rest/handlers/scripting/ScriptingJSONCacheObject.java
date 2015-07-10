@@ -18,22 +18,22 @@
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
 import jdk.nashorn.api.scripting.*;
-import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.json.*;
 
 import java.util.*;
 
 /**
  * Json cache object.
  */
-public class RestJSONCacheObject implements JSObject {
+public class ScriptingJSONCacheObject implements JSObject {
     /** Fields. */
     private final JSONCacheObject fields;
 
     /**
      * @param o JSON object.
      */
-    private RestJSONCacheObject(JSONCacheObject o) {
+    private ScriptingJSONCacheObject(JSONCacheObject o) {
         fields = o;
     }
 
@@ -43,7 +43,7 @@ public class RestJSONCacheObject implements JSObject {
      */
     public static Object convertToRestObject(Object o) {
         if (o instanceof JSONCacheObject)
-            return new RestJSONCacheObject((JSONCacheObject)o);
+            return new ScriptingJSONCacheObject((JSONCacheObject)o);
 
         return o;
     }
@@ -118,7 +118,7 @@ public class RestJSONCacheObject implements JSObject {
         Set<String> keys = new HashSet<>();
 
         for (Object o : fields.keySet()) {
-            if (!(o instanceof RestJSONCacheObject))
+            if (!(o instanceof ScriptingJSONCacheObject))
                 keys.add(o.toString());
         }
 
@@ -142,7 +142,7 @@ public class RestJSONCacheObject implements JSObject {
 
     @Override public String getClassName() {
         System.out.println("!!!!getClassName");
-        return U.getSimpleName(RestJSONCacheObject.class);
+        return U.getSimpleName(ScriptingJSONCacheObject.class);
     }
 
     @Override public boolean isFunction() {
