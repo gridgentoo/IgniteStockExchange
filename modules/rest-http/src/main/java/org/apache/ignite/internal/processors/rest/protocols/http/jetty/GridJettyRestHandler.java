@@ -346,7 +346,7 @@ public class GridJettyRestHandler extends AbstractHandler {
         else {
             Object o = cmdRes.getResponse();
 
-            cmdRes.setResponse(proc.getFields(o));
+            cmdRes.setResponse(o);
         }
     }
 

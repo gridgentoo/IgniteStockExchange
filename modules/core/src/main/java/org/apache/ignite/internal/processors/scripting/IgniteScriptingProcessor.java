@@ -20,6 +20,7 @@ package org.apache.ignite.internal.processors.scripting;
 import org.apache.ignite.*;
 import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.*;
+import org.apache.ignite.json.*;
 
 import javax.script.*;
 
@@ -34,13 +35,6 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
     /** Javascript engine name. */
     public static final String JAVA_SCRIPT_ENGINE_NAME = "JavaScript";
 
-    /** Java8 scripting converter class. */
-    private static final String CONV_CLS_JAVA8 =
-        "org.apache.ignite.internal.processors.scripting.ScriptingObjectConverter8";
-
-    /** Script object converter. */
-    private ScriptingObjectConverter converter;
-
     /** Javascript engine. */
     private ScriptEngine jsEngine;
 
@@ -53,27 +47,9 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
 
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
-        try {
-            Class<?> cls = Class.forName(CONV_CLS_JAVA8);
-
-            Constructor<?> ctor = cls.getConstructor();
-
-            converter = (ScriptingObjectConverter)ctor.newInstance();
-            System.out.println("JDK 8 is found!!!!");
-        }
-        catch (ClassNotFoundException ignored) {
-            System.out.println("JDK 8 is not found!!!!");
-            converter = new ScriptingObjectConverter();
-        }
-        catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            throw new IgniteCheckedException("Failed to initialize HTTP REST protocol.", e);
-        }
-
         ScriptEngineManager factory = new ScriptEngineManager();
 
-        System.out.println("ENGINE!!!!");
         jsEngine = factory.getEngineByName(JAVA_SCRIPT_ENGINE_NAME);
-        System.out.println("ENGINE FOUND!!!!");
 
         addBinding("ignite", new ScriptingJSIgnite(ctx.grid()));
 
@@ -164,11 +140,11 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
         }
         catch (ScriptException e) {
             throw new IgniteCheckedException("Function evaluation failed [funcName=" + src +
-                    ", err= " + e.getMessage() + "].");
+                ", err= " + e.getMessage() + "].");
         }
         catch (NoSuchMethodException e) {
             throw new IgniteCheckedException("Cannot find function [func=__internalCall" +
-                    ", err= " + e.getMessage() + "].");
+                ", err= " + e.getMessage() + "].");
         }
     }
 
@@ -177,7 +153,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
      * @return Object for script.
      */
     public Object toScriptingObject(Object o) {
-        return converter.toScriptingObject(o);
+        return o;
     }
 
     /**
@@ -185,7 +161,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
      * @return  Object for Ignite cache.
      */
     public Object toJavaObject(Object o) {
-        return converter.toJavaObject(o);
+        return JSONCacheObject.toSimpleObject(o);
     }
 
     /**
@@ -193,15 +169,10 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
      * @return Object to store in cache.
      */
     public Object getField(String key, Object o) {
-        return converter.getField(key, o);
-    }
+        if (o instanceof JSONCacheObject)
+            return ((JSONCacheObject)o).getField(key);
 
-    /**
-     * @param o Object from script.
-     * @return Object to store in cache.
-     */
-    public Object getFields(Object o) {
-        return converter.getFields(o);
+        return null;
     }
 
     /**
@@ -210,7 +181,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
      * @return Scripting entry.
      */
     public Object createScriptingEntry(Object key, Object val) {
-        return new ScriptingCacheEntry(getFields(key), getFields(val));
+        return new ScriptingCacheEntry(key, val);
     }
 
     /**
@@ -228,15 +199,8 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
          * @param val Value.
          */
         public ScriptingCacheEntry(Object key, Object val) {
-            if (key instanceof ScriptingObjectConverter)
-                this.key = key;
-            else
-                this.key = key;
-
-            if (val instanceof ScriptingObjectConverter)
-                this.val = val;
-            else
-                this.val = val;
+            this.key = key;
+            this.val = val;
         }
 
         /**
