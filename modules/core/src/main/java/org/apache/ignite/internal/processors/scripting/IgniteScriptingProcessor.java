@@ -23,6 +23,8 @@ import org.apache.ignite.internal.processors.*;
 
 import javax.script.*;
 
+import java.lang.reflect.*;
+
 import static javax.script.ScriptContext.*;
 
 /**
@@ -30,7 +32,14 @@ import static javax.script.ScriptContext.*;
  */
 public class IgniteScriptingProcessor extends GridProcessorAdapter {
     /** Javascript engine name. */
-    public static final String JAVA_SCRIPT_ENGINE_NAME = "nashorn";
+    public static final String JAVA_SCRIPT_ENGINE_NAME = "javascript";
+
+    /** Java8 scripting converter class. */
+    private static final String CONV_CLS_JAVA8 =
+        "org.apache.ignite.internal.processors.scripting.ScriptingObjectConverter8";
+
+    /** Script object converter. */
+    private ScriptingObjectConverter converter;
 
     /** Javascript engine. */
     private ScriptEngine jsEngine;
@@ -44,6 +53,20 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
 
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
+        try {
+            Class<?> cls = Class.forName(CONV_CLS_JAVA8);
+
+            Constructor<?> ctor = cls.getConstructor(GridKernalContext.class);
+
+            converter = (ScriptingObjectConverter)ctor.newInstance(ctx);
+        }
+        catch (ClassNotFoundException ignored) {
+            converter = new ScriptingObjectConverter();
+        }
+        catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            throw new IgniteCheckedException("Failed to initialize HTTP REST protocol.", e);
+        }
+
         ScriptEngineManager factory = new ScriptEngineManager();
 
         jsEngine = factory.getEngineByName(JAVA_SCRIPT_ENGINE_NAME);
@@ -145,11 +168,19 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
         }
     }
 
+    /**
+     * @param o Object.
+     * @return Object for script.
+     */
     public Object toScriptingObject(Object o) {
-
+        return converter.toScriptingObject(o);
     }
 
+    /**
+     * @param o Object.
+     * @return  Object for Ignite cache.
+     */
     public Object toJavaObject(Object o) {
-
+        return converter.toJavaObject(o);
     }
 }

@@ -19,7 +19,6 @@ package org.apache.ignite.internal.processors.scripting;
 
 import org.apache.ignite.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.json.*;
 
 import java.util.*;
 
@@ -30,10 +29,13 @@ public class ScriptingJsCache {
     /** Ignite cache. */
     private IgniteCache<Object, Object> cache;
 
+    /** Scripting processor. */
+    private IgniteScriptingProcessor proc;
+
     /**
      * @param cache Ignite cache.
      */
-    public ScriptingJsCache(IgniteCache cache) {
+    public ScriptingJsCache(IgniteCache cache, IgniteScriptingProcessor proc) {
         this.cache = cache;
     }
 
@@ -42,8 +44,8 @@ public class ScriptingJsCache {
      * @param val Value.
      */
     public void put(Object key, Object val) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+        Object cacheKey = proc.toJavaObject(key);
+        Object cacheVal = proc.toJavaObject(val);
 
         cache.put(cacheKey, cacheVal);
     }
@@ -52,9 +54,9 @@ public class ScriptingJsCache {
      * @param key Key.
      */
     public Object get(Object key) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheKey = proc.toJavaObject(key);
 
-        return ScriptingObjectConverter8.convertToRestObject(cache.get(cacheKey));
+        return proc.toScriptingObject(cache.get(cacheKey));
     }
 
     /**
@@ -62,7 +64,7 @@ public class ScriptingJsCache {
      * @return True if cache contains key.
      */
     public boolean containsKey(Object key) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheKey = proc.toJavaObject(key);
 
         return cache.containsKey(cacheKey);
     }
@@ -72,7 +74,7 @@ public class ScriptingJsCache {
      * @return True if cache contains key.
      */
     public boolean containsKeys(List keys) {
-        List<Object> cacheKeys = (List<Object>)JSONCacheObject.toSimpleObject(keys);
+        List<Object> cacheKeys = (List<Object>)proc.toJavaObject(keys);
 
         return cache.containsKeys(new HashSet<>(cacheKeys));
     }
@@ -82,7 +84,7 @@ public class ScriptingJsCache {
      * @return Cache entries.
      */
     public List<ScriptingCacheEntry> getAll(List keys) {
-        List cacheKeys = (List)JSONCacheObject.toSimpleObject(keys);
+        List cacheKeys = (List)proc.toJavaObject(keys);
 
         Map<Object, Object> entries = cache.getAll(new HashSet<>(cacheKeys));
 
@@ -90,8 +92,8 @@ public class ScriptingJsCache {
 
         for (Map.Entry<Object, Object> e : entries.entrySet())
             res.add(new ScriptingCacheEntry(
-                ScriptingObjectConverter8.convertToRestObject(e.getKey()),
-                ScriptingObjectConverter8.convertToRestObject(e.getValue())));
+                proc.toScriptingObject(e.getKey()),
+                proc.toScriptingObject(e.getValue())));
 
         return res;
     }
@@ -100,7 +102,7 @@ public class ScriptingJsCache {
      * @param keys Keys.
      */
     public void removeAll(List keys) {
-        List cacheKeys = (List)JSONCacheObject.toSimpleObject(keys);
+        List cacheKeys = (List)proc.toJavaObject(keys);
 
         cache.removeAll(new HashSet<>(cacheKeys));
     }
@@ -109,7 +111,7 @@ public class ScriptingJsCache {
      * @param entries Entries.
      */
     public void putAll(List entries) {
-        List cacheKeys = (List)JSONCacheObject.toSimpleObject(entries);
+        List cacheKeys = (List)proc.toJavaObject(entries);
 
         Map<Object, Object> cacheEntries = U.newHashMap(entries.size());
 
@@ -127,10 +129,10 @@ public class ScriptingJsCache {
      * @return Previous value.
      */
     public Object getAndPut(Object key, Object val) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+        Object cacheKey = proc.toJavaObject(key);
+        Object cacheVal = proc.toJavaObject(val);
 
-        return ScriptingObjectConverter8.convertToRestObject(cache.getAndPut(cacheKey, cacheVal));
+        return proc.toScriptingObject(cache.getAndPut(cacheKey, cacheVal));
     }
 
     /**
@@ -139,10 +141,10 @@ public class ScriptingJsCache {
      * @return Previous value.
      */
     public Object getAndReplace(Object key, Object val) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+        Object cacheKey = proc.toJavaObject(key);
+        Object cacheVal = proc.toJavaObject(val);
 
-        Object o = ScriptingObjectConverter8.convertToRestObject(cache.getAndReplace(cacheKey, cacheVal));
+        Object o = proc.toScriptingObject(cache.getAndReplace(cacheKey, cacheVal));
 
         return o;
     }
@@ -153,10 +155,10 @@ public class ScriptingJsCache {
      * @return Previous value.
      */
     public Object getAndPutIfAbsent(Object key, Object val) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+        Object cacheKey = proc.toJavaObject(key);
+        Object cacheVal = proc.toJavaObject(val);
 
-        return ScriptingObjectConverter8.convertToRestObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
+        return proc.toScriptingObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
     }
 
     /**
@@ -164,9 +166,9 @@ public class ScriptingJsCache {
      * @return Previous value.
      */
     public Object getAndRemove(Object key) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheKey = proc.toJavaObject(key);
 
-        return ScriptingObjectConverter8.convertToRestObject(cache.getAndRemove(cacheKey));
+        return proc.toScriptingObject(cache.getAndRemove(cacheKey));
     }
 
     /**
@@ -174,7 +176,7 @@ public class ScriptingJsCache {
      * @return If operation success.
      */
     public boolean remove(Object key) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
+        Object cacheKey = proc.toJavaObject(key);
 
         return cache.remove(cacheKey);
     }
@@ -185,8 +187,8 @@ public class ScriptingJsCache {
      * @return If operation success.
      */
     public boolean removeValue(Object key, Object val) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+        Object cacheKey = proc.toJavaObject(key);
+        Object cacheVal = proc.toJavaObject(val);
 
         return cache.remove(cacheKey, cacheVal);
     }
@@ -197,8 +199,8 @@ public class ScriptingJsCache {
      * @return If operation success.
      */
     public boolean replace(Object key, Object val) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+        Object cacheKey = proc.toJavaObject(key);
+        Object cacheVal = proc.toJavaObject(val);
 
         return cache.replace(cacheKey, cacheVal);
     }
@@ -210,9 +212,9 @@ public class ScriptingJsCache {
      * @return If operation success.
      */
     public boolean replaceValue(Object key, Object val, Object oldVal) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
-        Object oldCacheVal = JSONCacheObject.toSimpleObject(oldVal);
+        Object cacheKey = proc.toJavaObject(key);
+        Object cacheVal = proc.toJavaObject(val);
+        Object oldCacheVal = proc.toJavaObject(oldVal);
 
         return cache.replace(cacheKey, oldCacheVal, cacheVal);
     }
@@ -230,8 +232,8 @@ public class ScriptingJsCache {
      * @return Previous value.
      */
     public Object putIfAbsent(Object key, Object val) {
-        Object cacheKey = JSONCacheObject.toSimpleObject(key);
-        Object cacheVal = JSONCacheObject.toSimpleObject(val);
+        Object cacheKey = proc.toJavaObject(key);
+        Object cacheVal = proc.toJavaObject(val);
 
         return cache.putIfAbsent(cacheKey, cacheVal);
     }

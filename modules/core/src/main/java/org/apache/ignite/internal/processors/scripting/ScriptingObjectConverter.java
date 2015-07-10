@@ -37,4 +37,23 @@ public class ScriptingObjectConverter {
     public Object toJavaObject(Object o) {
         return JSONCacheObject.toSimpleObject(o);
     }
+
+    /**
+     * @param o Object from script.
+     * @return Object to store in cache.
+     */
+    public Object getField(String key, Object o) {
+        if (o instanceof JSONCacheObject)
+            return ((JSONCacheObject)o).getField(key);
+
+        return null;
+    }
+
+    /**
+     * @param o Object from script.
+     * @return Object to store in cache.
+     */
+    public Object getFields(Object o) {
+        return JSONCacheObject.toSimpleObject(o);
+    }
 }

@@ -16,13 +16,13 @@ public class ScriptingCacheEntry {
      * @param val Value.
      */
     public ScriptingCacheEntry(Object key, Object val) {
-        if (key instanceof ScriptingObjectConverter8)
-            this.key = ((ScriptingObjectConverter8)key).getFields();
+        if (key instanceof ScriptingObjectConverter)
+            this.key = ((ScriptingObjectConverter)key).getFields();
         else
             this.key = key;
 
-        if (val instanceof ScriptingObjectConverter8)
-            this.val = ((ScriptingObjectConverter8)val).getFields();
+        if (val instanceof ScriptingObjectConverter)
+            this.val = ((ScriptingObjectConverter)val).getFields();
         else
             this.val = val;
     }
