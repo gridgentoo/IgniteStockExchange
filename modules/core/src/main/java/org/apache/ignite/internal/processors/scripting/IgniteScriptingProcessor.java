@@ -144,4 +144,12 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
                     ", err= " + e.getMessage() + "].");
         }
     }
+
+    public Object toScriptingObject(Object o) {
+
+    }
+
+    public Object toJavaObject(Object o) {
+
+    }
 }

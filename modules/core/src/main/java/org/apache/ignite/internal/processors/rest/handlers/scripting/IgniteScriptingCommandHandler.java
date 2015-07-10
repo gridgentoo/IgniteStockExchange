@@ -214,7 +214,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         public JsCallFunctionJob(String func, Object argv) {
             this.func = func;
 
-            this.argv = ScriptingJSONCacheObject.convertToRestObject(
+            this.argv = ScriptingObjectConverter8.convertToRestObject(
                 JSONCacheObject.toSimpleObject(argv));
         }
 

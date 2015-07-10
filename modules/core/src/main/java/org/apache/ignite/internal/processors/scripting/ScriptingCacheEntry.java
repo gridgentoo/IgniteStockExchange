@@ -1,8 +1,6 @@
 package org.apache.ignite.internal.processors.scripting;
 
 
-import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
-
 /**
  * Scripting cache entry.
  */
@@ -18,13 +16,13 @@ public class ScriptingCacheEntry {
      * @param val Value.
      */
     public ScriptingCacheEntry(Object key, Object val) {
-        if (key instanceof ScriptingJSONCacheObject)
-            this.key = ((ScriptingJSONCacheObject)key).getFields();
+        if (key instanceof ScriptingObjectConverter8)
+            this.key = ((ScriptingObjectConverter8)key).getFields();
         else
             this.key = key;
 
-        if (val instanceof ScriptingJSONCacheObject)
-            this.val = ((ScriptingJSONCacheObject)val).getFields();
+        if (val instanceof ScriptingObjectConverter8)
+            this.val = ((ScriptingObjectConverter8)val).getFields();
         else
             this.val = val;
     }

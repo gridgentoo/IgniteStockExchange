@@ -18,7 +18,6 @@
 package org.apache.ignite.internal.processors.scripting;
 
 import org.apache.ignite.*;
-import org.apache.ignite.internal.processors.rest.handlers.scripting.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.json.*;
 
@@ -55,7 +54,7 @@ public class ScriptingJsCache {
     public Object get(Object key) {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
 
-        return ScriptingJSONCacheObject.convertToRestObject(cache.get(cacheKey));
+        return ScriptingObjectConverter8.convertToRestObject(cache.get(cacheKey));
     }
 
     /**
@@ -91,8 +90,8 @@ public class ScriptingJsCache {
 
         for (Map.Entry<Object, Object> e : entries.entrySet())
             res.add(new ScriptingCacheEntry(
-                ScriptingJSONCacheObject.convertToRestObject(e.getKey()),
-                ScriptingJSONCacheObject.convertToRestObject(e.getValue())));
+                ScriptingObjectConverter8.convertToRestObject(e.getKey()),
+                ScriptingObjectConverter8.convertToRestObject(e.getValue())));
 
         return res;
     }
@@ -131,7 +130,7 @@ public class ScriptingJsCache {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
         Object cacheVal = JSONCacheObject.toSimpleObject(val);
 
-        return ScriptingJSONCacheObject.convertToRestObject(cache.getAndPut(cacheKey, cacheVal));
+        return ScriptingObjectConverter8.convertToRestObject(cache.getAndPut(cacheKey, cacheVal));
     }
 
     /**
@@ -143,7 +142,7 @@ public class ScriptingJsCache {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
         Object cacheVal = JSONCacheObject.toSimpleObject(val);
 
-        Object o = ScriptingJSONCacheObject.convertToRestObject(cache.getAndReplace(cacheKey, cacheVal));
+        Object o = ScriptingObjectConverter8.convertToRestObject(cache.getAndReplace(cacheKey, cacheVal));
 
         return o;
     }
@@ -157,7 +156,7 @@ public class ScriptingJsCache {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
         Object cacheVal = JSONCacheObject.toSimpleObject(val);
 
-        return ScriptingJSONCacheObject.convertToRestObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
+        return ScriptingObjectConverter8.convertToRestObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
     }
 
     /**
@@ -167,7 +166,7 @@ public class ScriptingJsCache {
     public Object getAndRemove(Object key) {
         Object cacheKey = JSONCacheObject.toSimpleObject(key);
 
-        return ScriptingJSONCacheObject.convertToRestObject(cache.getAndRemove(cacheKey));
+        return ScriptingObjectConverter8.convertToRestObject(cache.getAndRemove(cacheKey));
     }
 
     /**

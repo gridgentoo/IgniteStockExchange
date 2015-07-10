@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.rest.handlers.scripting;
+package org.apache.ignite.internal.processors.scripting;
 
 import jdk.nashorn.api.scripting.*;
-import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.json.*;
 
 import java.util.*;
@@ -26,14 +26,14 @@ import java.util.*;
 /**
  * Json cache object.
  */
-public class ScriptingJSONCacheObject implements JSObject {
+public class ScriptingObjectConverter8 extends ScriptingObjectConverter implements JSObject {
     /** Fields. */
     private final JSONCacheObject fields;
 
     /**
      * @param o JSON object.
      */
-    private ScriptingJSONCacheObject(JSONCacheObject o) {
+    private ScriptingObjectConverter8(JSONCacheObject o) {
         fields = o;
     }
 
@@ -43,7 +43,7 @@ public class ScriptingJSONCacheObject implements JSObject {
      */
     public static Object convertToRestObject(Object o) {
         if (o instanceof JSONCacheObject)
-            return new ScriptingJSONCacheObject((JSONCacheObject)o);
+            return new ScriptingObjectConverter8((JSONCacheObject)o);
 
         return o;
     }
@@ -53,6 +53,11 @@ public class ScriptingJSONCacheObject implements JSObject {
      */
     public Map<Object, Object> getFields() {
         return fields;
+    }
+
+    /** {@inheritDoc} */
+    @Override public Object toScriptingObject(Object o) {
+        return convertToRestObject(o);
     }
 
     /**
@@ -118,7 +123,7 @@ public class ScriptingJSONCacheObject implements JSObject {
         Set<String> keys = new HashSet<>();
 
         for (Object o : fields.keySet()) {
-            if (!(o instanceof ScriptingJSONCacheObject))
+            if (!(o instanceof ScriptingObjectConverter8))
                 keys.add(o.toString());
         }
 
@@ -142,7 +147,7 @@ public class ScriptingJSONCacheObject implements JSObject {
 
     @Override public String getClassName() {
         System.out.println("!!!!getClassName");
-        return U.getSimpleName(ScriptingJSONCacheObject.class);
+        return U.getSimpleName(ScriptingObjectConverter8.class);
     }
 
     @Override public boolean isFunction() {
