@@ -89,7 +89,7 @@ public class JiraBranchesToHtml {
      *
      * @throws Exception
      */
-    protected void generateReport() throws Exception {
+    public void generateReport() throws Exception {
         System.out.println("Need to enter credentials for JIRA [" + jiraUrl + "]");
         System.out.print("JIRA user: ");
 
