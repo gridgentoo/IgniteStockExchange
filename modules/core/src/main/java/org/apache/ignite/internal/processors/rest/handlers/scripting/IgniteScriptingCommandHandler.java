@@ -214,7 +214,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         public JsCallFunctionJob(IgniteScriptingProcessor proc, String func, Object argv) {
             this.func = func;
 
-            this.argv = proc.toScriptingObject(proc.toJavaObject(argv));
+            this.argv = proc.toJavaObject(argv);
         }
 
         /** {@inheritDoc} */

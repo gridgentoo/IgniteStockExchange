@@ -58,7 +58,7 @@ public class ScriptingJsCache {
     public Object get(Object key) {
         Object cacheKey = proc.toJavaObject(key);
 
-        return proc.toScriptingObject(cache.get(cacheKey));
+        return cache.get(cacheKey);
     }
 
     /**
@@ -93,8 +93,7 @@ public class ScriptingJsCache {
         List<Object> res = new ArrayList<>();
 
         for (Map.Entry<Object, Object> e : entries.entrySet())
-            res.add(proc.createScriptingEntry(proc.toScriptingObject(e.getKey()),
-                proc.toScriptingObject(e.getValue())));
+            res.add(proc.createScriptingEntry(e.getKey(), e.getValue()));
 
         return res;
     }
@@ -131,7 +130,7 @@ public class ScriptingJsCache {
         Object cacheKey = proc.toJavaObject(key);
         Object cacheVal = proc.toJavaObject(val);
 
-        return proc.toScriptingObject(cache.getAndPut(cacheKey, cacheVal));
+        return cache.getAndPut(cacheKey, cacheVal);
     }
 
     /**
@@ -143,7 +142,7 @@ public class ScriptingJsCache {
         Object cacheKey = proc.toJavaObject(key);
         Object cacheVal = proc.toJavaObject(val);
 
-        Object o = proc.toScriptingObject(cache.getAndReplace(cacheKey, cacheVal));
+        Object o = cache.getAndReplace(cacheKey, cacheVal);
 
         return o;
     }
@@ -157,7 +156,7 @@ public class ScriptingJsCache {
         Object cacheKey = proc.toJavaObject(key);
         Object cacheVal = proc.toJavaObject(val);
 
-        return proc.toScriptingObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
+        return cache.getAndPutIfAbsent(cacheKey, cacheVal);
     }
 
     /**
@@ -167,7 +166,7 @@ public class ScriptingJsCache {
     public Object getAndRemove(Object key) {
         Object cacheKey = proc.toJavaObject(key);
 
-        return proc.toScriptingObject(cache.getAndRemove(cacheKey));
+        return cache.getAndRemove(cacheKey);
     }
 
     /**

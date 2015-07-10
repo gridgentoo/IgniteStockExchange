@@ -150,14 +150,6 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
 
     /**
      * @param o Object.
-     * @return Object for script.
-     */
-    public Object toScriptingObject(Object o) {
-        return o;
-    }
-
-    /**
-     * @param o Object.
      * @return  Object for Ignite cache.
      */
     public Object toJavaObject(Object o) {
