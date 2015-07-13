@@ -43,7 +43,7 @@ public class JiraBranchesToHtml {
     private static final SimpleDateFormat FORMAT = new SimpleDateFormat("MM/dd/yyyy");
 
     /** */
-    private static final Pattern TICKET_PATTERN = Pattern.compile("\\d{5}|\\d{4}|\\d{3}");
+    private static final Pattern TICKET_PATTERN = Pattern.compile("\\d{6}|\\d{5}|\\d{4}|\\d{3}|\\d{2}");
 
     /** */
     private static final Comparator<Result> COMP = new Comparator<Result>() {
@@ -191,16 +191,17 @@ public class JiraBranchesToHtml {
      * @return Result.
      */
     protected static Result result(JiraRestClient restClient, String branchName, String jiraUrl) {
-        int idx1 = branchName.indexOf('-');
+        // Look for digits at branch name.
+        Matcher m = TICKET_PATTERN.matcher(branchName);
 
-        if (idx1 == -1)
+        if (!m.find())
             return new Result(branchName, null, "Unknown branch name pattern.", jiraUrl);
 
-        int idx2 = branchName.indexOf('-', idx1 + 1);
+        String digits = m.group(0);
 
-        System.out.println(">>>>> " + branchName + " " + idx1 + " " + idx2);
+        int lastJiraKeyIdx = branchName.indexOf(digits) + digits.length();
 
-        if (idx2 == -1)
+        if (lastJiraKeyIdx + 1 == branchName.length()) {
             // For branches like "IGNITE-xxx"
             try {
                 Issue issue = restClient.getIssueClient().getIssue(branchName).claim();
@@ -210,41 +211,19 @@ public class JiraBranchesToHtml {
             catch (RestClientException e) {
                 return new Result(branchName, null, e.getMessage(), jiraUrl);
             }
+        }
         else {
             // For branches like "IGNITE-xxx-<description>".
             try {
-                Integer.valueOf(branchName.substring(idx1+1, idx2));
+                String jiraKey = branchName.substring(0, lastJiraKeyIdx);
 
-                try {
-                    Issue issue = restClient.getIssueClient().getIssue(branchName.substring(0, idx2)).claim();
+                Issue issue = restClient.getIssueClient().getIssue(jiraKey).claim();
 
-                    return new Result(branchName, issue, null, jiraUrl);
-                }
-                catch (RestClientException e) {
-                    return new Result(branchName, null, e.getMessage(), jiraUrl);
-                }
+                return new Result(branchName, issue, null, jiraUrl);
             }
-            catch (NumberFormatException ignore) {
-                return new Result(branchName, null, "Unknown branch name pattern. " +
-                    "Expected that '" + branchName.substring(idx1+1, idx2) + "' is a number.", jiraUrl);
+            catch (RestClientException e) {
+                return new Result(branchName, null, e.getMessage(), jiraUrl);
             }
-        }
-    }
-
-    /**
-     * @param restClient Rest client.
-     * @param branchName Branch name.
-     * @param jiraUrl
-     * @return Result.
-     */
-    private static Result result0(String branchName, JiraRestClient restClient, String jiraName, String jiraUrl) {
-        try {
-            Issue issue = restClient.getIssueClient().getIssue(jiraName).claim();
-
-            return new Result(branchName, issue, null, jiraUrl);
-        }
-        catch (RestClientException e) {
-            return new Result(branchName, null, e.getMessage(), jiraUrl);
         }
     }
 
