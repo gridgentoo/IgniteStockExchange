@@ -40,6 +40,9 @@ public class JiraBranchesToHtml {
     public static final String SCRIPT_PATH = U.getIgniteHome() + "/scripts/jira-branches.sh";
 
     /** */
+    private static final String JIRA_URL = "https://issues.apache.org/jira";
+
+    /** */
     public static final String INPUT_FILE = U.getIgniteHome() + "/scripts/jira-branches.js";
 
     /** */
@@ -71,6 +74,8 @@ public class JiraBranchesToHtml {
      * @throws Exception If failed.
      */
     public static void main(String[] args) throws Exception {
+        Credentials cred = askForJiraCredentials(JIRA_URL);
+
         System.out.print("Report 'Closed' issues only [y/N]: ");
 
         BufferedReader rdr = new BufferedReader(new InputStreamReader(System.in));
@@ -78,8 +83,6 @@ public class JiraBranchesToHtml {
         boolean closedOnly = "y".equalsIgnoreCase(rdr.readLine());
 
         List<String> branches = getBranches();
-
-        Credentials cred = askForJiraCredentials("https://issues.apache.org/jira");
 
         List<Result> res = new ArrayList<>();
 
@@ -121,7 +124,7 @@ public class JiraBranchesToHtml {
 
     /**
      * @param jiraUrl Jira URL.
-     * @return Credentials/
+     * @return Credentials.
      * @throws Exception If failed.
      */
     public static Credentials askForJiraCredentials(String jiraUrl) throws Exception{
@@ -197,7 +200,7 @@ public class JiraBranchesToHtml {
     /**
      * @param restClient Rest client.
      * @param branchName Branch name.
-     * @param jiraUrl
+     * @param jiraUrl Jira URL.
      * @return Result.
      */
     public static Result result(JiraRestClient restClient, String branchName, String jiraUrl) {
@@ -211,29 +214,16 @@ public class JiraBranchesToHtml {
 
         int lastJiraKeyIdx = branchName.indexOf(digits) + digits.length();
 
-        if (lastJiraKeyIdx + 1 == branchName.length()) {
-            // For branches like "IGNITE-xxx"
-            try {
-                Issue issue = restClient.getIssueClient().getIssue(branchName).claim();
+        try {
+            // It will work for both branch patterns: "IGNITE-xxx" and "IGNITE-xxx-<description>".
+            String jiraKey = branchName.substring(0, lastJiraKeyIdx);
 
-                return new Result(branchName, issue, null, jiraUrl);
-            }
-            catch (RestClientException e) {
-                return new Result(branchName, null, e.getMessage(), jiraUrl);
-            }
+            Issue issue = restClient.getIssueClient().getIssue(jiraKey).claim();
+
+            return new Result(branchName, issue, null, jiraUrl);
         }
-        else {
-            // For branches like "IGNITE-xxx-<description>".
-            try {
-                String jiraKey = branchName.substring(0, lastJiraKeyIdx);
-
-                Issue issue = restClient.getIssueClient().getIssue(jiraKey).claim();
-
-                return new Result(branchName, issue, null, jiraUrl);
-            }
-            catch (RestClientException e) {
-                return new Result(branchName, null, e.getMessage(), jiraUrl);
-            }
+        catch (RestClientException e) {
+            return new Result(branchName, null, e.getMessage(), jiraUrl);
         }
     }
 
