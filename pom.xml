@@ -679,7 +679,6 @@
             </build>
         </profile>
 
-
         <profile>
             <id>schema-import</id>
             <activation>
