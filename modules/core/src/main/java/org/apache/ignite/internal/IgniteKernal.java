@@ -1801,6 +1801,20 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
                 }
             }
 
+            for (PluginProvider plugin : ctx.plugins().allProviders()) {
+                try {
+                    plugin.onAfterStop(cancel);
+                }
+                catch (Throwable e) {
+                    errOnStop = true;
+
+                    U.error(log, "Failed to stop component (ignoring): " + plugin, e);
+
+                    if (e instanceof Error)
+                        throw (Error)e;
+                }
+            }
+
             // Stops lifecycle aware components.
             U.stopLifecycleAware(log, lifecycleAwares(cfg));
 

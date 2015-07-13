@@ -132,6 +132,9 @@ public class IgnitePluginProcessor extends GridProcessorAdapter {
 
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
+        for (PluginProvider plugin : plugins.values())
+            plugin.onBeforeStart();
+
         ackPluginsInfo();
     }
 

@@ -94,6 +94,7 @@ public class IgniteComputeGridTestSuite {
         suite.addTestSuite(IgniteComputeEmptyClusterGroupTest.class);
         suite.addTestSuite(IgniteComputeTopologyExceptionTest.class);
         suite.addTestSuite(GridTaskFailoverAffinityRunTest.class);
+        suite.addTestSuite(IgnitePluginLifecycleSelfTest.class);
 
         return suite;
     }

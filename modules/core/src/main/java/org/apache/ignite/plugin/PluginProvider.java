@@ -75,12 +75,34 @@ public interface PluginProvider<C extends PluginConfiguration> {
     @Nullable public <T> T createComponent(PluginContext ctx, Class<T> cls);
 
     /**
+     * Callback that notifies that Ignite prepares to start plugin.
+     *
+     * @throws IgniteCheckedException Thrown in case of any errors.
+     */
+    public void onBeforeStart() throws IgniteCheckedException;
+
+    /**
      * Starts grid component.
      *
      * @param ctx Plugin context.
      * @throws IgniteCheckedException Throws in case of any errors.
      */
     public void start(PluginContext ctx) throws IgniteCheckedException;
+
+    /**
+     * Callback that notifies that Ignite has successfully started,
+     * including all internal components.
+     *
+     * @throws IgniteCheckedException Thrown in case of any errors.
+     */
+    public void onAfterStart() throws IgniteCheckedException;
+
+    /**
+     * Callback that notifies that internal components have successfully stopped.
+     *
+     * @param cancel Flag indicating whether jobs should be canceled.
+     */
+    public void onAfterStop(boolean cancel) throws IgniteCheckedException;
 
     /**
      * Stops grid component.
@@ -92,19 +114,11 @@ public interface PluginProvider<C extends PluginConfiguration> {
     public void stop(boolean cancel) throws IgniteCheckedException;
 
     /**
-     * Callback that notifies that Ignite has successfully started,
-     * including all internal components.
-     *
-     * @throws IgniteCheckedException Thrown in case of any errors.
-     */
-    public void onIgniteStart() throws IgniteCheckedException;
-
-    /**
      * Callback to notify that Ignite is about to stop.
      *
      * @param cancel Flag indicating whether jobs should be canceled.
      */
-    public void onIgniteStop(boolean cancel);
+    public void onBeforeStop(boolean cancel);
 
     /**
      * Gets plugin discovery data object that will be sent to the new node
