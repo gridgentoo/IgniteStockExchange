@@ -37,6 +37,12 @@ import java.util.regex.*;
  */
 public class JiraBranchesToHtml {
     /** */
+    public static final String SCRIPT_PATH = U.getIgniteHome() + "/scripts/jira-branches.sh";
+
+    /** */
+    public static final String INPUT_FILE = U.getIgniteHome() + "/scripts/jira-branches.js";
+
+    /** */
     public static final String OUTPUT_FILE = U.getIgniteHome() + "/scripts/jira-branches-results.html";
 
     /** */
@@ -46,7 +52,7 @@ public class JiraBranchesToHtml {
     private static final Pattern TICKET_PATTERN = Pattern.compile("\\d{6}|\\d{5}|\\d{4}|\\d{3}|\\d{2}");
 
     /** */
-    private static final Comparator<Result> COMP = new Comparator<Result>() {
+    public static final Comparator<Result> COMP = new Comparator<Result>() {
         @Override public int compare(Result o1, Result o2) {
             if (o1.issue != null && o2.issue != null) {
                 int res = name(o1.issue.getAssignee()).compareTo(name(o2.issue.getAssignee()));
@@ -92,20 +98,19 @@ public class JiraBranchesToHtml {
             }
         }
 
-        makeReport(res);
+        String s = buildHtmlReport(res);
+
+        writeToOutputFileAndOpen(s);
     }
 
     /**
-     * @param res Results.
-     * @throws IOException
+     * @param content Content for file.
      */
-    public static void makeReport(List<Result> res) throws IOException {
-        String s = printIssueDetails(res);
-
-        System.out.println(s);
+    public static void writeToOutputFileAndOpen(String content) throws IOException {
+        System.out.println(content);
 
         try (OutputStreamWriter bw = new OutputStreamWriter(new FileOutputStream(OUTPUT_FILE))) {
-            bw.write(s);
+            bw.write(content);
         }
 
         if (Desktop.isDesktopSupported())
@@ -143,18 +148,23 @@ public class JiraBranchesToHtml {
 
     /**
      * @return All branches from origin repository.
-     * @throws Exception if failed.
+     * @throws Exception If failed.
      */
     public static List<String> getBranches() throws Exception {
-        String scriptPath = U.getIgniteHome() + "/scripts/jira-branches.sh";
-        String inputFile = U.getIgniteHome() + "/scripts/jira-branches.js";
+        return getBranches0("");
+    }
 
+    /**
+     * @return All branches from origin repository.
+     * @throws Exception if failed.
+     */
+    public static List<String> getBranches0(String gitHome) throws Exception {
         System.out.println();
-        System.out.println(">>> Executing script: " + scriptPath);
+        System.out.println(">>> Executing script: " + SCRIPT_PATH);
         System.out.println();
 
-        Process proc = new ProcessBuilder(scriptPath)
-            .directory(new File(scriptPath).getParentFile())
+        Process proc = new ProcessBuilder(SCRIPT_PATH, gitHome)
+            .directory(new File(SCRIPT_PATH).getParentFile())
             .redirectOutput(Redirect.INHERIT)
             .redirectError(Redirect.INHERIT)
             .start();
@@ -162,15 +172,15 @@ public class JiraBranchesToHtml {
         proc.waitFor();
 
         System.out.println();
-        System.out.println(">>> Finished executing script [script=" + scriptPath +
+        System.out.println(">>> Finished executing script [script=" + SCRIPT_PATH +
             ", exitCode=" + proc.exitValue() + ']');
         System.out.println();
 
         if (proc.exitValue() != 0)
-            throw new Exception("Failed to run script [script=" + scriptPath +
+            throw new Exception("Failed to run script [script=" + SCRIPT_PATH +
                 ", exitCode=" + proc.exitValue() + ']');
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile)))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(INPUT_FILE)))) {
             List<String> branches = new ArrayList<>();
 
             for (String line; (line = br.readLine()) != null; ) {
@@ -190,7 +200,7 @@ public class JiraBranchesToHtml {
      * @param jiraUrl
      * @return Result.
      */
-    protected static Result result(JiraRestClient restClient, String branchName, String jiraUrl) {
+    public static Result result(JiraRestClient restClient, String branchName, String jiraUrl) {
         // Look for digits at branch name.
         Matcher m = TICKET_PATTERN.matcher(branchName);
 
@@ -231,7 +241,7 @@ public class JiraBranchesToHtml {
      * @param res Results.
      * @return Output.
      */
-    private static String printIssueDetails(List<Result> res) {
+    public static String buildHtmlReport(List<Result> res) {
         StringBuilder sb = new StringBuilder();
 
         println(sb, "<html>\n<head></head>\n<body>");
@@ -239,42 +249,8 @@ public class JiraBranchesToHtml {
 
         Collections.sort(res, COMP);
 
-        for (Result r : res) {
-            print(sb, "\n<tr>");
-
-            if (r.error != null) {
-                print(sb, "<th colspan=7 align=\"left\">" + r.issueKey + " " + r.error + "</th>");
-                print(sb, "</tr>");
-
-                continue;
-            }
-
-            print(sb, "<th colspan=7 align=\"left\">" +
-                "<a href=" + URI.create(r.jiraUrl) + "/browse/" + r.issue.getKey() + ">" +
-                r.issueKey + ' ' + r.issue.getSummary() + "<a></th>");
-
-            print(sb, "</tr><tr>");
-
-            print(sb, "<td><strong>Assignee:</strong> " + name(r.issue.getAssignee()) + "</td>");
-            print(sb, "<td><strong>Reporter:</strong> " + name(r.issue.getReporter()) + "</td>");
-            print(sb, "<td><strong>Status:</strong> " + r.issue.getStatus().getName() + "</td>");
-            print(sb, "<td><strong>Resolution:</strong> " +
-                (r.issue.getResolution() == null ? "Unresolved" : r.issue.getResolution().getName()) + "</td>");
-
-            if (r.issue.getFixVersions() != null) {
-                print(sb, "<td><strong>Version:</strong>");
-
-                for (Version version : r.issue.getFixVersions())
-                    print(sb, " " + version.getName());
-
-                print(sb, "</td>");
-            }
-
-            print(sb, "<td><strong>CreationDate:</strong> " + FORMAT.format(r.issue.getCreationDate().toDate()) + "</td>");
-            print(sb, "<td><strong>UpdateDate:</strong> " + FORMAT.format(r.issue.getUpdateDate().toDate()) + "</td>");
-
-            print(sb, "</tr><tr><td>  </td></tr>");
-        }
+        for (Result r : res)
+            printResult(sb, r);
 
         print(sb, "\n</table>");
         print(sb, "\n</body>\n</html>\n");
@@ -283,10 +259,51 @@ public class JiraBranchesToHtml {
     }
 
     /**
+     * @param sb String builder.
+     * @param r Result.
+     */
+    public static void printResult(StringBuilder sb, Result r) {
+        print(sb, "\n<tr>");
+
+        if (r.error != null) {
+            print(sb, "<th colspan=7 align=\"left\">" + r.issueKey + " " + r.error + "</th>");
+            print(sb, "</tr>");
+
+            return;
+        }
+
+        print(sb, "<th colspan=7 align=\"left\">" +
+            "<a href=" + URI.create(r.jiraUrl) + "/browse/" + r.issue.getKey() + ">" +
+            r.issueKey + ' ' + r.issue.getSummary() + "<a></th>");
+
+        print(sb, "</tr><tr>");
+
+        print(sb, "<td><strong>Assignee:</strong> " + name(r.issue.getAssignee()) + "</td>");
+        print(sb, "<td><strong>Reporter:</strong> " + name(r.issue.getReporter()) + "</td>");
+        print(sb, "<td><strong>Status:</strong> " + r.issue.getStatus().getName() + "</td>");
+        print(sb, "<td><strong>Resolution:</strong> " +
+            (r.issue.getResolution() == null ? "Unresolved" : r.issue.getResolution().getName()) + "</td>");
+
+        if (r.issue.getFixVersions() != null) {
+            print(sb, "<td><strong>Version:</strong>");
+
+            for (Version version : r.issue.getFixVersions())
+                print(sb, " " + version.getName());
+
+            print(sb, "</td>");
+        }
+
+        print(sb, "<td><strong>CreationDate:</strong> " + FORMAT.format(r.issue.getCreationDate().toDate()) + "</td>");
+        print(sb, "<td><strong>UpdateDate:</strong> " + FORMAT.format(r.issue.getUpdateDate().toDate()) + "</td>");
+
+        print(sb, "</tr><tr><td>  </td></tr>");
+    }
+
+    /**
      * @param sb StringBuilder.
      * @param s String to print.
      */
-    private static void print(StringBuilder sb, String s) {
+    public static void print(StringBuilder sb, String s) {
         sb.append(s);
     }
 
@@ -294,7 +311,7 @@ public class JiraBranchesToHtml {
      * @param sb StringBuilder.
      * @param s String to print.
      */
-    private static void println(StringBuilder sb, String s) {
+    public static void println(StringBuilder sb, String s) {
         sb.append(s).append(System.getProperty("line.separator"));
     }
 

@@ -1,3 +1,11 @@
+GIT_HOME=$1
+
+if [ "${GIT_HOME}" != "" ]; then
+	cd $GIT_HOME
+fi
+
+echo "At git home: $(pwd)"
+
 git fetch --all
 
 echo Delete stale remote-tracking branches under 'origin' repository.
