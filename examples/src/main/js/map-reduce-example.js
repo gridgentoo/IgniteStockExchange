@@ -36,7 +36,7 @@ function main() {
 
     function onConnect(err, ignite) {
         if (err !== null)
-            throw "Start remote node with config examples/config/js/example-js-cache.xml.";
+            throw "Start remote node with config examples/config/example-ignite.xml.";
 
         console.log(">>> Compute map reduce example started.");
 

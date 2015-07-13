@@ -31,7 +31,7 @@ var CacheEntry = apacheIgnite.CacheEntry;
   * Alternatively you can run ExampleJsNodeStartup which will
   * start node with {@code examples/config/example-ignite.xml} configuration.
   */
-main() {
+main = function() {
     /** Cache name. */
     var cacheName = "CacheQueryExample";
 
@@ -40,7 +40,7 @@ main() {
 
     function onConnect(err, ignite) {
         if (err !== null)
-            throw "Start remote node with config examples/config/js/example-js-cache.xml.";
+            throw "Start remote node with config examples/config/example-ignite.xml.";
 
         console.log(">>> Cache query example started.");
 
@@ -54,7 +54,7 @@ main() {
     function cacheQuery(ignite, cache, entries) {
         cache.putAll(entries, onCachePut);
 
-        function onCachePut(ignite, err) {
+        function onCachePut(err) {
             console.log(">>> Create cache for people.")
 
             //SQL clause which selects salaries based on range.
@@ -106,6 +106,8 @@ main() {
         var value5 = {"firstName" : "Ann", "lastName" : "Smith", "salary" : 3000};
 
         return [new CacheEntry(key1, value1), new CacheEntry(key2, value2),
-            new CacheEntry(key3, value3), new CacheEntry(key4, entry4)];
+            new CacheEntry(key3, value3), new CacheEntry(key4, value4)];
     }
 }
+
+main();
