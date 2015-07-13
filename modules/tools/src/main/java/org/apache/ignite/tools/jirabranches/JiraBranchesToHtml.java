@@ -37,22 +37,13 @@ import java.util.regex.*;
  */
 public class JiraBranchesToHtml {
     /** */
-    private static final SimpleDateFormat FORMAT = new SimpleDateFormat("MM/dd/yyyy");
-
-    /** Jira url. */
-    private String jiraUrl;
-
-    /** Script path. */
-    private String scriptPath;
-
-    /** Input file. */
-    private String inputFile;
-
-    /** Output file. */
-    private String outputFile;
+    public static final String OUTPUT_FILE = U.getIgniteHome() + "/scripts/jira-branches-results.html";
 
     /** */
-    private static final Pattern TICKET_PATTERN = Pattern.compile("\\d{5}|\\d{4}");
+    private static final SimpleDateFormat FORMAT = new SimpleDateFormat("MM/dd/yyyy");
+
+    /** */
+    private static final Pattern TICKET_PATTERN = Pattern.compile("\\d{5}|\\d{4}|\\d{3}");
 
     /** */
     private static final Comparator<Result> COMP = new Comparator<Result>() {
@@ -68,28 +59,67 @@ public class JiraBranchesToHtml {
                 return o1.issue == null ? 1 : -1;
         }
     };
-    private String prefix;
 
     /**
      * @param args Arguments.
      * @throws Exception If failed.
      */
     public static void main(String[] args) throws Exception {
-        new JiraBranchesToHtml()
-            .setJiraUrl("https://issues.apache.org/jira")
-            .setPrefix("IGNITE")
-            .setScriptPath(U.getIgniteHome() + "/scripts/jira-branches.sh")
-            .setInputFile(U.getIgniteHome() + "/scripts/jira-branches.js")
-            .setOutputFile(U.getIgniteHome() + "/scripts/jira-branches-results.html")
-            .generateReport();
+        System.out.print("Report 'Closed' issues only [y/N]: ");
+
+        BufferedReader rdr = new BufferedReader(new InputStreamReader(System.in));
+
+        boolean closedOnly = "y".equalsIgnoreCase(rdr.readLine());
+
+        List<String> branches = getBranches();
+
+        Credentials cred = askForJiraCredentials("https://issues.apache.org/jira");
+
+        List<Result> res = new ArrayList<>();
+
+        try (JiraRestClient restClient = new AsynchronousJiraRestClientFactory().
+            createWithBasicHttpAuthentication(URI.create(cred.jiraUrl), cred.name, cred.pswd)) {
+            for (String branchName : branches) {
+                if (branchName.toLowerCase().startsWith("IGNITE".toLowerCase())) {
+                    Result r = result(restClient, branchName, cred.jiraUrl);
+
+                    if (r.issue == null || !closedOnly || "Closed".equalsIgnoreCase(r.issue.getStatus().getName())) {
+                        System.out.println("Added issue: " + r);
+
+                        res.add(r);
+                    }
+                }
+            }
+        }
+
+        makeReport(res);
     }
 
     /**
-     * Generate report about git branches and related Jira issues.
-     *
-     * @throws Exception
+     * @param res Results.
+     * @throws IOException
      */
-    public void generateReport() throws Exception {
+    public static void makeReport(List<Result> res) throws IOException {
+        String s = printIssueDetails(res);
+
+        System.out.println(s);
+
+        try (OutputStreamWriter bw = new OutputStreamWriter(new FileOutputStream(OUTPUT_FILE))) {
+            bw.write(s);
+        }
+
+        if (Desktop.isDesktopSupported())
+            Desktop.getDesktop().open(new File(OUTPUT_FILE));
+        else
+            System.out.println("Results have been written to: " + OUTPUT_FILE);
+    }
+
+    /**
+     * @param jiraUrl Jira URL.
+     * @return Credentials/
+     * @throws Exception If failed.
+     */
+    public static Credentials askForJiraCredentials(String jiraUrl) throws Exception{
         System.out.println("Need to enter credentials for JIRA [" + jiraUrl + "]");
         System.out.print("JIRA user: ");
 
@@ -108,9 +138,16 @@ public class JiraBranchesToHtml {
         if (F.isEmpty(pswd))
             throw new IllegalStateException("JIRA password cannot be empty.");
 
-        System.out.print("Report 'Closed' issues only [y/N]: ");
+        return new Credentials(jiraUrl, user, pswd);
+    }
 
-        boolean closedOnly = "y".equalsIgnoreCase(rdr.readLine());
+    /**
+     * @return All branches from origin repository.
+     * @throws Exception if failed.
+     */
+    public static List<String> getBranches() throws Exception {
+        String scriptPath = U.getIgniteHome() + "/scripts/jira-branches.sh";
+        String inputFile = U.getIgniteHome() + "/scripts/jira-branches.js";
 
         System.out.println();
         System.out.println(">>> Executing script: " + scriptPath);
@@ -133,109 +170,81 @@ public class JiraBranchesToHtml {
             throw new Exception("Failed to run script [script=" + scriptPath +
                 ", exitCode=" + proc.exitValue() + ']');
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile)));
-             JiraRestClient restClient = new AsynchronousJiraRestClientFactory().
-                 createWithBasicHttpAuthentication(URI.create(jiraUrl), user, pswd)) {
-            List<Result> res = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile)))) {
+            List<String> branches = new ArrayList<>();
 
             for (String line; (line = br.readLine()) != null; ) {
-                String branchName = line.replace("\\", "").trim();
+                String branch = line.replace("\\", "").trim();
 
-                if (branchName.startsWith(prefix)) {
-                    Result r = result(restClient, branchName);
-
-                    if (r.error != null) {
-                        Matcher m = TICKET_PATTERN.matcher(branchName);
-
-                        if (m.find()) {
-                            Result r0 = result(restClient, prefix + "-" + m.group(0));
-
-                            if (r0.error == null)
-                                r = new Result(branchName, r0.issue, null);
-                        }
-                    }
-
-                    if (r.issue == null || !closedOnly || "Closed".equalsIgnoreCase(r.issue.getStatus().getName())) {
-                        System.out.println("Added issue: " + r);
-
-                        res.add(r);
-                    }
-                }
+                if (branch.startsWith("remotes/origin/"))
+                    branches.add(branch.substring("remotes/origin/".length()));
             }
 
-            String s = printIssueDetails(res);
-
-            System.out.println(s);
-
-            try (OutputStreamWriter bw = new OutputStreamWriter(new FileOutputStream(outputFile))) {
-                bw.write(s);
-            }
-
-            if (Desktop.isDesktopSupported())
-                Desktop.getDesktop().open(new File(outputFile));
-            else
-                System.out.println("Results have been written to: " + outputFile);
+            return branches;
         }
-    }
-
-    /**
-     * @param jiraUrl Jira url.
-     */
-    public JiraBranchesToHtml setJiraUrl(String jiraUrl) {
-        this.jiraUrl = jiraUrl;
-
-        return this;
-    }
-
-    /**
-     * @param scriptPath Script path.
-     */
-    public JiraBranchesToHtml setScriptPath(String scriptPath) {
-        this.scriptPath = scriptPath;
-
-        return this;
-    }
-
-    /**
-     * @param inputFile Input file.
-     */
-    public JiraBranchesToHtml setInputFile(String inputFile) {
-        this.inputFile = inputFile;
-
-        return this;
-    }
-
-    /**
-     * @param outputFile Output file.
-     */
-    public JiraBranchesToHtml setOutputFile(String outputFile) {
-        this.outputFile = outputFile;
-
-        return this;
-    }
-
-    /**
-     * @param prefix Jira prefix.
-     */
-    public JiraBranchesToHtml setPrefix(String prefix) {
-        this.prefix = prefix;
-
-        return this;
     }
 
     /**
      * @param restClient Rest client.
      * @param branchName Branch name.
+     * @param jiraUrl
      * @return Result.
      */
-    private static Result result(JiraRestClient restClient, String branchName) {
-        try {
-            Issue issue = restClient.getIssueClient().getIssue(branchName).claim();
+    protected static Result result(JiraRestClient restClient, String branchName, String jiraUrl) {
+        int idx1 = branchName.indexOf('-');
 
-            return new Result(branchName, issue, null);
+        if (idx1 == -1)
+            return new Result(branchName, null, "Unknown branch name pattern.", jiraUrl);
+
+        int idx2 = branchName.indexOf('-', idx1 + 1);
+
+        System.out.println(">>>>> " + branchName + " " + idx1 + " " + idx2);
+
+        if (idx2 == -1)
+            // For branches like "IGNITE-xxx"
+            try {
+                Issue issue = restClient.getIssueClient().getIssue(branchName).claim();
+
+                return new Result(branchName, issue, null, jiraUrl);
+            }
+            catch (RestClientException e) {
+                return new Result(branchName, null, e.getMessage(), jiraUrl);
+            }
+        else {
+            // For branches like "IGNITE-xxx-<description>".
+            try {
+                Integer.valueOf(branchName.substring(idx1+1, idx2));
+
+                try {
+                    Issue issue = restClient.getIssueClient().getIssue(branchName.substring(0, idx2)).claim();
+
+                    return new Result(branchName, issue, null, jiraUrl);
+                }
+                catch (RestClientException e) {
+                    return new Result(branchName, null, e.getMessage(), jiraUrl);
+                }
+            }
+            catch (NumberFormatException ignore) {
+                return new Result(branchName, null, "Unknown branch name pattern. " +
+                    "Expected that '" + branchName.substring(idx1+1, idx2) + "' is a number.", jiraUrl);
+            }
+        }
+    }
+
+    /**
+     * @param restClient Rest client.
+     * @param branchName Branch name.
+     * @param jiraUrl
+     * @return Result.
+     */
+    private static Result result0(String branchName, JiraRestClient restClient, String jiraName, String jiraUrl) {
+        try {
+            Issue issue = restClient.getIssueClient().getIssue(jiraName).claim();
+
+            return new Result(branchName, issue, null, jiraUrl);
         }
         catch (RestClientException e) {
-            return new Result(branchName, null, e.getMessage());
+            return new Result(branchName, null, e.getMessage(), jiraUrl);
         }
     }
 
@@ -243,7 +252,7 @@ public class JiraBranchesToHtml {
      * @param res Results.
      * @return Output.
      */
-    private String printIssueDetails(List<Result> res) {
+    private static String printIssueDetails(List<Result> res) {
         StringBuilder sb = new StringBuilder();
 
         println(sb, "<html>\n<head></head>\n<body>");
@@ -262,7 +271,7 @@ public class JiraBranchesToHtml {
             }
 
             print(sb, "<th colspan=7 align=\"left\">" +
-                "<a href=" + URI.create(jiraUrl) + "/browse/" + r.issue.getKey() + ">" +
+                "<a href=" + URI.create(r.jiraUrl) + "/browse/" + r.issue.getKey() + ">" +
                 r.issueKey + ' ' + r.issue.getSummary() + "<a></th>");
 
             print(sb, "</tr><tr>");
@@ -322,21 +331,25 @@ public class JiraBranchesToHtml {
     }
 
     /** */
-    private static class Result {
+    public static class Result {
         /** */
-        private final String issueKey;
+        public final String issueKey;
 
         /** */
-        private final Issue issue;
+        public final Issue issue;
 
         /** */
-        private final String error;
+        public final String error;
 
         /** */
-        Result(String issueKey, Issue issue, String error) {
+        public final String jiraUrl;
+
+        /** */
+        public Result(String issueKey, Issue issue, String error, String url) {
             this.issueKey = issueKey;
             this.issue = issue;
             this.error = error;
+            jiraUrl = url;
         }
 
         /** {@inheritDoc} */
@@ -346,6 +359,25 @@ public class JiraBranchesToHtml {
                 ", issue=" + (issue == null ? "" : issue.getKey() + " " + issue.getSummary()) +
                 ", error='" + error + '\'' +
                 ']';
+        }
+    }
+
+    /** */
+    public static class Credentials {
+        /** */
+        public final String jiraUrl;
+
+        /** */
+        public final String name;
+
+        /** */
+        public final String pswd;
+
+        /** */
+        Credentials(String jiraUrl, String name, String pswd) {
+            this.jiraUrl = jiraUrl;
+            this.name = name;
+            this.pswd = pswd;
         }
     }
 }

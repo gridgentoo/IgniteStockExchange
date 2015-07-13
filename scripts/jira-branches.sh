@@ -9,10 +9,8 @@ echo Update git branches list file.
 
 echo "var \$branches = \"\\" > $FILE
 
-git branch -a | grep remotes/origin/ignite- | sed 's/remotes\/origin\/ignite\-\(.*\)$/IGNITE-\1 \\/g' >> $FILE
+git branch -a >> $FILE
 
 echo '";' >> $FILE
 
 echo "var \$branchesDate = '$(date +"%Y-%m-%d")';" >> $FILE
-
-echo Open in browser $(dirname $FILE)/jira-branches.html
