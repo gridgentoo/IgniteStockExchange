@@ -32,7 +32,7 @@ function Ignition() {
  */
 
 /**
- * Open connection with server node
+ * Open connection with ignite node
  *
  * @param {string[]} address List of nodes hosts with ports
  * @param {string} secretKey Secret key.

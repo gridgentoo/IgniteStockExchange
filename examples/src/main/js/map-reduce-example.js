@@ -54,7 +54,7 @@ function main() {
                     return word.length;
                 };
 
-                //Add job to node with arguments.
+                //Add job with arguments to the node.
                 emit(job, words[i], nodes[i %  nodes.length]);
             }
         }
