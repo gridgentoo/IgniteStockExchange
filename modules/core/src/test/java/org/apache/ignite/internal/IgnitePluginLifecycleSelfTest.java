@@ -21,7 +21,7 @@ import org.apache.ignite.internal.util.*;
 import org.apache.ignite.testframework.junits.common.*;
 
 /**
- *
+ * Testing with {@link TestPluginProvider}.
  */
 @GridCommonTest(group = "Kernal Self")
 public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
@@ -40,6 +40,8 @@ public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
      */
     public void testStopGrid() throws Exception {
         try {
+            TestPluginProvider.resetState();
+
             TestPluginProvider.enableAssert = true;
 
             startGrid("testGrid");

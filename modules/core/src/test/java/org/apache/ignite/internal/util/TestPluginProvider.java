@@ -51,61 +51,74 @@ public class TestPluginProvider extends PluginProviderAdapter<TestPluginProvider
 
     /** {@inheritDoc} */
     @Override public void onBeforeStart() throws IgniteCheckedException {
-        bfStart = true;
+        if (enableAssert) {
+            bfStart = true;
 
-        if (enableAssert)
             assertFalse(start || afStart || bfStop || stop || afStop);
+        }
     }
 
     /** {@inheritDoc} */
     @Override public void start(PluginContext ctx) throws IgniteCheckedException {
-        ignite = (IgniteKernal)ctx.grid();
+        if (enableAssert) {
+            ignite = (IgniteKernal)ctx.grid();
 
-        start = true;
+            start = true;
 
-        if (enableAssert)
             assertFalse(afStart || bfStop || stop || afStop);
+        }
     }
 
     /** {@inheritDoc} */
     @Override public void onAfterStart() throws IgniteCheckedException {
-        afStart = true;
+        if (enableAssert) {
+            afStart = true;
 
-        if (enableAssert)
             assertFalse(bfStop || stop || afStop);
+        }
     }
 
     /** {@inheritDoc} */
     @Override public void onBeforeStop(boolean cancel) {
-        bfStop = true;
+        if (enableAssert) {
+            bfStop = true;
 
-        if (enableAssert)
             assertFalse(stop || afStop);
+        }
     }
 
     /** {@inheritDoc} */
     @Override public void stop(boolean cancel) throws IgniteCheckedException {
-        stop = true;
+        if (enableAssert) {
+            stop = true;
 
-        if (enableAssert)
             assertFalse(afStop);
+        }
     }
 
     /** {@inheritDoc} */
     @Override public void onAfterStop(boolean cancel) {
-        if (enableAssert)
+        if (enableAssert) {
             GridTestUtils.assertThrows(null, new Callable<Object>() {
                 @Override public Object call() throws Exception {
                     return ignite.cache(null);
                 }
             }, IllegalStateException.class, null);
 
-        afStop = true;
+            afStop = true;
+        }
     }
 
     /** {@inheritDoc} */
     @Override public String version() {
         return "0.0.1";
+    }
+
+    /**
+     * Reset state.
+     */
+    public static void resetState() {
+        bfStart = start = afStart = bfStop = stop = afStop = false;
     }
 
     /** */
