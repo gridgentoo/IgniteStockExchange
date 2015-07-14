@@ -67,6 +67,7 @@ public class TestPluginProvider extends PluginProviderAdapter<TestPluginProvider
             assertFalse(afStart || bfStop || stop || afStop);
     }
 
+    /** {@inheritDoc} */
     @Override public void onAfterStart() throws IgniteCheckedException {
         afStart = true;
 
@@ -74,6 +75,7 @@ public class TestPluginProvider extends PluginProviderAdapter<TestPluginProvider
             assertFalse(bfStop || stop || afStop);
     }
 
+    /** {@inheritDoc} */
     @Override public void onBeforeStop(boolean cancel) {
         bfStop = true;
 
@@ -81,6 +83,7 @@ public class TestPluginProvider extends PluginProviderAdapter<TestPluginProvider
             assertFalse(stop || afStop);
     }
 
+    /** {@inheritDoc} */
     @Override public void stop(boolean cancel) throws IgniteCheckedException {
         stop = true;
 
@@ -88,6 +91,7 @@ public class TestPluginProvider extends PluginProviderAdapter<TestPluginProvider
             assertFalse(afStop);
     }
 
+    /** {@inheritDoc} */
     @Override public void onAfterStop(boolean cancel) {
         if (enableAssert)
             GridTestUtils.assertThrows(null, new Callable<Object>() {
@@ -97,6 +101,11 @@ public class TestPluginProvider extends PluginProviderAdapter<TestPluginProvider
             }, IllegalStateException.class, null);
 
         afStop = true;
+    }
+
+    /** {@inheritDoc} */
+    @Override public String version() {
+        return "0.0.1";
     }
 
     /** */
