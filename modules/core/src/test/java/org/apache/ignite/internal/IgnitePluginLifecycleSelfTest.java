@@ -52,9 +52,12 @@ public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
             startGrid("testGrid");
         }
         finally {
-            enableAssert = false;
-
-            stopGrid("testGrid", true);
+            try {
+                stopGrid("testGrid", true);
+            }
+            finally {
+                enableAssert = false;
+            }
         }
 
         assertTrue(TestPluginProvider.bfStart && TestPluginProvider.start && TestPluginProvider.afStart
