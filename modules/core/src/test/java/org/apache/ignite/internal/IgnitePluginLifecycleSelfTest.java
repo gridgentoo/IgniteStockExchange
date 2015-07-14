@@ -30,6 +30,9 @@ import java.util.concurrent.*;
 @GridCommonTest(group = "Kernal Self")
 public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
     /** */
+    public static boolean enableAssert = false;
+
+    /** */
     public IgnitePluginLifecycleSelfTest() {
         super(false);
     }
@@ -44,9 +47,13 @@ public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
      */
     public void testStopGrid() throws Exception {
         try {
+            enableAssert = true;
+
             startGrid("testGrid");
         }
         finally {
+            enableAssert = false;
+
             stopGrid("testGrid", true);
         }
 
@@ -81,7 +88,8 @@ public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
         @Override public void onBeforeStart() throws IgniteCheckedException {
             bfStart = true;
 
-            assertFalse(start || afStart || bfStop || stop || afStop);
+            if (enableAssert)
+                assertFalse(start || afStart || bfStop || stop || afStop);
         }
 
         /** {@inheritDoc} */
@@ -90,33 +98,38 @@ public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
 
             start = true;
 
-            assertFalse(afStart || bfStop || stop || afStop);
+            if (enableAssert)
+                assertFalse(afStart || bfStop || stop || afStop);
         }
 
         @Override public void onAfterStart() throws IgniteCheckedException {
             afStart = true;
 
-            assertFalse(bfStop || stop || afStop);
+            if (enableAssert)
+                assertFalse(bfStop || stop || afStop);
         }
 
         @Override public void onBeforeStop(boolean cancel) {
             bfStop = true;
 
-            assertFalse(stop || afStop);
+            if (enableAssert)
+                assertFalse(stop || afStop);
         }
 
         @Override public void stop(boolean cancel) throws IgniteCheckedException {
             stop = true;
 
-            assertFalse(afStop);
+            if (enableAssert)
+                assertFalse(afStop);
         }
 
         @Override public void onAfterStop(boolean cancel) {
-            GridTestUtils.assertThrows(null, new Callable<Object>() {
-                @Override public Object call() throws Exception {
-                    return ignite.cache(null);
-                }
-            }, IllegalStateException.class, null);
+            if (enableAssert)
+                GridTestUtils.assertThrows(null, new Callable<Object>() {
+                    @Override public Object call() throws Exception {
+                        return ignite.cache(null);
+                    }
+                }, IllegalStateException.class, null);
 
             afStop = true;
         }
