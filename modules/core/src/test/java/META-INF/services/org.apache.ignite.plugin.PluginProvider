@@ -15,4 +15,4 @@
 # limitations under the License.
 #
 
-org.apache.ignite.internal.IgnitePluginLifecycleSelfTest$TestPluginProvider
+org.apache.ignite.internal.util.TestPluginProvider

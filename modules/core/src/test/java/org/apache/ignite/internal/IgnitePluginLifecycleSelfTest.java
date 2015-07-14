@@ -17,21 +17,14 @@
 
 package org.apache.ignite.internal;
 
-import org.apache.ignite.*;
-import org.apache.ignite.plugin.*;
-import org.apache.ignite.testframework.*;
+import org.apache.ignite.internal.util.*;
 import org.apache.ignite.testframework.junits.common.*;
-
-import java.util.concurrent.*;
 
 /**
  *
  */
 @GridCommonTest(group = "Kernal Self")
 public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
-    /** */
-    public static boolean enableAssert = false;
-
     /** */
     public IgnitePluginLifecycleSelfTest() {
         super(false);
@@ -47,7 +40,7 @@ public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
      */
     public void testStopGrid() throws Exception {
         try {
-            enableAssert = true;
+            TestPluginProvider.enableAssert = true;
 
             startGrid("testGrid");
         }
@@ -56,85 +49,12 @@ public class IgnitePluginLifecycleSelfTest extends GridCommonAbstractTest {
                 stopGrid("testGrid", true);
             }
             finally {
-                enableAssert = false;
+                TestPluginProvider.enableAssert = false;
             }
         }
 
         assertTrue(TestPluginProvider.bfStart && TestPluginProvider.start && TestPluginProvider.afStart
             && TestPluginProvider.bfStop && TestPluginProvider.stop && TestPluginProvider.afStop
         );
-    }
-
-    /** */
-    public static class TestPluginCfg implements PluginConfiguration {
-    }
-
-    /** */
-    public static class TestPluginProvider extends PluginProviderAdapter<TestPluginCfg> {
-        /** */
-        IgniteKernal ignite;
-
-        public static boolean bfStart, start, afStart, bfStop, stop, afStop;
-
-
-        /** {@inheritDoc} */
-        @Override public String name() {
-            return "TestPlugin";
-        }
-
-        /** {@inheritDoc} */
-        @Override public IgnitePlugin plugin() {
-            return new IgnitePlugin() {};
-        }
-
-        /** {@inheritDoc} */
-        @Override public void onBeforeStart() throws IgniteCheckedException {
-            bfStart = true;
-
-            if (enableAssert)
-                assertFalse(start || afStart || bfStop || stop || afStop);
-        }
-
-        /** {@inheritDoc} */
-        @Override public void start(PluginContext ctx) throws IgniteCheckedException {
-            ignite = (IgniteKernal)ctx.grid();
-
-            start = true;
-
-            if (enableAssert)
-                assertFalse(afStart || bfStop || stop || afStop);
-        }
-
-        @Override public void onAfterStart() throws IgniteCheckedException {
-            afStart = true;
-
-            if (enableAssert)
-                assertFalse(bfStop || stop || afStop);
-        }
-
-        @Override public void onBeforeStop(boolean cancel) {
-            bfStop = true;
-
-            if (enableAssert)
-                assertFalse(stop || afStop);
-        }
-
-        @Override public void stop(boolean cancel) throws IgniteCheckedException {
-            stop = true;
-
-            if (enableAssert)
-                assertFalse(afStop);
-        }
-
-        @Override public void onAfterStop(boolean cancel) {
-            if (enableAssert)
-                GridTestUtils.assertThrows(null, new Callable<Object>() {
-                    @Override public Object call() throws Exception {
-                        return ignite.cache(null);
-                    }
-                }, IllegalStateException.class, null);
-
-            afStop = true;
-        }
     }
 }
