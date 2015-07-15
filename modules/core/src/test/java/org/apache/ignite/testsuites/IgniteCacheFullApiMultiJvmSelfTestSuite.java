@@ -18,7 +18,6 @@
 package org.apache.ignite.testsuites;
 
 import junit.framework.*;
-import org.apache.ignite.internal.processors.cache.multijvm.*;
 
 /**
  * Multi-JVM test suite.
@@ -32,7 +31,7 @@ public class IgniteCacheFullApiMultiJvmSelfTestSuite extends TestSuite {
         TestSuite suite = new TestSuite("Cache Full API Multi Jvm Test Suite");
 
         // Multi-node.
-        suite.addTestSuite(GridCacheReplicatedMultiJvmFullApiSelfTest.class);
+//        suite.addTestSuite(GridCacheReplicatedMultiJvmFullApiSelfTest.class);
 //        suite.addTestSuite(GridCacheReplicatedMultiJvmP2PDisabledFullApiSelfTest.class);
 //        suite.addTestSuite(GridCacheReplicatedAtomicMultiJvmFullApiSelfTest.class);
 //        suite.addTestSuite(GridCacheReplicatedAtomicPrimaryWriteOrderMultiJvmFullApiSelfTest.class);
