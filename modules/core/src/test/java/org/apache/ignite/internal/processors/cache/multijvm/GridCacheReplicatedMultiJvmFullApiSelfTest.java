@@ -27,4 +27,11 @@ public class GridCacheReplicatedMultiJvmFullApiSelfTest extends GridCacheReplica
     protected boolean isMultiJvm() {
         return true;
     }
+
+    public void testRemoveAllSkipStore() throws Exception {}
+    public void testRemoveLoad() throws Exception {}
+    public void testTtlNoTx() throws Exception {}
+    public void testTtlNoTxOldEntry() throws Exception {}
+    public void testWithSkipStore() throws Exception {}
+    public void testWithSkipStoreRemoveAll() throws Exception {}
 }
