@@ -30,10 +30,16 @@
         <relativePath>../../parent</relativePath>
     </parent>
 
-    <artifactId>ignite-nodejs</artifactId>
+    <artifactId>ignite-json</artifactId>
     <version>1.4.1-SNAPSHOT</version>
 
     <dependencies>
+        <dependency>
+            <groupId>javax.json</groupId>
+            <artifactId>javax.json-api</artifactId>
+            <version>1.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.ignite</groupId>
             <artifactId>ignite-core</artifactId>

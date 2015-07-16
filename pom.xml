@@ -74,6 +74,7 @@
         <module>modules/nodejs</module>
         <module>modules/kafka</module>
         <module>modules/yarn</module>
+        <module>modules/json</module>
     </modules>
 
     <profiles>
