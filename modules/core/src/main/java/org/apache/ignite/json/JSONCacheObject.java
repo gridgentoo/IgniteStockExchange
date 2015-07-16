@@ -23,6 +23,9 @@ import java.util.*;
  * JSON cache object.
  */
 public class JSONCacheObject extends HashMap<Object, Object> {
+    /** */
+    private static final long serialVersionUID = 0L;
+
     /**
      * Empty constructor.
      */
