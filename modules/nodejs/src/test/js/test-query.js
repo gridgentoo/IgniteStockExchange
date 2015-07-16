@@ -24,62 +24,107 @@ var SqlQuery = Ignite.SqlQuery;
 var SqlFieldsQuery = Ignite.SqlFieldsQuery;
 
 testSqlQuery = function() {
-    function sqlQuery(ignite, error) {
-        assert(error == null, "error on sql query [err=" + error + "]");
+    TestUtils.startIgniteNode().then(function(ignite) {
+        ignite.cache("mycache").put("key0", "val0").then(function() {
+            var qry = new SqlQuery("select * from String");
 
-        var qry = new SqlQuery("select * from String");
+            qry.setReturnType("String");
 
-        qry.setReturnType("String");
+            var fullRes = [];
 
-        var fullRes = [];
+            function onQuery(cursor) {
+                var page = cursor.page();
 
-        qry.on("page", function(res) {
-            fullRes = fullRes.concat(res);
-        });
+                fullRes = fullRes.concat(page);
 
-        qry.on("end", function(err) {
-            assert(err === null, "Error on query [err=" + err + "].");
+                if (cursor.isFinished()) {
+                    assert(fullRes.length === 1, "Result length is not correct" +
+                        "[expected=1, val = " + fullRes.length + "]");
 
-            assert(fullRes.length === 1, "Result length is not correct" +
-                "[expected=1, val = " + fullRes.length + "]");
+                    assert(fullRes[0]["key"] === "key0", "Result value for key is not correct "+
+                        "[expected=key0, real=" + fullRes[0]["key"] + "]");
 
-            assert(fullRes[0]["key"] === "key0", "Result value for key is not correct "+
-                "[expected=key0, real=" + fullRes[0]["key"] + "]");
+                    assert(fullRes[0]["value"] === "val0", "Result value for key is not correct "+
+                        "[expected=val0, real=" + fullRes[0]["value"] + "]");
 
-            assert(fullRes[0]["value"] === "val0", "Result value for key is not correct "+
-                "[expected=val0, real=" + fullRes[0]["value"] + "]");
+                    TestUtils.testDone();
 
-            TestUtils.testDone();
-        });
+                    return;
+                }
 
-        ignite.cache("mycache").query(qry);
-    }
+                cursor.nextPage().then(onQuery);
+            }
 
-    function put(error, ignite) {
-        assert(error == null, "error on put [err=" + error + "]");
+            var cursor = ignite.cache("mycache").query(qry);
 
-        ignite.cache("mycache").put("key0", "val0", sqlQuery.bind(null, ignite))
-    }
-
-    TestUtils.startIgniteNode(put);
+            cursor.nextPage().then(onQuery);
+        }).catch(function(err) {
+            assert(err === null, err);
+        })
+    }).catch(function(err) {
+        assert(err === null, err);
+    });
 }
 
 testSqlFieldsQuery = function() {
-    function sqlFieldsQuery(error, ignite) {
-        assert(error == null, "error on sqlfields query [err=" + error + "]");
-
+    TestUtils.startIgniteNode().then(function(ignite) {
         var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
 
         var fullRes = [];
 
-        qry.on("page", function(res) {
-            console.log("PAGE:" + res);
-            fullRes = fullRes.concat(res);
-        });
+        function onQuery(cursor) {
+            var page = cursor.page();
 
-        qry.on("end", function(err) {
-            assert(err === null, "Error on query [err=" + err + "].");
+            fullRes = fullRes.concat(page);
 
+            if (cursor.isFinished()) {
+                assert(fullRes.length === 4, "Result length is not correct" +
+                    "[expected=1, val = " + fullRes.length + "]");
+
+                fullRes.sort();
+
+                assert(fullRes[0].indexOf("Jane Doe") > -1,
+                    "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
+
+                console.log("Result: " + JSON.stringify(fullRes));
+
+                return ignite.cache("person").get("key");
+            }
+
+            return cursor.nextPage().then(onQuery);
+        }
+
+        ignite.cache("person").query(qry).nextPage().then(onQuery).then(function(){
+            TestUtils.testDone();
+        })
+    }).catch(function(err) {
+        assert(err === null, err);
+    });
+}
+
+testCloseQuery = function() {
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
+
+        function onQuery(cursor) {
+            return cursor.close();
+        }
+
+        ignite.cache("person").query(qry).nextPage().then(onQuery).then(function(res){
+            TestUtils.testDone();
+        }).catch(function(err){
+            assert(err === null, err);
+        })
+    }).catch(function(err) {
+        assert(err === null, err);
+    });
+}
+
+testSqlFieldsGetAllQuery = function() {
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
+
+        function onQuery(fullRes) {
             assert(fullRes.length === 4, "Result length is not correct" +
                 "[expected=1, val = " + fullRes.length + "]");
 
@@ -88,19 +133,21 @@ testSqlFieldsQuery = function() {
             assert(fullRes[0].indexOf("Jane Doe") > -1,
                 "Result does not contain Jane Doe [res=" + fullRes[0] + "]");
 
+            console.log("Result: " + JSON.stringify(fullRes));
+
+            return ignite.cache("person").get("key");
+        }
+
+        ignite.cache("person").query(qry).getAll().then(onQuery).then(function(){
             TestUtils.testDone();
-        });
-
-        ignite.cache("person").query(qry);
-    }
-
-    TestUtils.startIgniteNode(sqlFieldsQuery.bind(null));
+        })
+    }).catch(function(err) {
+        assert(err === null, err);
+    });
 }
 
 testSqlQueryWithParams = function() {
-    function sqlQueryWithParams(error, ignite) {
-        assert(error == null, "error on sql query [err=" + error + "]");
-
+    TestUtils.startIgniteNode().then(function(ignite) {
         var qry = new SqlQuery("salary > ? and salary <= ?");
 
         qry.setReturnType("Person");
@@ -109,25 +156,31 @@ testSqlQueryWithParams = function() {
 
         var fullRes = [];
 
-        qry.on("page", function(res) {
-            fullRes = fullRes.concat(res);
-        });
+        function onQuery(cursor) {
+            var page = cursor.page();
 
-        qry.on("end", function(err) {
-            assert(err === null, "Error on query [err=" + err + "].");
+            fullRes = fullRes.concat(page);
 
-            assert(fullRes.length === 2, "Result length is not correct" +
-                "[expected=1, val = " + fullRes.length + "]");
+            if (cursor.isFinished()) {
+                assert(fullRes.length === 2, "Result length is not correct" +
+                    "[expected=1, val = " + fullRes.length + "]");
 
-            assert(((fullRes[0]["value"]["firstName"].indexOf("Jane") > -1) ||
-                (fullRes[0]["value"]["firstName"].indexOf("John") > -1)),
-                "Result does not contain Jane and John [res=" + fullRes[0]["value"]["firstName"] + "]");
+                assert(((fullRes[0]["value"]["firstName"].indexOf("Jane") > -1) ||
+                    (fullRes[0]["value"]["firstName"].indexOf("John") > -1)),
+                    "Result does not contain Jane and John [res=" + fullRes[0]["value"]["firstName"] + "]");
 
-            TestUtils.testDone();
-        });
+                console.log("Result: " + JSON.stringify(fullRes));
 
-        ignite.cache("person").query(qry);
-    }
+                TestUtils.testDone();
 
-    TestUtils.startIgniteNode(sqlQueryWithParams.bind(null));
+                return;
+            }
+
+            cursor.nextPage().then(onQuery);
+        }
+
+        ignite.cache("person").query(qry).nextPage().then(onQuery);
+    }).catch(function(err) {
+        assert(err === null, err);
+    });
 }

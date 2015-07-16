@@ -20,47 +20,36 @@ var TestUtils = require("./test-utils").TestUtils;
 var assert = require("assert");
 
 testIgniteVersion = function() {
-    function igniteVer(err, res) {
-        assert.equal(err, null);
-
+    TestUtils.startIgniteNode().then(function(ignite) {
+        return ignite.version();
+    }).then(function(res) {
         var verRegex = /([0-9]+)\.([0-9]+)\.([0-9]+)/;
 
         assert(verRegex.exec(res) !== null, "Incorrect ignite version [ver=" + res + "]");
 
         TestUtils.testDone();
-    }
-
-    function onStart(err, ignite) {
-        assert.equal(err, null);
-
-        ignite.version(igniteVer.bind(null));
-    }
-
-    TestUtils.startIgniteNode(onStart.bind(null));
+    }).catch(function (err) {
+        assert(err === null, err);
+    });
 }
 
 testIgniteName = function() {
-    function igniteName(err, res) {
-        assert.equal(err, null);
+    TestUtils.startIgniteNode().then(function(ignite) {
+        return ignite.name();
+    }).then(function(res) {
         assert(res.indexOf("NodeJsIgniteSelfTest") > -1, "Incorrect ignite name [ver=" + res + "]");
 
         TestUtils.testDone();
-    }
-
-    function onStart(err, ignite) {
-        assert.equal(err, null);
-
-        ignite.name(igniteName.bind(null));
-    }
-
-    TestUtils.startIgniteNode(onStart.bind(null));
+    }).catch(function (err) {
+        assert(err === null, err);
+    });
 }
 
 testCluster = function() {
-    function igniteCluster(err, res) {
-        assert.equal(err, null);
+    TestUtils.startIgniteNode().then(function(ignite) {
+        return ignite.cluster();
+    }).then(function(res) {
         assert(res.length > 0);
-
         assert(res[0].nodeId() !== null)
 
         var attrs = res[0].attributes();
@@ -69,49 +58,34 @@ testCluster = function() {
         assert(attrs["os.version"] !== null, "Not correct node attributes [attr=" + res[0].attributes() + "]");
 
         TestUtils.testDone();
-    }
-
-    function onStart(err, ignite) {
-        assert.equal(err, null);
-
-        ignite.cluster(igniteCluster.bind(null));
-    }
-
-    TestUtils.startIgniteNode(onStart.bind(null));
+    }).catch(function (err) {
+        assert(err === null, err);
+    });
 }
 
 testDestroyCache = function() {
     var cacheName = "NEW_CACHE";
 
-    function onErrorPut(err) {
-        assert(err !== null);
+    TestUtils.startIgniteNode().then(function(ignite) {
+        ignite.getOrCreateCache(cacheName).then(function(cache) {
+            return cache.put("1", "1");
+        }).then(function() {
+            return ignite.destroyCache(cacheName);
+        }).then(function() {
+            var cache0 = ignite.cache(cacheName);
 
-        TestUtils.testDone();
-    }
+            cache0.put("1", "1").then(function() {
+                assert(false, "Do not get an error.");
+            }).catch(function(err){
+                assert(err !== null, "Do nto get an error");
+                assert(err.indexOf("Failed to find cache for given cache name") > -1, "Incorrect error message: " + err);
 
-    function onDestroy(cache, err) {
+                TestUtils.testDone();
+            });
+        }).catch(function(err) {
+            assert(err === null, err);
+        })
+    }).catch(function (err) {
         assert(err === null, err);
-
-        cache.put("1", "1", onErrorPut);
-    }
-
-    function onPut(ignite, cache, err) {
-        assert(err === null, err);
-
-        ignite.destroyCache(cacheName, onDestroy.bind(null, cache));
-    }
-
-    function onGetOrCreateCache(ignite, err, cache) {
-        assert(err === null, err);
-
-        cache.put("1", "1", onPut.bind(null, ignite, cache));
-    }
-
-    function onStart(err, ignite) {
-        assert.equal(err, null);
-
-        ignite.getOrCreateCache(cacheName, onGetOrCreateCache.bind(null, ignite));
-    }
-
-    TestUtils.startIgniteNode(onStart.bind(null));
+    });
 }

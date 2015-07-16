@@ -650,6 +650,17 @@ public class GridJettyRestHandler extends AbstractHandler {
                 break;
             }
 
+            case CLOSE_SQL_QUERY: {
+                RestSqlQueryRequest restReq0 = new RestSqlQueryRequest();
+
+                restReq0.queryId(Long.parseLong((String)params.get("qryId")));
+                restReq0.cacheName((String)params.get("cacheName"));
+
+                restReq = restReq0;
+
+                break;
+            }
+
             default:
                 throw new IgniteCheckedException("Invalid command: " + cmd);
         }

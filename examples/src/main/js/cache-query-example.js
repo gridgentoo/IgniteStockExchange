@@ -36,26 +36,25 @@ main = function() {
     var cacheName = "CacheQueryExample";
 
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
-    Ignition.start(['127.0.0.1:8000..9000'], null, onConnect);
-
-    function onConnect(err, ignite) {
-        if (err !== null)
-            throw "Start remote node with config examples/config/example-ignite.xml.";
-
+    Ignition.start(['127.0.0.1:8000..9000'], null).then(function(ignite) {
         console.log(">>> Cache query example started.");
 
+        // Create cache on server with cacheName.
+        ignite.getOrCreateCache(cacheName).then(function(cache){
+            cacheQuery(ignite, cache);
+        });
+    }).catch(function(err) {
+        if (err !== null)
+            console.log("Start remote node with config examples/config/example-ignite.xml.");
+    });
+
+    // Run query example.
+    function cacheQuery(ignite, cache) {
         var entries = initializeEntries();
 
-        ignite.getOrCreateCache(cacheName, function(err, cache) {
-            cacheQuery(ignite, cache, entries);
-        });
-    }
-
-    function cacheQuery(ignite, cache, entries) {
-        cache.putAll(entries, onCachePut);
-
-        function onCachePut(err) {
-            console.log(">>> Create cache for people.")
+        // Initialize cache.
+        cache.putAll(entries).then(function(){
+            console.log(">>> Create cache for people.");
 
             //SQL clause which selects salaries based on range.
             var qry = new SqlQuery("salary > ? and salary <= ?");
@@ -69,27 +68,37 @@ main = function() {
 
             var fullRes = [];
 
-            //This function is called when we get part of query result.
-            qry.on("page", function(res) {
-                console.log(">>> Get result on page: " + JSON.stringify(res));
+            // Get query cursor.
+            var cursor = ignite.cache(cacheName).query(qry);
 
-                fullRes = fullRes.concat(res);
+            function onQuery(cursor) {
+                var page = cursor.page();
+
+                console.log(">>> Get result on page: " + JSON.stringify(page));
+
+                //Concat query page results.
+                fullRes.concat(page);
+
+                // IsFinished return true if it is the last page.
+                if (cursor.isFinished()) {
+                    console.log(">>> People with salaries between 0 and 2000 (queried with SQL query): " +
+                        JSON.stringify(fullRes));
+
+                    //Destroying cache on the end of the example.
+                    return ignite.destroyCache(cacheName);
+                }
+
+                //Get Promise for next page.
+                var nextPromise = cursor.nextPage();
+
+                return nextPromise.then(onQuery);
+            }
+
+            // Get query's page.
+            return cursor.nextPage().then(onQuery).then(function(){
+                console.log(">>> End of sql query example.");
             });
-
-            //This function is called when query is finished.
-            qry.on("end", function(err) {
-                console.log(">>> People with salaries between 0 and 2000 (queried with SQL query): " +
-                    JSON.stringify(fullRes));
-
-                // Destroying cache.
-                ignite.destroyCache(cacheName, function(err) {
-                    console.log(">>> End of query example.");
-                });
-            });
-
-            //Run query.
-            ignite.cache(cacheName).query(qry);
-        }
+        })
     }
 
     // Initialize cache for people.

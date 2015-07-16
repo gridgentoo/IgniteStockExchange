@@ -32,12 +32,7 @@ var Ignition = apacheIgnite.Ignition;
   */
 function main() {
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
-    Ignition.start(['127.0.0.1:8000..9000'], null, onConnect);
-
-    function onConnect(err, ignite) {
-        if (err !== null)
-            throw "Start remote node with config examples/config/example-ignite.xml.";
-
+    Ignition.start(['127.0.0.1:8000..9000'], null).then(function(ignite) {
         console.log(">>> Compute map reduce example started.");
 
         /**
@@ -72,14 +67,14 @@ function main() {
             return sum;
         }
 
-        // Called when map reduced finished.
-        var onMapReduce = function(err, cnt) {
-            console.log(">>> Total number of characters in the phrase is '" + cnt + "'.");
-            console.log(">>> End of compute map reduce example.");
-        }
-
-        ignite.compute().mapReduce(map, reduce, "Hello Ignite Enabled World!", onMapReduce);
-    }
+        return ignite.compute().mapReduce(map, reduce, "Hello Ignite World!");
+    }).then(function(cnt){
+        console.log(">>> Total number of characters in the phrase is '" + cnt + "'.");
+        console.log(">>> End of compute map reduce example.");
+    }).catch(function(err) {
+        if (err !== null)
+            console.log("Start remote node with config examples/config/example-ignite.xml. ");
+    });
 }
 
 main();

@@ -31,69 +31,57 @@ function main() {
     var cacheName = "ApiExampleCache";
 
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
-    Ignition.start(['127.0.0.1:8000..9000'], null, onConnect);
-
-    function onConnect(err, ignite) {
-        if (err !== null)
-            throw "Start remote node with config examples/config/example-ignite.xml.";
-
+    Ignition.start(['127.0.0.1:8000..9000'], null).then(function(ignite) {
         console.log(">>> Cache API example started.");
 
         // Create cache on server with cacheName.
-        ignite.getOrCreateCache(cacheName, function(err, cache) {
+        ignite.getOrCreateCache(cacheName).then(function(cache){
             atomicMapOperations(ignite, cache);
         });
-    }
+    }).catch(function(err) {
+        if (err !== null)
+            console.log("Start remote node with config examples/config/example-ignite.xml.");
+    });
 
     /**
      * Demonstrates cache operations similar to {@link ConcurrentMap} API. Note that
      * cache API is a lot richer than the JDK {@link ConcurrentMap}.
      */
-    atomicMapOperations = function(ignite, cache) {
+    function atomicMapOperations (ignite, cache) {
         console.log(">>> Cache atomic map operation examples.");
 
-        cache.removeAllFromCache(function(err) {
+        cache.removeAllFromCache().then(function(){
             // Put and return previous value.
-            cache.getAndPut(1, "1", onGetAndPut)
-        });
-
-        function onGetAndPut(err, entry) {
+            return cache.getAndPut(1, "1");
+        }).then(function(entry){
             console.log(">>> Get and put finished [result=" + entry + "]");
 
             // Put and do not return previous value.
             // Performs better when previous value is not needed.
-            cache.put(2, "2", onPut);
-        }
-
-        onPut = function(err) {
+            return cache.put(2, "2")
+        }).then(function(){
             console.log(">>> Put finished.");
 
             // Put-if-absent.
-            cache.putIfAbsent(4, "44", onPutIfAbsent);
-        }
-
-        onPutIfAbsent = function(err, res) {
+            return cache.putIfAbsent(4, "44");
+        }).then(function(res){
             console.log(">>> Put if absent finished [result=" + res + "]");
 
             // Replace.
-            cache.replaceValue(4, "55", "44", onReplaceValue);
-        }
-
-        onReplaceValue = function(err, res) {
+            return cache.replaceValue(4, "55", "44");
+        }).then(function(res) {
             console.log(">>> Replace value finished [result=" + res + "]");
 
             // Replace not correct value.
-            cache.replaceValue(4, "555", "44", onEnd);
-        }
-
-        onEnd = function(err) {
+            return cache.replaceValue(4, "555", "44");
+        }).then(function(res) {
             console.log(">>> Replace finished.");
 
-            // Destroying cache.
-            ignite.destroyCache(cacheName, function(err) {
-                console.log(">>> End of Cache API example.");
-            });
-        }
+            //Destroying cache.
+            return ignite.destroyCache(cacheName);
+        }).then(function(){
+             console.log(">>> End of Cache API example.");
+        })
     }
 }
 

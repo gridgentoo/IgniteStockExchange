@@ -31,11 +31,10 @@ function Compute(server) {
  * @this {Compute}
  * @param job Function
  * @param args Function arguments
- * @param {onGet} callback Callback
  */
-Compute.prototype.run = function(job, args, callback) {
-    this._server.runCommand(new Command("runscript").addParam("func", job).
-        setPostData(JSON.stringify({"arg" : args})), callback);
+Compute.prototype.run = function(job, args) {
+    return this._createPromise(new Command("runscript").addParam("func", job).
+        setPostData(JSON.stringify({"arg" : args})));
 }
 
 /**
@@ -46,11 +45,10 @@ Compute.prototype.run = function(job, args, callback) {
  * @param {string|number|JSONObject} key Key.
  * @param job Function
  * @param args Function arguments
- * @param {onGet} callback Callback
  */
-Compute.prototype.affinityRun = function(cacheName, key, job, args, callback) {
-    this._server.runCommand(new Command("affrun").addParam("func", job).addParam("cacheName", cacheName).
-        setPostData(JSON.stringify({"arg" : args, "key" : key})), callback);
+Compute.prototype.affinityRun = function(cacheName, key, job, args) {
+    return this._createPromise(new Command("affrun").addParam("func", job).addParam("cacheName", cacheName).
+        setPostData(JSON.stringify({"arg" : args, "key" : key})));
 }
 
 /**
@@ -61,14 +59,26 @@ Compute.prototype.affinityRun = function(cacheName, key, job, args, callback) {
  * @param {onGet} callback Callback
  */
 Compute.prototype.mapReduce = function(map, reduce, arg, callback) {
-    var command = new Command("excmapreduce");
+    var cmd = new Command("excmapreduce").addParam("map", map).addParam("reduce", reduce).
+        setPostData(JSON.stringify({"arg" : arg}));
 
-    command.addParam("map", map).addParam("reduce", reduce);
-    command.setPostData(JSON.stringify({"arg" : arg}));
-
-    this._server.runCommand(command, callback);
+    return this._createPromise(cmd);
 }
 
+
+Compute.prototype._createPromise = function(cmd) {
+    var server = this._server;
+    return new Promise(function(resolve, reject) {
+        server.runCommand(cmd, function(err, res) {
+            if (err != null) {
+                reject(err);
+            }
+            else {
+                resolve(res);
+            }
+        });
+    });
+}
 /**
  * @name EmitFunction
  * @function

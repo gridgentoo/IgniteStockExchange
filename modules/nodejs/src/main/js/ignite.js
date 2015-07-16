@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
+var Promise = require("bluebird");
 var Cache = require("./cache").Cache;
 var Compute = require("./compute").Compute;
 var ClusterNode = require("./cluster-node").ClusterNode;
-var Server = require("./server").Server;
 var Command = require("./server").Command;
 
 /**
@@ -56,21 +56,20 @@ Ignite.prototype.cache = function(cacheName) {
  *
  * @this {Ignite}
  * @param {string} Cache name
- * @param callback Callback with cache.
  */
-Ignite.prototype.getOrCreateCache = function(cacheName, callback) {
-    var onCreateCallback = function(callback, err, res) {
-        if (err !== null) {
-            callback.call(null, err, null);
-
-            return;
-        }
-
-        callback.call(null, null, new Cache(this._server, cacheName))
-    }
-
-    this._server.runCommand(new Command("getorcreatecache").addParam("cacheName", cacheName),
-        onCreateCallback.bind(this, callback));
+Ignite.prototype.getOrCreateCache = function(cacheName) {
+    var server = this._server;
+    return new Promise(function(resolve, reject) {
+        server.runCommand(new Command("getorcreatecache").addParam("cacheName", cacheName),
+            function(err, res) {
+                if (err != null) {
+                    reject(err);
+                }
+                else {
+                    resolve(new Cache(server, cacheName));
+                }
+            });
+    });
 }
 
 /**
@@ -78,10 +77,9 @@ Ignite.prototype.getOrCreateCache = function(cacheName, callback) {
  *
  * @this {Ignite}
  * @param {string} cacheName Cache name to stop
- * @param {noValue} callback Callback contains only error
  */
-Ignite.prototype.destroyCache = function(cacheName, callback) {
-    this._server.runCommand(new Command("destroycache").addParam("cacheName", cacheName), callback);
+Ignite.prototype.destroyCache = function(cacheName) {
+    return this._createPromise(new Command("destroycache").addParam("cacheName", cacheName));
 }
 
 /**
@@ -98,51 +96,62 @@ Ignite.prototype.compute = function() {
  * Ignite version
  *
  * @this {Ignite}
- * @param {onGet} callback Result in callback contains string with Ignite version.
  */
-Ignite.prototype.version = function(callback) {
-    this._server.runCommand(new Command("version"), callback);
+Ignite.prototype.version = function() {
+    return this._createPromise(new Command("version"));
 }
 
 /**
  * Connected ignite name
  *
  * @this {Ignite}
- * @param {onGet} callback Result in callback contains string with Ignite name.
  */
-Ignite.prototype.name = function(callback) {
-    this._server.runCommand(new Command("name"), callback);
+Ignite.prototype.name = function() {
+    return this._createPromise(new Command("name"));
 }
 
 /**
  * @this {Ignite}
- * @param {onGet} callback Result in callback contains list of ClusterNodes
  */
-Ignite.prototype.cluster = function(callback) {
-    function onTop(callback, err, res) {
-        if (err) {
-            callback.call(null, err, null);
+Ignite.prototype.cluster = function() {
+    var cmd = new Command("top").addParam("attr", "true").addParam("mtr", "false");
 
-            return;
-        }
+    var server = this._server;
+    return new Promise(function(resolve, reject) {
+        server.runCommand(cmd, function(err, res) {
+            if (err != null) {
+                reject(err);
+            }
+            else {
+                if (!res || res.length == 0) {
+                    reject("Empty topology cluster.");
+                }
+                else {
+                    var nodes = [];
 
-        if (!res || res.length == 0) {
-            callback.call(null, "Empty topology cluster.", null);
+                    for (var node of res) {
+                        nodes.push(new ClusterNode(node.nodeId, node.attributes));
+                    }
 
-            return;
-        }
+                    resolve(nodes);
+                }
+            }
+        });
+    });
+}
 
-        var nodes = [];
-
-        for (var node of res) {
-            nodes.push(new ClusterNode(node.nodeId, node.attributes));
-        }
-
-        callback.call(null, null, nodes);
-    }
-
-    this._server.runCommand(new Command("top").addParam("attr", "true").addParam("mtr", "false"),
-        onTop.bind(null, callback));
+Ignite.prototype._createPromise = function(cmd) {
+    var server = this._server;
+    return new Promise(function(resolve, reject) {
+        server.runCommand(cmd, function(err, res) {
+            if (err != null) {
+                reject(err);
+            }
+            else {
+                resolve(res);
+            }
+        });
+    });
 }
 
 exports.Ignite = Ignite;

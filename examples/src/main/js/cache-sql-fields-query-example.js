@@ -22,6 +22,7 @@ var SqlQuery = apacheIgnite.SqlQuery;
 var SqlFieldsQuery = apacheIgnite.SqlFieldsQuery;
 var CacheEntry = apacheIgnite.CacheEntry;
 
+
 /**
   * Cache queries example. This example demonstrates SQL queries over cache.
   * <p>
@@ -32,23 +33,70 @@ var CacheEntry = apacheIgnite.CacheEntry;
   */
 main = function() {
     /** Cache name. */
-    var cacheName = "CacheSqlFieldsQueryExample";
+    var cacheName = "CacheQueryExample";
 
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
-    Ignition.start(['127.0.0.1:8000..9000'], null, onConnect);
-
-    function onConnect(err, ignite) {
-        if (err !== null)
-            throw "Start remote node with config examples/config/example-ignite.xml.";
-
+    Ignition.start(['127.0.0.1:8000..9000'], null).then(function(ignite) {
         console.log(">>> Cache sql fields query example started.");
 
+        // Create cache on server with cacheName.
+        ignite.getOrCreateCache(cacheName).then(function(cache){
+            cacheSqlFieldsQuery(ignite, cache);
+        });
+    }).catch(function(err) {
+        if (err !== null)
+            console.log("Start remote node with config examples/config/example-ignite.xml.");
+    });
+
+    // Run query example.
+    function cacheSqlFieldsQuery(ignite, cache) {
         var entries = initializeEntries();
 
-        ignite.getOrCreateCache(cacheName, function(err, cache) {
-            cacheSqlFieldsQuery(ignite, cache, entries);
+        // Initialize cache.
+        cache.putAll(entries).then(function(){
+            console.log(">>> Create cache for people.");
+
+            //Sql query to get names of all employees.
+            var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
+
+            // Set page size for query.
+            qry.setPageSize(2);
+
+            //Set salary range.
+            qry.setArguments([0, 2000]);
+
+            // Run query.
+            ignite.cache(cacheName).query(qry).getAll(function(fullRes){
+                console.log(">>> Names of all employees: " + JSON.stringify(fullRes));
+
+                // Destroying cache on the end of the example.
+                return ignite.destroyCache(cacheName);
+            }).then(function(){
+                console.log(">>> End of sql fields query example.");
+            });
         });
     }
+
+    // Initialize cache for people.
+    function initializeEntries() {
+        var key1 = "1";
+        var value1 = {"firstName" : "John", "lastName" : "Doe", "salary" : 2000};
+        var key2 = "2";
+        var value2 = {"firstName" : "Jane", "lastName" : "Doe", "salary" : 1000};
+        var key3 = "3";
+        var value3 = {"firstName" : "John", "lastName" : "Smith", "salary" : 1000};
+        var key4 = "4";
+        var value4 = {"firstName" : "Jane", "lastName" : "Smith", "salary" : 2000};
+        var key5 = "5";
+        var value5 = {"firstName" : "Ann", "lastName" : "Smith", "salary" : 3000};
+
+        return [new CacheEntry(key1, value1), new CacheEntry(key2, value2),
+            new CacheEntry(key3, value3), new CacheEntry(key4, value4)];
+    }
+}
+
+main();
+
 
     function cacheSqlFieldsQuery(ignite, cache, entries) {
         cache.putAll(entries, onCachePut.bind(null, ignite));

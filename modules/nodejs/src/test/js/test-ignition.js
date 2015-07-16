@@ -23,70 +23,44 @@ var Ignition = Ignite.Ignition;
 var assert = require("assert");
 
 testIgnitionFail = function ()  {
-    Ignition.start(['127.0.0.3:9091', '127.0.0.1:9092'], null, onConnect);
-
-    function onConnect(error, server) {
-        if (error) {
-            if (error.indexOf("Cannot connect to servers.") == -1) {
-                TestUtils.testFails("Incorrect error message: " + error);
-            }
-            else {
-                TestUtils.testDone();
-            }
-
-            return;
-        }
-
-        TestUtils.testFails("Test should fail.");
-    }
-}
-
-ignitionStartSuccess = function() {
-    Ignition.start(['127.0.0.0:9095', '127.0.0.1:9095'], null, onConnect);
-
-    function onConnect(error, server) {
-        if (error) {
-          TestUtils.testFails(error);
-
-          return;
-        }
+    Ignition.start(['127.0.0.3:9091', '127.0.0.1:9092'], null).then(function(ignite) {
+        assert(false, "Do not get an error.")
+    }).catch(function(err){
+        assert(err !== null);
+        assert(err.indexOf("Cannot connect to servers.") > -1, "Incorrect error message: " + err);
 
         TestUtils.testDone();
-    }
+    });
 }
 
-ignitionStartSuccessWithSeveralPorts = function() {
-    Ignition.start(['127.0.0.1:9090..9100'], null, onConnect);
+testIgnitionStartSuccess = function() {
+    Ignition.start(['127.0.0.0:9095', '127.0.0.1:9095'], null).then(function(ignite) {
+        TestUtils.testDone();
+    }).catch(function(err){
+        assert(err === null);
+    });
+}
 
-    function onConnect(error, ignite) {
-        if (error) {
-            TestUtils.testFails(error);
-
-            return;
-        }
-
+testIgnitionStartSuccessWithSeveralPorts = function() {
+    Ignition.start(['127.0.0.1:9090..9100'], null).then(function(ignite) {
         var server = ignite.server();
-
         var host = server.host();
 
-        assert.ok(host.indexOf('127.0.0.1') !== -1, "Incorrect host.");
+        assert(host.indexOf('127.0.0.1') !== -1, "Incorrect host.");
 
         TestUtils.testDone();
-    }
+    }).catch(function(err){
+        assert(err === null);
+    });
 }
 
-ignitionNotStartWithSeveralPorts = function() {
-    Ignition.start(['127.0.0.1:9090...9100'], null, onConnect);
+testIgnitionNotStartWithSeveralPorts = function() {
+    Ignition.start(['127.0.0.1:9090...9100'], null).then(function(ignite) {
+        assert(false, "Do not get an error.")
+    }).catch(function(err){
+        assert(err !== null);
+        assert(err.indexOf("Incorrect address format") > -1, "Incorrect error message: " + err);
 
-    function onConnect(error, ignite) {
-        if (error) {
-            assert.ok(error.indexOf("Incorrect address format") !== -1, "Incorrect message.")
-
-            TestUtils.testDone();
-
-            return;
-        }
-
-        TestUtils.testFails("Exception should be thrown.");
-    }
+        TestUtils.testDone();
+    });
 }

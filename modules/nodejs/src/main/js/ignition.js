@@ -14,7 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+var Server = require("./server").Server;
+var Ignite = require("./ignite").Ignite
 /**
  * Creates an instance of Ignition
  *
@@ -36,73 +37,70 @@ function Ignition() {
  *
  * @param {string[]} address List of nodes hosts with ports
  * @param {string} secretKey Secret key.
- * @param {Ignition~onStart} callback Called on finish
  */
-Ignition.start = function(address, secretKey, callback) {
-    var Server = require("./server").Server;
-    var Ignite = require("./ignite").Ignite
+Ignition.start = function(address, secretKey) {
+    return new Promise(function(resolve, reject) {
+        var numConn = 0;
 
-    var numConn = 0;
+        var needVal = true;
 
-    for (var addr of address) {
-        var params = addr.split(":");
+        for (var addr of address) {
+            var params = addr.split(":");
 
-        var portsRange = params[1].split("..");
+            var portsRange = params[1].split("..");
 
-        var start;
-        var end;
+            var start;
+            var end;
 
-        if (portsRange.length === 1) {
-            start = parseInt(portsRange[0], 10);
-            end = start;
-        }
-        else if (portsRange.length === 2) {
-            start = parseInt(portsRange[0], 10);
-            end = parseInt(portsRange[1], 10);
-        }
+            if (portsRange.length === 1) {
+                start = parseInt(portsRange[0], 10);
+                end = start;
+            }
+            else if (portsRange.length === 2) {
+                start = parseInt(portsRange[0], 10);
+                end = parseInt(portsRange[1], 10);
+            }
 
-        if (isNaN(start) || isNaN(end)) {
-            incorrectAddress();
+            if (isNaN(start) || isNaN(end)) {
+                needVal = false;
 
-            return;
-        }
-
-        for (var i = start; i <= end; i++) {
-            checkServer(params[0], i, secretKey);
-        }
-    }
-
-    function checkServer(host, port, secretKey) {
-        numConn++;
-
-        var server = new Server(host, port, secretKey);
-
-        server.checkConnection(onConnect.bind(null, server));
-    }
-
-    function incorrectAddress() {
-        callback.call(null, "Incorrect address format.", null);
-
-        callback = null;
-    }
-
-    function onConnect(server, error) {
-        if (!callback) return;
-
-        numConn--;
-
-        if (!error) {
-            callback.call(null, null, new Ignite(server));
-
-            callback = null;
-
-            return;
+                reject("Incorrect address format.");
+            }
+            else {
+                for (var i = start; i <= end; i++) {
+                    checkServer(params[0], i, secretKey);
+                }
+            }
         }
 
-        if (!numConn) {
-            callback.call(null, "Cannot connect to servers. " + error, null);
+        function checkServer(host, port, secretKey) {
+            numConn++;
+
+            var server = new Server(host, port, secretKey);
+
+            server.checkConnection(onConnect.bind(this, server));
         }
-    }
+
+        function onConnect(server, error) {
+            if (!needVal) return;
+
+            numConn--;
+
+            if (!error) {
+                resolve(new Ignite(server));
+
+                needVal = false;
+
+                return;
+            }
+
+            if (!numConn) {
+                reject("Cannot connect to servers. " + error);
+
+                return;
+            }
+        }
+    });
 }
 
 exports.Ignition = Ignition;

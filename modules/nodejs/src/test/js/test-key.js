@@ -20,39 +20,37 @@ var TestUtils = require("./test-utils").TestUtils;
 var assert = require("assert");
 
 testStartWithoutKey = function() {
-    TestUtils.startIgniteNode(onIncorrectStart);
+    TestUtils.startIgniteNode().then(function(ignite) {
+        assert(false, "Do not get an error.");
+    }).catch(function (err) {
+        assert(err !== null, "Do not get an error.");
+        assert(err.indexOf("Authentication failed. Status code 401.") !== -1, "Incorrect error message: " + err);
+
+        TestUtils.testDone();
+    });
 }
 
 testStartWithKey = function() {
-    TestUtils.startIgniteNodeWithKey("secret-key", onStart);
+    TestUtils.startIgniteNodeWithKey("secret-key").then(function(ignite) {
+        assert(ignite !== null, "Cannot connect. Get null ignite.");
+        var cache = ignite.cache("mycache");
+        cache.put("key", "6").then(function(res){
+            TestUtils.testDone();
+        }).catch(function(err){
+            assert(err === null, err);
+        });
+    }).catch(function (err) {
+        assert(err === null, err);
+    });
 }
 
 testStartWithIncorrectKey = function() {
-    TestUtils.startIgniteNodeWithKey("secret-key1", onIncorrectStart);
-}
+    TestUtils.startIgniteNodeWithKey("secret-key1").then(function(ignite) {
+        assert(false, "Do not get an error.");
+    }).catch(function (err) {
+        assert(err !== null, "Do not get an error.");
+        assert(err.indexOf("Authentication failed. Status code 401.") !== -1, "Incorrect error message: " + err);
 
-function onIncorrectStart(error, ignite) {
-    assert(error != null, "Do not get authentication error");
-
-    assert(error.indexOf("Authentication failed. Status code 401.") !== -1, "Incorrect error message: " + error);
-
-    TestUtils.testDone();
-}
-
-function onStart(error, ignite) {
-    assert(error === null, "Get error: " + error);
-
-    assert(ignite !== null, "Cannot connect. Get null ignite.");
-
-    var cache = ignite.cache("mycache");
-
-    assert(cache !== null, "Cache is null.")
-
-    cache.put("key", "6", onPut);
-}
-
-function onPut(error) {
-    assert(error === null, "Error on put:" + error);
-
-    TestUtils.testDone();
+        TestUtils.testDone();
+    });
 }

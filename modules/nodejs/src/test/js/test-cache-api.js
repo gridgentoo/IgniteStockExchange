@@ -23,264 +23,570 @@ var CacheEntry = Ignite.CacheEntry;
 var assert = require("assert");
 
 testPutGet = function() {
-    startTest(false, "mycache", {trace: [put, getExist], entry: ["key" , "6"]});
+    var key = "key";
+    var val = "6";
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+        cache.put(key, val).then(function() {
+            return cache.get(key);
+        }).then(function(res) {
+            assert(TestUtils.compareObject(val, res), "Get incorrect value on get [exp=" +
+                JSON.stringify(val) + ", val=" + JSON.stringify(res) + "]");
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    }).catch(function (err) {
+        assert(err === null, err);
+    });
 }
 
 testPutGetObject = function() {
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
-    startTest(false, "mycache", {trace: [put, getExist], entry: [key , val]});
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.put(key, val).then(function() {
+            return cache.get(key);
+        }).then(function(res) {
+            assert(TestUtils.compareObject(val, res), "Get incorrect value on get [exp=" +
+                JSON.stringify(val) + ", val=" + JSON.stringify(res) + "]");
+            TestUtils.testDone();
+        })
+    });
 }
 
 testPutContains = function() {
-    startTest(false, "mycache", {trace: [put, containsKey], entry: ["key" , "6"]});
+    var key = "key";
+    var val = "6";
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.put(key, val).then(function() {
+            return cache.containsKey(key);
+        }).then(function(res) {
+            assert(res === true, "Incorrect result [expected=" + true + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testContains = function() {
-    startTest(false, "mycache", {trace: [notContainsKey], entry: ["key" , "6"]});
+    var key = "key";
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.containsKey(key).then(function(res) {
+            assert(res === false, "Incorrect result [expected=" + false + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testPutContainsAll = function() {
-    startTest(false, "mycache", {trace: [putAll, containsKeys], entry: objectEntries()});
+    var entries = objectEntries();
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.putAll(entries).then(function(res) {
+            var keys = []
+
+            for (var entry of entries) {
+                keys.push(entry.key);
+            }
+
+            return cache.containsKeys(keys);
+        }).then(function(res) {
+            assert(res === true, "Incorrect result [expected=" + true + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testNotContainsAll = function() {
-    startTest(false, "mycache", {trace: [notContainsKeys], entry: stringEntries()});
+    var entries = stringEntries();
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        var keys = []
+
+        for (var entry of entries) {
+            keys.push(entry.key);
+        }
+
+        cache.containsKeys(entries).then(function(res) {
+            assert(res === false, "Incorrect result [expected=" + false + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testRemove = function() {
-    startTest(false, "mycache", {trace: [put, getExist, remove, getNonExist], entry: ["key" , "6"]});
+    var key = "key";
+    var val = "6";
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.put(key, val).then(function(res) {
+            return cache.get(key);
+        }).then(function(res) {
+            assert (res === val, "Incorrect result [expected=" + val + ", val=" + res + "]");
+
+            return cache.remove(key);
+        }).then(function(res) {
+            assert (res === true, "Incorrect result [expected=" + true + ", val=" + res + "]");
+
+            return cache.get(key);
+        }).then(function(res) {
+            assert (res === null, "Incorrect result [expected=" + null + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testRemoveNoKey = function() {
-    startTest(false, "mycache", {trace: [remove, getNonExist], entry: ["key" , "6"]});
+    var key = "key";
+    var val = "6";
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.remove(key).then(function(res) {
+            assert (res === false, "Incorrect result [expected=" + false + ", val=" + res + "]");
+
+            return cache.get(key);
+        }).then(function(res) {
+            assert (res === null, "Incorrect result [expected=" + null + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testPutAllGetAll = function() {
-    startTest(false, "mycache", {trace: [putAll, getAll], entry: stringEntries()});
+    var entries = stringEntries();
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.putAll(entries).then(function(res) {
+            var keys = getKeys(entries);
+
+            return cache.getAll(keys);
+        }).then(function(res) {
+            onGetAll(entries, res);
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testPutAllObjectGetAll = function() {
-    startTest(false, "mycache", {trace: [putAll, getAll], entry: objectEntries()});
+    var entries = objectEntries();
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.putAll(entries).then(function(res) {
+            var keys = getKeys(entries);
+
+            return cache.getAll(keys);
+        }).then(function(res) {
+            onGetAll(entries, res);
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testRemoveAllObjectGetAll = function() {
-    startTest(false, "mycache", {trace: [putAll, getAll, removeAll, getNone], entry: objectEntries()});
+    var entries = objectEntries();
+    var keys = getKeys(entries);
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.putAll(entries).then(function(res) {
+            return cache.getAll(keys);
+        }).then(function(res) {
+            onGetAll(entries, res);
+
+            return cache.removeAll(keys);
+        }).then(function(res) {
+            assert (res === true, "Incorrect result [expected=" + true + ", val=" + res + "]");
+
+            return cache.getAll(keys);
+         }).then(function(res) {
+             for (var i = 0; i < res.length; ++i) {
+                assert(res[i] === null, "Incorrect result [expected=" + null + ", val=" + res[i] + "]");
+             }
+
+             TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testRemoveAll = function() {
-    startTest(false, "mycache", {trace: [putAll, getAll, removeAll, getNone], entry: stringEntries()});
+    var entries = stringEntries();
+    var keys = getKeys(entries);
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.putAll(entries).then(function(res) {
+            return cache.getAll(keys);
+        }).then(function(res) {
+            onGetAll(entries, res);
+
+            return cache.removeAll(keys);
+        }).then(function(res) {
+            assert (res === true, "Incorrect result [expected=" + true + ", val=" + res + "]");
+
+            return cache.getAll(keys);
+         }).then(function(res) {
+             for (var i = 0; i < res.length; ++i) {
+                assert(res[i] === null, "Incorrect result [expected=" + null + ", val=" + res[i] + "]");
+             }
+
+             TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testIncorrectCacheName = function() {
-    startTest(false, "mycache1", {trace: [incorrectPut], entry: ["key", "6"]});
+    var key = "key";
+    var val = "6";
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache1");
+
+        cache.put(key, val).then(function(res) {
+            assert(false, "Do not get exception.");
+        }).catch(function (err) {
+            assert(err !== null, err);
+            assert(err.indexOf("Failed to find cache for given cache name") !== -1,
+                "Incorrect message on not exist cache. " + err);
+
+            TestUtils.testDone();
+        })
+    });
 }
 
 testGetOrCreateCacheName = function() {
-    startTest(true, "mycache2", {trace: [put, getExist], entry: ["key", "6"]});
+    var key = "key";
+    var val = "6";
+
+    TestUtils.startIgniteNode().then(function(ignite) {
+        return ignite.getOrCreateCache("mycache2");
+    }).then(function(cache) {
+        return cache.put(key, val);
+    }).then(function(res) {
+        TestUtils.testDone();
+    }).catch(function (err) {
+        assert(err === null, err);
+    });
 }
 
 testGetAndPut = function() {
-    function onGetAndPut(err, res) {
-        assert(err === null, "Get error on get and put [err=" + err + "]");
-        assert(res === "6", "Incorrect result for getAndPut [expected=6, val" + res + "]");
+    var key = "key";
+    var val = "6";
+    var val2 = "7";
 
-        TestUtils.testDone();
-    }
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
 
-    function getAndPut(cache, entry, next) {
-        cache.getAndPut("key", "7", onGetAndPut);
-    }
+        cache.put(key, val).then(function() {
+            return cache.getAndPut(key, val2);
+        }).then(function(res) {
+            assert(res === val, "Incorrect result [expected=" + val + ", val=" + res + "]");
 
-    startTest(false, "mycache", {trace: [put, getAndPut], entry: ["key", "6"]});
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testGetAndPutIfAbsent = function() {
-    function getAndPutIfAbsent(cache, entry, next) {
-        cache.getAndPutIfAbsent("key", "7", onGetAndPutIfAbsent);
+    var key = "key";
+    var val = "6";
+    var val2 = "7";
 
-        function onGetAndPutIfAbsent(err, res) {
-            assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === "6", "Incorrect result for getAndPutIfAbsent [expected=6, val" + res + "]");
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
 
-            next();
-        }
-    }
+        cache.put(key, val).then(function() {
+            return cache.getAndPutIfAbsent(key, val2);
+        }).then(function(res) {
+            assert(res === val, "Incorrect result [expected=" + val + ", val=" + res + "]");
 
-    startTest(false, "mycache", {trace: [put, getAndPutIfAbsent, getExist], entry: ["key", "6"]});
+            return cache.get(key);
+        }).then(function(res) {
+            assert(res === val, "Incorrect result [expected=" + val + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testPutIfAbsent = function() {
-    function putIfAbsent(cache, entry, next) {
-        cache.putIfAbsent("key", "7", onPutIfAbsent);
+    var key = "key";
+    var val = "6";
+    var val2 = "7";
 
-        function onPutIfAbsent(err, res) {
-            assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === false, "Incorrect result for putIfAbsent [expected=false, val" + res + "]");
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
 
-            next();
-        }
-    }
+        cache.put(key, val).then(function() {
+            return cache.putIfAbsent(key, val2);
+        }).then(function(res) {
+            assert(res === false, "Incorrect result [expected=" + false + ", val=" + res + "]");
 
-    startTest(false, "mycache", {trace: [put, putIfAbsent, getExist], entry: ["key", "6"]});
+            return cache.get(key);
+        }).then(function(res) {
+            assert(res === val, "Incorrect result [expected=" + val + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testRemoveValue = function() {
-    function removeValue(cache, entry, next) {
-        cache.removeValue("key", "7", onRemoveValue);
+    var key = "key";
+    var val = "6";
+    var val2 = "7";
 
-        function onRemoveValue(err, res) {
-            assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === false, "Incorrect result for onRemoveValue [expected=false, val" + res + "]");
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
 
-            next();
-        }
-    }
+        cache.put(key, val).then(function() {
+            return cache.removeValue(key, val2);
+        }).then(function(res) {
+            assert(res === false, "Incorrect result [expected=" + false + ", val=" + res + "]");
 
-    startTest(false, "mycache", {trace: [put, removeValue, getExist], entry: ["key", "6"]});
+            return cache.get(key);
+        }).then(function(res) {
+            assert(res === val, "Incorrect result [expected=" + val + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testGetAndRemove = function() {
-    function getAndRemove(cache, entry, next) {
-        cache.getAndRemove("key", onGetAndRemove);
+    var key = "key";
+    var val = "6";
+    var val2 = "7";
 
-        function onGetAndRemove(err, res) {
-            assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === "6", "Incorrect result for getAndPut [expected=6, val" + res + "]");
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
 
-            next();
-        }
-    }
+        cache.put(key, val).then(function() {
+            return cache.getAndRemove(key, val2);
+        }).then(function(res) {
+            assert(res === val, "Incorrect result [expected=" + val + ", val=" + res + "]");
 
-    startTest(false, "mycache", {trace: [put, getAndRemove, getNone], entry: ["key", "6"]});
+            return cache.get(key);
+        }).then(function(res) {
+            assert(res === null, "Incorrect result [expected=" + null + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testRemoveAllFromCache = function() {
-    function removeAllFromCache(cache, entry, next) {
-        cache.removeAllFromCache(next);
-    }
+    var key = "key";
+    var val = "6";
 
-    startTest(false, "mycache", {trace: [put, removeAllFromCache, getNone], entry: ["key", "6"]});
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.put(key, val).then(function() {
+            return cache.removeAllFromCache();
+        }).then(function(res) {
+            return cache.get(key);
+        }).then(function(res) {
+            assert(res === null, "Incorrect result [expected=" + null + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testReplace = function() {
-    function replace(cache, entry, next) {
-        cache.replace(entry[0], "7", onReplace.bind(null, cache));
+    var key = "key";
+    var val = "6";
+    var val2 = "7";
 
-        function onReplace(cache, err, res) {
-            assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === true, "Incorrect result for replace [expected=true, val=" + res + "]");
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
 
-            cache.get(entry[0], function(err, res) {
-                assert(!err);
-                assert("7" === res, "Get incorrect value on get [exp=7, val=" + res + "]");
-                next();
-            });
-        }
-    }
+        cache.put(key, val).then(function() {
+            return cache.replace(key, val2);
+        }).then(function(res) {
+            assert(res === true, "Incorrect result [expected=" + true + ", val=" + res + "]");
 
-    startTest(false, "mycache", {trace: [put, replace], entry: ["key", "6"]});
+            return cache.get(key);
+        }).then(function(res) {
+            assert(res === val2, "Incorrect result [expected=" + val2 + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testReplaceObject = function() {
-    function replace(cache, entry, next) {
-        var newKey = {"key" :"7"};
-        cache.replace(entry[0], newKey, onReplace.bind(null, cache));
-
-        function onReplace(cache, err, res) {
-            assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === true, "Incorrect result for replace [expected=true, val" + res + "]");
-
-            cache.get(entry[0], function(err, res) {
-                assert(!err);
-                assert(TestUtils.compareObject(newKey, res), "Get incorrect value on get.");
-
-                next();
-            });
-        }
-    }
-
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = {"key" :"7"};
 
-    startTest(false, "mycache", {trace: [put, replace], entry: [key, val]});
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.put(key, val).then(function() {
+            return cache.replace(key, val2);
+        }).then(function(res) {
+            assert(res === true, "Incorrect result [expected=" + true + ", val=" + res + "]");
+
+            return cache.get(key);
+        }).then(function(res) {
+            assert(TestUtils.compareObject(val2, res), "Incorrect result [expected=" + val2 + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testGetAndReplaceObject = function() {
-    function getAndReplace(cache, entry, next) {
-        var newKey = {"key" :"7"};
-        cache.getAndReplace(entry[0], newKey, onGetAndReplace.bind(null, cache));
-
-        function onGetAndReplace(cache, err, res) {
-            assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(TestUtils.compareObject(val, res), "Get incorrect value on get.");
-
-            next();
-        }
-    }
-
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = {"key" :"7"};
 
-    startTest(false, "mycache", {trace: [put, getAndReplace], entry: [key, val]});
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.put(key, val).then(function() {
+            return cache.getAndReplace(key, val2);
+        }).then(function(res) {
+            assert(TestUtils.compareObject(val, res), "Incorrect result [expected=" + val + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testReplaceValueObject = function() {
-    function replaceValue(cache, entry, next) {
-        var newVal = {"key" :"7"};
-        cache.replaceValue(entry[0], newVal, entry[1], onReplaceValue.bind(null, cache));
-
-        function onReplaceValue(cache, err, res) {
-            assert(err === null, "Get error on get and put [err=" + err + "]");
-            assert(res === true, "Incorrect result for replace [expected=true, val" + res + "]");
-            next();
-        }
-    }
-
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = {"key" :"7"};
 
-    startTest(false, "mycache", {trace: [put, replaceValue], entry: [key, val]});
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.put(key, val).then(function() {
+            return cache.replaceValue(key, val2, val);
+        }).then(function(res) {
+            assert(res === true, "Incorrect result [expected=" + true + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 testIncorrectReplaceObject = function() {
-    function replace(cache, entry, next) {
-        cache.replace(entry[0], "7", onReplace.bind(null, cache));
-
-        function onReplace(cache, err, res) {
-            assert(err !== null, "Do not get error");
-            assert(err.indexOf("Failed to update keys") > -1, "Incorrect error message: " + err);
-            next();
-        }
-    }
-
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
+    var val2 = "7";
 
-    startTest(false, "mycache", {trace: [put, replace], entry: [key, val]});
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.put(key, val).then(function() {
+            return cache.replace(key, val2);
+        }).then(function(res) {
+            assert(false, "Do not get exception.");
+        }).catch(function (err) {
+            assert(err !== null, "Do not get error");
+            assert(err.indexOf("Failed to update keys") > -1, "Incorrect error message: " + err);
+
+            TestUtils.testDone();
+        })
+    });
 }
 
 testSize = function() {
-    function onSize(exp, next, cache, err, res) {
-            assert(err === null, "Do not get error");
-            assert(res === exp, "Incorrect size: " + res);
-
-            next();
-    }
-
-    function size0(cache, entry, next) {
-        cache.size(onSize.bind(null, 0, next, cache));
-    }
-
-    function size1(cache, entry, next) {
-        cache.size(onSize.bind(null, 1, next, cache));
-    }
-
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};
 
-    startTest(false, "mycache", {trace: [size0, put, size1], entry: [key, val]});
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var cache = ignite.cache("mycache");
+
+        cache.size().then(function(res) {
+            assert(res === 0, "Incorrect result [expected=" + 0 + ", val=" + res + "]");
+
+            return cache.put(key, val);
+        }).then(function() {
+            return cache.size();
+        }).then(function(res) {
+            assert(res === 1, "Incorrect result [expected=" + 1 + ", val=" + res + "]");
+
+            TestUtils.testDone();
+        }).catch(function (err) {
+            assert(err === null, err);
+        })
+    });
 }
 
 function objectEntries() {
@@ -306,203 +612,46 @@ function stringEntries() {
     return entries;
 }
 
-function startTest(createCache, cacheName, testDescription) {
-    TestUtils.startIgniteNode(onStart.bind(null, createCache, cacheName, testDescription));
-}
+function onGetAll(expected, values) {
+    var keys = getKeys(expected);
 
-function onStart(createCache, cacheName, testDescription, error, ignite) {
-    if (createCache) {
-        ignite.getOrCreateCache(cacheName, function(err, cache) {
-            assert(err === null, err);
+    assert(values.length === keys.length, "Values length is incorrect "
+        + "[expected=" + keys.length + ", real=" + values.length + "]");
 
-            function callNext(error) {
-                assert(!error);
-                var next = testDescription.trace.shift();
-                if (next)
-                    next.call(null, cache, testDescription.entry, callNext);
-                else
-                    TestUtils.testDone();
+    for (var i = 0; i < keys.length; ++i) {
+        var key = keys[i];
+
+        var foundVal = null;
+
+        for (var j = 0; j < values.length; ++j) {
+            if (TestUtils.compareObject(key, values[j].key)) {
+                foundVal = values[j];
             }
-
-            callNext();
-        });
-    }
-    else {
-        var cache = ignite.cache(cacheName);
-
-        function callNext(error) {
-            assert(!error);
-            var next = testDescription.trace.shift();
-            if (next)
-                next.call(null, cache, testDescription.entry, callNext);
-            else
-                TestUtils.testDone();
         }
 
-        callNext();
-    }
+        var foundExp = null;
 
-
-}
-
-function put(cache, entry, next) {
-    cache.put(entry[0], entry[1], next);
-}
-
-function containsKey(cache, entry, next) {
-    cache.containsKey(entry[0], onContainsKey);
-
-    function onContainsKey(err, val) {
-        assert(err === null, "Error on contains key [err=" + err + "]");
-        assert(val === true, "Incorrect result [expected=" + true + ", val=" + val + "]");
-
-        TestUtils.testDone();
-    }
-}
-
-function notContainsKey(cache, entry, next) {
-    cache.containsKey(entry[0], onContainsKey);
-
-    function onContainsKey(err, val) {
-        assert(err === null, "Error on contains key [err=" + err + "]");
-        assert(val === false, "Incorrect result [expected=" + false + ", val=" + val + "]");
-
-        TestUtils.testDone();
-    }
-}
-
-function containsKeys(cache, entries, next) {
-    var keys = []
-
-    for (var entry of entries) {
-        keys.push(entry.key);
-    }
-
-    cache.containsKeys(keys, onContainsKeys);
-
-    function onContainsKeys(err, val) {
-        assert(err === null, "Error on contains key [err=" + err + "]");
-        assert(val === true, "Incorrect result [expected=" + true + ", val=" + val + "]");
-
-        TestUtils.testDone();
-    }
-}
-
-function notContainsKeys(cache, entries, next) {
-    var keys = []
-
-    for (var entry of entries) {
-        keys.push(entry.key);
-    }
-
-    cache.containsKeys(keys, onContainsKeys);
-
-    function onContainsKeys(err, val) {
-        assert(err === null, "Error on contains key [err=" + err + "]");
-        assert(val === false, "Incorrect result [expected=" + false + ", val=" + val + "]");
-
-        TestUtils.testDone();
-    }
-}
-
-function getExist(cache, entry, next) {
-    function onGet(error, value) {
-        assert(!error);
-        assert(TestUtils.compareObject(entry[1], value), "Get incorrect value on get [exp=" +
-            JSON.stringify(entry[1]) + ", val=" + JSON.stringify(value) + "]");
-        next();
-    }
-
-    cache.get(entry[0], onGet);
-}
-
-function remove(cache, entry, next) {
-    cache.remove(entry[0], next);
-}
-
-function getNonExist(cache, entry, next) {
-    cache.get(entry[0], onGet);
-
-    function onGet(error, value) {
-        assert(!error);
-        assert(!value);
-        next();
-    }
-}
-
-function putAll(cache, entries, next) {
-    cache.putAll(entries, next);
-}
-
-function getAll(cache, entries, next) {
-    var keys = []
-
-    for (var entry of entries) {
-        keys.push(entry.key);
-    }
-
-    cache.getAll(keys, onGetAll.bind(null, keys));
-
-    var expected = entries;
-
-    function onGetAll(keys, error, values) {
-        assert(!error, error);
-
-        assert(values.length === keys.length, "Values length is incorrect "
-            + "[expected=" + keys.length + ", real=" + values.length + "]");
-
-        for (var i = 0; i < keys.length; ++i) {
-            var key = keys[i];
-
-            var foundVal = null;
-
-            for (var j = 0; j < values.length; ++j) {
-                if (TestUtils.compareObject(key, values[j].key)) {
-                    foundVal = values[j];
-                }
+        for (var j = 0; j < expected.length; ++j) {
+            if (TestUtils.compareObject(key, expected[j].key)) {
+                foundExp = expected[j];
             }
-
-            var foundExp = null;
-
-            for (var j = 0; j < expected.length; ++j) {
-                if (TestUtils.compareObject(key, expected[j].key)) {
-                    foundExp = expected[j];
-                }
-            }
-
-            assert(foundVal !== null, "Cannot find key. [key=" + key + "].");
-            assert(foundExp !== null, "Cannot find key. [key=" + key + "].");
-
-            assert(TestUtils.compareObject(foundExp, foundVal), "Incorrect value");
         }
 
-        next();
+        assert(foundVal !== null, "Cannot find key. [key=" + key + "].");
+        assert(foundExp !== null, "Cannot find key. [key=" + key + "].");
+
+        assert(TestUtils.compareObject(foundExp, foundVal), "Incorrect value");
     }
+
+    return true;
 }
 
-function removeAll(cache, entries, next) {
-    cache.removeAll(Object.keys(entries), next)
-}
+function getKeys(entries) {
+    var keys = []
 
-function getNone(cache, entries, next) {
-    cache.getAll(Object.keys(entries), onGetAll);
-
-    function onGetAll(error, values) {
-        assert(!error, error);
-        assert(!values || !Object.keys(values).length);
-
-        next();
+    for (var entry of entries) {
+        keys.push(entry.key);
     }
-}
 
-function incorrectPut(cache, entry, next) {
-    cache.put(entry[0], entry[1], callback);
-
-    function callback(error) {
-        assert(!!error, "Do not get error for not exist cache");
-        assert(error.indexOf("Failed to find cache for given cache name") !== -1,
-            "Incorrect message on not exist cache. " + error);
-
-        next();
-    }
+    return keys;
 }

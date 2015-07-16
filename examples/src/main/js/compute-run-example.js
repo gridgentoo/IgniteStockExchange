@@ -31,25 +31,24 @@ function main() {
     var cacheName = "RunCacheScriptCache";
 
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
-    Ignition.start(['127.0.0.1:8000..9000'], null, onConnect);
-
-    function onConnect(err, ignite) {
-        if (err !== null)
-            throw "Start remote node with config examples/config/example-ignite.xml.";
-
+    Ignition.start(['127.0.0.1:8000..9000'], null).then(function(ignite) {
         console.log(">>> Run cache script example started.");
 
-        ignite.getOrCreateCache(cacheName, function(err, cache) { runCacheScript(ignite, cache); });
-    }
+        // Create cache on server with cacheName.
+        ignite.getOrCreateCache(cacheName).then(function(cache){
+            runCacheScript(ignite, cache);
+        });
+    }).catch(function(err) {
+        if (err !== null)
+            console.log("Start remote node with config examples/config/example-ignite.xml.");
+    });
 
     function runCacheScript(ignite, cache) {
         var key = "John";
         var person = {"firstName": "John", "lastName": "Doe", "salary" : 2000};
 
         // Store person in the cache
-        cache.put(key, person, onPut);
-
-        function onPut(err) {
+        cache.put(key, person).then(function(){
             var job = function (args) {
                 print(">>> Hello node: " + ignite.name());
 
@@ -65,16 +64,15 @@ function main() {
                 return val.salary;
             }
 
-            var onRun = function(err, salary) {
-               console.log(">>> " + key + "'s salary is " + salary);
-
-               // Destroying cache.
-               ignite.destroyCache(cacheName, function(err) { console.log(">>> End of run cache script example."); });
-            }
-
             /** Run remote job on server ignite node with arguments [cacheName, key]. */
-            ignite.compute().run(job, [cacheName, key], onRun);
-        }
+            return ignite.compute().run(job, [cacheName, key]);
+        }).then(function(salary){
+            console.log(">>> " + key + "'s salary is " + salary);
+
+            return ignite.destroyCache(cacheName);
+        }).then(function() {
+            console.log(">>> End of run cache script example.");
+        });
     }
 }
 

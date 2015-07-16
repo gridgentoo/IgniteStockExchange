@@ -32,40 +32,21 @@ function main() {
     var cacheName = "PutGetExampleCache";
 
     /** Connect to node that started with {@code examples/config/js/example-js-cache.xml} configuration. */
-    Ignition.start(['127.0.0.1:8000..9000'], null, onConnect);
-
-    function onConnect(err, ignite) {
-        if (err !== null)
-            throw "Start remote node with config examples/config/example-ignite.xml.";
-
-       ignite.getOrCreateCache(cacheName, function(err, cache) { putGetExample(ignite, cache); });
-    }
-
-    /** Execute individual puts and gets. */
-    putGetExample = function(ignite, cache) {
+    Ignition.start(['127.0.0.1:8000..9000'], null).then(function(ignite) {
         console.log(">>> Cache put-get example started.");
 
+        // Create cache on server with cacheName.
+        ignite.getOrCreateCache(cacheName).then(function(cache){
+            putGetExample(ignite, cache);
+        });
+    }).catch(function(err) {
+        if (err !== null)
+            console.log("Start remote node with config examples/config/example-ignite.xml.");
+    });
+
+    /** Execute puts and gets. */
+    function putGetExample(ignite, cache) {
         var key = 1;
-
-        // Store key in cache.
-        cache.put(key, "1", onPut);
-
-        function onPut(err) {
-            console.log(">>> Stored values in cache.");
-
-            cache.get(key, onGet);
-        }
-
-        function onGet(err, res) {
-            console.log("Get value=" + res);
-
-            putAllGetAll(ignite, cache);
-        }
-    }
-
-    /** Execute bulk {@code putAll(...)} and {@code getAll(...)} operations. */
-    function putAllGetAll(ignite, cache) {
-        console.log(">>> Starting putAll-getAll example.");
 
         var keyCnt = 20;
 
@@ -73,7 +54,7 @@ function main() {
         var batch = [];
         var keys = [];
 
-        for (var i = keyCnt; i < keyCnt + keyCnt; ++i) {
+        for (var i = 0; i < keyCnt; ++i) {
             var key = i;
             var val = "bulk-" + i;
 
@@ -81,24 +62,34 @@ function main() {
             batch.push(new CacheEntry(key, val));
         }
 
-        // Bulk-store entries in cache.
-        cache.putAll(batch, onPutAll);
-
-        function onPutAll(err) {
+        // Store key in cache.
+        cache.put(key, "1").then(function(){
             console.log(">>> Stored values in cache.");
 
-            // Bulk-get values from cache.
-            cache.getAll(keys, onGetAll);
-        }
+            // Get value.
+            return cache.get(key);
+        }).then(function(entry){
+            console.log(">>> Get finished [result=" + entry + "]");
 
-        function onGetAll(err, entries) {
+            console.log(">>> Starting putAll-getAll example.");
+
+            // Bulk-store entries in cache.
+            return cache.putAll(batch);
+        }).then(function(){
+            console.log(">>> Stored values in cache.");
+
+            // GetAll keys.
+            return cache.getAll(keys);
+        }).then(function(entries){
             for (var e of entries) {
-                console.log("Got entry [key=" + e.key + ", value=" + e.value + ']');
+                console.log(">>> Got entry [key=" + e.key + ", value=" + e.value + ']');
             }
 
             // Destroying cache.
-            ignite.destroyCache(cacheName, function(err) { console.log(">>> End of cache put-get example."); });
-        }
+            return ignite.destroyCache(cacheName);
+        }).then(function(){
+             console.log(">>> End of cache put-get example.")
+        })
     }
 }
 

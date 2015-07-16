@@ -64,6 +64,24 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testCloseQuery() throws Exception {
+        initCache();
+
+        runJsScript("testCloseQuery");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testSqlFieldsGetAllQuery() throws Exception {
+        initCache();
+
+        runJsScript("testSqlFieldsGetAllQuery");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testSqlQueryWithParams() throws Exception {
         initCache();
 

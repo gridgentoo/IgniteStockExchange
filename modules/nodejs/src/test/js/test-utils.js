@@ -149,27 +149,24 @@ TestUtils.testDone = function() {
 
 /**
  * Starts ignite node with default config
- *
- * @param {Ignition~onStart} callback Called on connect
  */
-TestUtils.startIgniteNode = function(callback) {
+TestUtils.startIgniteNode = function() {
     var Ignite = require(TestUtils.scriptPath());
     var Ignition = Ignite.Ignition;
 
-    Ignition.start(['127.0.0.1:9095'], null, callback);
+    return Ignition.start(['127.0.0.1:9095'], null);
 }
 
 /**
  * Starts ignite node with default config
  *
  * @param {string} secretKey Secret key
- * @param {Ignition~onStart} callback Called on connect
  */
-TestUtils.startIgniteNodeWithKey = function(secretKey, callback) {
+TestUtils.startIgniteNodeWithKey = function(secretKey) {
     var Ignite = require(TestUtils.scriptPath());
     var Ignition = Ignite.Ignition;
 
-    Ignition.start(['127.0.0.1:9095'], secretKey, callback);
+    return Ignition.start(['127.0.0.1:9095'], secretKey);
 }
 
 exports.TestUtils = TestUtils;

@@ -17,6 +17,7 @@
 
 package org.apache.ignite.internal.processors.rest.handlers.query;
 
+import org.apache.ignite.*;
 import org.apache.ignite.cache.query.*;
 import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.rest.*;
@@ -38,13 +39,17 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(EXECUTE_SQL_QUERY,
         EXECUTE_SQL_FIELDS_QUERY,
-        FETCH_SQL_QUERY);
+        FETCH_SQL_QUERY,
+        CLOSE_SQL_QUERY);
 
     /** Query ID sequence. */
     private static final AtomicLong qryIdGen = new AtomicLong();
 
     /** Current queries. */
     private final ConcurrentHashMap<Long, Iterator> curs = new ConcurrentHashMap<>();
+
+    /** Current queries cursors. */
+    private final ConcurrentHashMap<Long, QueryCursor> qryCurs = new ConcurrentHashMap<>();
 
     /**
      * @param ctx Context.
@@ -63,21 +68,23 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         assert req != null;
 
         assert SUPPORTED_COMMANDS.contains(req.command());
+        assert req instanceof RestSqlQueryRequest : "Invalid type of query request.";
 
         switch (req.command()) {
             case EXECUTE_SQL_QUERY:
             case EXECUTE_SQL_FIELDS_QUERY: {
-                assert req instanceof RestSqlQueryRequest : "Invalid type of query request.";
-
                 return ctx.closure().callLocalSafe(
-                    new ExecuteQueryCallable(ctx, (RestSqlQueryRequest)req, curs), false);
+                    new ExecuteQueryCallable(ctx, (RestSqlQueryRequest)req, curs, qryCurs), false);
             }
 
             case FETCH_SQL_QUERY: {
-                assert req instanceof RestSqlQueryRequest : "Invalid type of query request.";
-
                 return ctx.closure().callLocalSafe(
-                    new FetchQueryCallable((RestSqlQueryRequest)req, curs), false);
+                    new FetchQueryCallable((RestSqlQueryRequest)req, curs, qryCurs), false);
+            }
+
+            case CLOSE_SQL_QUERY: {
+                return ctx.closure().callLocalSafe(
+                    new CloseQueryCallable((RestSqlQueryRequest)req, curs, qryCurs), false);
             }
         }
 
@@ -94,8 +101,11 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         /** Execute query request. */
         private RestSqlQueryRequest req;
 
-        /** Queries cursors. */
+        /** Queries iterators. */
         private ConcurrentHashMap<Long, Iterator> curs;
+
+        /** Queries cursors. */
+        private ConcurrentHashMap<Long, QueryCursor> qryCurs;
 
         /**
          * @param ctx Kernal context.
@@ -103,10 +113,11 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
          * @param curs Queries cursors.
          */
         public ExecuteQueryCallable(GridKernalContext ctx, RestSqlQueryRequest req,
-            ConcurrentHashMap<Long, Iterator> curs) {
+            ConcurrentHashMap<Long, Iterator> curs, ConcurrentHashMap<Long, QueryCursor> qryCurs) {
             this.ctx = ctx;
             this.req = req;
             this.curs = curs;
+            this.qryCurs = qryCurs;
         }
 
         /** {@inheritDoc} */
@@ -125,17 +136,73 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
                     ((SqlFieldsQuery)qry).setArgs(req.arguments());
                 }
 
-                Iterator cur = ctx.grid().cache(req.cacheName()).query(qry).iterator();
+                IgniteCache<Object, Object> cache = ctx.grid().cache(req.cacheName());
+
+                if (cache == null)
+                    return new GridRestResponse(GridRestResponse.STATUS_FAILED,
+                        "No cache with name. [cacheName=" + req.cacheName() + "]");
+
+                QueryCursor qryCur = cache.query(qry);
+
+                Iterator cur = qryCur.iterator();
 
                 long qryId = qryIdGen.getAndIncrement();
 
+                qryCurs.put(qryId, qryCur);
                 curs.put(qryId, cur);
 
-                CacheQueryResult res = createQueryResult(curs, cur, req, qryId);
+                CacheQueryResult res = createQueryResult(qryCurs, curs, cur, req, qryId);
 
                 return new GridRestResponse(res);
             }
             catch (Exception e) {
+                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Close query callable.
+     */
+    private static class CloseQueryCallable implements Callable<GridRestResponse> {
+        /** Execute query request. */
+        private RestSqlQueryRequest req;
+
+        /** Queries iterators. */
+        private ConcurrentHashMap<Long, Iterator> curs;
+
+        /** Queries cursors. */
+        private ConcurrentHashMap<Long, QueryCursor> qryCurs;
+
+        /**
+         * @param req Execute query request.
+         * @param curs Queries cursors.
+         */
+        public CloseQueryCallable(RestSqlQueryRequest req,
+            ConcurrentHashMap<Long, Iterator> curs,
+            ConcurrentHashMap<Long, QueryCursor> qryCurs) {
+            this.req = req;
+            this.curs = curs;
+            this.qryCurs = qryCurs;
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() throws Exception {
+            try {
+                QueryCursor cur = qryCurs.get(req.queryId());
+
+                if (cur == null)
+                    return new GridRestResponse(GridRestResponse.STATUS_FAILED,
+                        "Cannot find query [qryId=" + req.queryId() + "]");
+
+                cur.close();
+
+                return new GridRestResponse(true);
+            }
+            catch (Exception e) {
+                qryCurs.remove(req.queryId());
+                curs.remove(req.queryId());
+
                 return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
             }
         }
@@ -148,17 +215,21 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         /** Execute query request. */
         private RestSqlQueryRequest req;
 
-        /** Queries cursors. */
+        /** Queries iterators. */
         private ConcurrentHashMap<Long, Iterator> curs;
+
+        /** Queries cursors. */
+        private ConcurrentHashMap<Long, QueryCursor> qryCurs;
 
         /**
          * @param req Execute query request.
          * @param curs Queries cursors.
          */
-        public FetchQueryCallable(RestSqlQueryRequest req,
-            ConcurrentHashMap<Long, Iterator> curs) {
+        public FetchQueryCallable(RestSqlQueryRequest req, ConcurrentHashMap<Long, Iterator> curs,
+            ConcurrentHashMap<Long, QueryCursor> qryCurs) {
             this.req = req;
             this.curs = curs;
+            this.qryCurs = qryCurs;
         }
 
         /** {@inheritDoc} */
@@ -170,12 +241,13 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
                     return new GridRestResponse(GridRestResponse.STATUS_FAILED,
                         "Cannot find query [qryId=" + req.queryId() + "]");
 
-                CacheQueryResult res = createQueryResult(curs, cur, req, req.queryId());
+                CacheQueryResult res = createQueryResult(qryCurs, curs, cur, req, req.queryId());
 
                 return new GridRestResponse(res);
             }
             catch (Exception e) {
                 curs.remove(req.queryId());
+                qryCurs.remove(req.queryId());
 
                 return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
             }
@@ -183,13 +255,15 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
     }
 
     /**
-     * @param curs Queries cursors.
+     * @param qryCurs Query cursors.
+     * @param curs Queries iterators.
      * @param cur Current cursor.
      * @param req Sql request.
      * @param qryId Query id.
      * @return Query result with items.
      */
-    private static CacheQueryResult createQueryResult(ConcurrentHashMap<Long, Iterator> curs, Iterator cur,
+    private static CacheQueryResult createQueryResult(ConcurrentHashMap<Long, QueryCursor> qryCurs,
+        ConcurrentHashMap<Long, Iterator> curs, Iterator cur,
         RestSqlQueryRequest req, Long qryId) {
         CacheQueryResult res = new CacheQueryResult();
 
@@ -204,8 +278,10 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
         res.setQueryId(qryId);
 
-        if (!cur.hasNext())
+        if (!cur.hasNext()) {
+            qryCurs.remove(qryId);
             curs.remove(qryId);
+        }
 
         return res;
     }
