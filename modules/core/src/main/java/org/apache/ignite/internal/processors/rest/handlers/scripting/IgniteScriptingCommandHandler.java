@@ -50,27 +50,14 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
     /** Emit result. */
     private IgniteJsEmitResult emitRes;
 
+    /** Initialize flag. */
+    private boolean init = false;
+
     /**
      * @param ctx Context.
      */
     public IgniteScriptingCommandHandler(GridKernalContext ctx) {
         super(ctx);
-
-        try {
-            IgniteScriptingProcessor script = ctx.scripting();
-
-            String emitFunction = "function emit(f, args, nodeId) {" +
-                "__emitResult.add(f.toString(), args, nodeId);}";
-
-            script.addEngineFunction(emitFunction);
-
-            emitRes = new IgniteJsEmitResult();
-
-            script.addBinding("__emitResult", emitRes);
-        }
-        catch (IgniteCheckedException e) {
-            ctx.log().error(e.getMessage());
-        }
     }
 
     /** {@inheritDoc} */
@@ -81,6 +68,9 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
     /** {@inheritDoc} */
     @Override public IgniteInternalFuture<GridRestResponse> handleAsync(GridRestRequest req) {
         assert req != null;
+
+        if (!init)
+            initialize();
 
         assert SUPPORTED_COMMANDS.contains(req.command());
 
@@ -108,6 +98,29 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         }
 
         return new GridFinishedFuture<>();
+    }
+
+    /**
+     * Initialize functions.
+     */
+    private void initialize() {
+        try {
+            IgniteScriptingProcessor script = ctx.scripting();
+
+            String emitFunction = "function emit(f, args, nodeId) {" +
+                "__emitResult.add(f.toString(), args, nodeId);}";
+
+            script.addEngineFunction(emitFunction);
+
+            emitRes = new IgniteJsEmitResult();
+
+            script.addBinding("__emitResult", emitRes);
+
+            init = true;
+        }
+        catch (IgniteCheckedException e) {
+            ctx.log().error(e.getMessage());
+        }
     }
 
     /**
