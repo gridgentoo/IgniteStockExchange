@@ -133,6 +133,7 @@ public class IgnitePluginProcessor extends GridProcessorAdapter {
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
         for (PluginProvider plugin : plugins.values())
+            // TODO: Why not passing PluginContext here? We already have it at that point.
             plugin.onBeforeStart();
 
         ackPluginsInfo();
