@@ -857,7 +857,7 @@ public class GridJettyRestHandler extends AbstractHandler {
         Scanner reader;
 
         try {
-            reader = new Scanner(req.getReader());
+            reader = new Scanner(req.getInputStream());
         }
         catch (IOException e) {
             throw new IgniteCheckedException(e);

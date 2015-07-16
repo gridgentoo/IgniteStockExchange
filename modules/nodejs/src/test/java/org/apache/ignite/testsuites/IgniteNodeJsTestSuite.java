@@ -32,7 +32,7 @@ public class IgniteNodeJsTestSuite extends TestSuite {
         TestSuite suite = new TestSuite("Ignite Node JS Test Suite");
 
         suite.addTest(new TestSuite(NodeJsIgnitionSelfTest.class));
-        suite.addTest(new TestSuite(ScriptingJsCacheApiSelfTest.class));
+        suite.addTest(new TestSuite(NodeJsCacheApiSelfTest.class));
         suite.addTest(new TestSuite(NodeJsSecretKeySelfTest.class));
         suite.addTest(new TestSuite(NodeJsComputeSelfTest.class));
         suite.addTest(new TestSuite(NodeJsIgniteSelfTest.class));

@@ -20,11 +20,11 @@ package org.apache.ignite.internal;
 /**
  * Test node js client put/get.
  */
-public class ScriptingJsCacheApiSelfTest extends NodeJsAbstractTest {
+public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     /**
      * Constructor.
      */
-    public ScriptingJsCacheApiSelfTest() {
+    public NodeJsCacheApiSelfTest() {
         super("test-cache-api.js");
     }
 
