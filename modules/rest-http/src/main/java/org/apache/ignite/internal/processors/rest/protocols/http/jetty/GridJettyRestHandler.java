@@ -330,7 +330,8 @@ public class GridJettyRestHandler extends AbstractHandler {
      */
     private void createResponse(HttpServletRequest req, GridRestCommand cmd,
         GridRestResponse cmdRes) {
-        if (cmdRes.getResponse() == null || req.getHeader("JSONObject") == null)
+        if (cmdRes.getResponse() == null || !(req.getHeader("Content-Type") != null &&
+            req.getHeader("Content-Type").contains("json")))
             return;
 
         if (cmd == CACHE_GET_ALL) {
@@ -415,7 +416,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 String cacheName = (String)params.get("cacheName");
 
-                if (req.getHeader("JSONObject") != null) {
+                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
                     Object o = ctx.scripting().toJavaObject(parseRequest(req));
 
                     Map<Object, Object> map = new HashMap<>();

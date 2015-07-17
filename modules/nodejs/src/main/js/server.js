@@ -75,7 +75,7 @@ Server.prototype.runCommand = function(cmd, callback) {
 
     if (cmd._isPost()) {
         options.headers['Content-Length'] = cmd.postData().length;
-        options.headers['JSONObject'] = "true";
+        options.headers['Content-Type'] = "application/json";
     }
 
     function streamCallback(response) {

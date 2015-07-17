@@ -123,7 +123,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         conn.setRequestMethod("POST");
 
-        conn.setRequestProperty("Content-Type", "application/POST");
+        conn.setRequestProperty("Content-Type", "application/json");
 
         String signature = signature();
 
@@ -131,8 +131,6 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
             conn.setRequestProperty("X-Signature", signature);
 
         conn.setRequestProperty("Content-Length", Integer.toString(data.length));
-
-        conn.setRequestProperty("JSONObject", "true");
 
         conn.setUseCaches(false);
         conn.setDoOutput(true);

@@ -37,7 +37,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
 
     /** Rest converter. */
     private static final String REST_CONV_CLS =
-        "org.apache.ignite.internal.processors.rest.protocols.http.jetty.GlassFishScriptingConverter";
+        "org.apache.ignite.internal.processors.rest.protocols.http.jetty.RestGlassFishScriptingConverter";
 
     /** Javascript engine. */
     private ScriptEngine jsEngine;
