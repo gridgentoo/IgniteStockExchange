@@ -35,8 +35,15 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
     /** Javascript engine name. */
     public static final String JAVA_SCRIPT_ENGINE_NAME = "JavaScript";
 
+    /** Rest converter. */
+    private static final String REST_CONV_CLS =
+        "org.apache.ignite.internal.processors.rest.protocols.http.jetty.GlassFishScriptingConverter";
+
     /** Javascript engine. */
     private ScriptEngine jsEngine;
+
+    /** Ignite scripting converter. */
+    IgniteScriptingConverter converter;
 
     /**
      * @param ctx Kernal context.
@@ -47,6 +54,8 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
 
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
+        initializeConverter();
+
         ScriptEngineManager factory = new ScriptEngineManager();
 
         jsEngine = factory.getEngineByName(JAVA_SCRIPT_ENGINE_NAME);
@@ -153,7 +162,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
      * @return  Object for Ignite cache.
      */
     public Object toJavaObject(Object o) {
-        return JSONCacheObject.toSimpleObject(o);
+        return converter.toJavaObject(o);
     }
 
     /**
@@ -161,10 +170,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
      * @return Object to store in cache.
      */
     public Object getField(String key, Object o) {
-        if (o instanceof JSONCacheObject)
-            return ((JSONCacheObject)o).getField(key);
-
-        return null;
+        return converter.getField(key, o);
     }
 
     /**
@@ -174,6 +180,31 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
      */
     public Object createScriptingEntry(Object key, Object val) {
         return new ScriptingCacheEntry(key, val);
+    }
+
+    /**
+     * Initialize rest converter if it is available.
+     *
+     * @throws IgniteCheckedException If no constructor found for converter.
+     */
+    private void initializeConverter() throws IgniteCheckedException {
+        try {
+            Class<?> cls = Class.forName(REST_CONV_CLS);
+
+            Constructor<?> ctor = cls.getConstructor();
+
+            converter = (IgniteScriptingConverter)ctor.newInstance();
+        }
+        catch (ClassNotFoundException ignored) {
+            if (log.isDebugEnabled())
+                log.debug("Failed to initialize HTTP REST protocol (consider adding ignite-rest-http " +
+                    "module to classpath).");
+
+            converter = new IgniteScriptingConverter();
+        }
+        catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            throw new IgniteCheckedException("Failed to initialize HTTP REST protocol.", e);
+        }
     }
 
     /**

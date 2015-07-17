@@ -29,7 +29,7 @@ public class JSONCacheObject extends HashMap<Object, Object> {
     /**
      * Empty constructor.
      */
-    private JSONCacheObject() {
+    public JSONCacheObject() {
         // No-op.
     }
 

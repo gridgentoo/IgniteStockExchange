@@ -30,6 +30,7 @@ import org.apache.ignite.lang.*;
 import org.apache.ignite.plugin.security.*;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.*;
+import org.glassfish.json.*;
 import org.jetbrains.annotations.*;
 
 import javax.servlet.*;
@@ -578,8 +579,8 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.script((String)params.get("func"));
 
-                JSONObject o = parseRequest(req);
-                restReq0.argument(o.get("arg"));
+                Map o = parseRequest(req);
+                restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
 
                 restReq = restReq0;
 
@@ -592,8 +593,8 @@ public class GridJettyRestHandler extends AbstractHandler {
                 restReq0.script((String)params.get("func"));
                 restReq0.cacheName((String) params.get("cacheName"));
 
-                JSONObject o = parseRequest(req);
-                restReq0.argument(o.get("arg"));
+                Map o = parseRequest(req);
+                restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
 
                 Object cacheObj = ctx.scripting().toJavaObject(o.get("key"));
                 restReq0.affinityKey(cacheObj);
@@ -608,8 +609,8 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.mapFunction((String) params.get("map"));
 
-                JSONObject o = parseRequest(req);
-                restReq0.argument(o.get("arg"));
+                Map o = parseRequest(req);
+                restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
 
                 restReq0.reduceFunction((String) params.get("reduce"));
 
@@ -624,9 +625,8 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.sqlQuery((String)params.get("qry"));
 
-                JSONObject o = parseRequest(req);
-
-                List args = (List)o.get("arg");
+                Map o = parseRequest(req);
+                List args = (List)ctx.scripting().toJavaObject(o.get("arg"));
 
                 restReq0.arguments(args.toArray());
                 restReq0.typeName((String)params.get("type"));
@@ -851,21 +851,12 @@ public class GridJettyRestHandler extends AbstractHandler {
      * @return JSON object.
      * @throws IgniteCheckedException If failed.
      */
-    private JSONObject parseRequest(HttpServletRequest req) throws IgniteCheckedException{
-        StringBuilder builder = new StringBuilder();
-
-        Scanner reader;
-
+    private Map parseRequest(HttpServletRequest req) throws IgniteCheckedException{
         try {
-            reader = new Scanner(req.getInputStream());
+            return new JsonProviderImpl().createReader(req.getInputStream()).readObject();
         }
         catch (IOException e) {
             throw new IgniteCheckedException(e);
         }
-
-        while (reader.hasNext())
-            builder.append(reader.nextLine() + "\n");
-
-        return JSONObject.fromObject(builder.toString());
     }
 }
