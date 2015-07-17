@@ -126,13 +126,11 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         conn.setRequestProperty("JSONObject", "true");
 
-        conn.setRequestProperty( "charset", "utf-8");
-
         conn.setUseCaches(false);
         conn.setDoOutput(true);
 
-        try (OutputStream wr = conn.getOutputStream()) {
-            wr.write(data);
+        try (PrintStream wr = new PrintStream(conn.getOutputStream())) {
+            wr.print(urlParameters);
             wr.flush();
             wr.close();
         }
@@ -362,7 +360,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     public void testGetPost() throws Exception {
         jcache().put("key0", "val0");
 
-        String val = "{'key':'key0'}";
+        String val = "{\"key\":\"key0\"}";
         String ret = makePostRequest(F.asMap("cmd", "get"), val);
 
         assertNotNull(ret);
@@ -379,7 +377,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     public void testReplacePost() throws Exception {
         jcache().put("key0", "val0");
 
-        String val = "{'key':'key0', 'val':'val2', 'oldVal':'val1'}";
+        String val = "{\"key\":\"key0\", \"val\":\"val2\", \"oldVal\":\"val1\"}";
         String ret = makePostRequest(F.asMap("cmd", "repval"), val);
 
         assertNotNull(ret);
@@ -389,14 +387,14 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         jsonEquals(ret, cachePattern(false, true));
 
-        val = "{'key':'key0', 'val':'val2'}";
+        val = "{\"key\":\"key0\", \"val\":\"val2\"}";
         ret = makePostRequest(F.asMap("cmd", "getandreplace"), val);
 
         jsonEquals(ret, cachePattern("val0", true));
 
         assertEquals("val2", grid(0).cache(null).get("key0"));
 
-        val = "{'key':'key0', 'val':'val3'}";
+        val = "{\"key\":\"key0\", \"val\":\"val3\"}";
         ret = makePostRequest(F.asMap("cmd", "rep"), val);
 
         assertNotNull(ret);
@@ -413,7 +411,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     public void testRemovePost() throws Exception {
         jcache().put("key0", "val0");
 
-        String val = "{'key':'key0', 'val':'val2'}";
+        String val = "{\"key\":\"key0\", \"val\":\"val2\"}";
         String ret = makePostRequest(F.asMap("cmd", "rmvvalue"), val);
 
         assertNotNull(ret);
@@ -425,7 +423,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertEquals("val0", grid(0).cache(null).get("key0"));
 
-        val = "{'key':'key0'}";
+        val = "{\"key\":\"key0\"}";
         ret = makePostRequest(F.asMap("cmd", "getandrmv"), val);
 
         jsonEquals(ret, cachePattern("val0", true));
@@ -440,7 +438,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         jcache().put("key0", "val0");
         jcache().put("key1", "val1");
 
-        String val = "{'keys': ['key0', 'key1']}";
+        String val = "{\"keys\": [\"key0\", \"key1\"]}";
         String ret = makePostRequest(F.asMap("cmd", "rmvall"), val);
 
         assertNotNull(ret);
@@ -453,7 +451,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      * @throws Exception If failed.
      */
     public void testPutPost() throws Exception {
-        String val = "{'key':'key0', 'val':'val0'}";
+        String val = "{\"key\":\"key0\",\"val\":\"val0\"}";
         String ret = makePostRequest(F.asMap("cmd", "put"), val);
 
         assertNotNull(ret);
@@ -461,7 +459,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertNotNull(grid(0).cache(null).get("key0"));
 
-        val = "{'key':'key0'}";
+        val = "{\"key\":\"key0\"}";
         ret = makePostRequest(F.asMap("cmd", "containskey"), val);
 
         assertNotNull(ret);
@@ -474,7 +472,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      * @throws Exception If failed.
      */
     public void testGetAndPut() throws Exception {
-        String val = "{'key':'key0', 'val':'val0'}";
+        String val = "{\"key\":\"key0\", \"val\":\"val0\"}";
         String ret = makePostRequest(F.asMap("cmd", "getandput"), val);
 
         assertNotNull(ret);
@@ -484,7 +482,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertNotNull(grid(0).cache(null).get("key0"));
 
-        val = "{'key': 'key0', 'val':'val1'}";
+        val = "{\"key\": \"key0\", \"val\":\"val1\"}";
         ret = makePostRequest(F.asMap("cmd", "getandputifabsent"), val);
 
         assertNotNull(ret);
@@ -494,7 +492,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertEquals("val0", grid(0).cache(null).get("key0"));
 
-        val = "{'key': 'key0'}";
+        val = "{\"key\": \"key0\"}";
         ret = makePostRequest(F.asMap("cmd", "rmv"), val);
 
         assertNotNull(ret);
@@ -502,7 +500,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertNull(grid(0).cache(null).get("key0"));
 
-        val = "{'key': 'key0', 'val':'val1'}";
+        val = "{\"key\": \"key0\", \"val\":\"val1\"}";
         ret = makePostRequest(F.asMap("cmd", "putifabsent"), val);
 
         assertNotNull(ret);
@@ -517,7 +515,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      * @throws Exception If failed.
      */
     public void testPutAllPost() throws Exception {
-        String val = "{'entries': [{'key':'key0', 'value': 'val0'}, {'key':'key1', 'value':'val1'}]}";
+        String val = "{\"entries\": [{\"key\":\"key0\", \"value\": \"val0\"}, {\"key\":\"key1\", \"value\":\"val1\"}]}";
         String ret = makePostRequest(F.asMap("cmd", "putAll"), val);
 
         assertNotNull(ret);
@@ -525,7 +523,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertNotNull(grid(0).cache(null).get("key0"));
 
-        val = "{'keys': ['key0','key1']}";
+        val = "{\"keys\": [\"key0\",\"key1\"]}";
         ret = makePostRequest(F.asMap("cmd", "containskeys"), val);
 
         assertNotNull(ret);
@@ -1052,7 +1050,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      */
     public void testRunScript() throws Exception {
         String f = "function(){return ignite.name();}";
-        String ret = makePostRequest(F.asMap("cmd", "runscript", "func", URLEncoder.encode(f)), "{arg:[]}");
+        String ret = makePostRequest(F.asMap("cmd", "runscript", "func", URLEncoder.encode(f)), "{\"arg\":[]}");
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
@@ -1065,7 +1063,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      */
     public void testRunAffinityScript() throws Exception {
         String f = "function(){return ignite.name();}";
-        String ret = makePostRequest(F.asMap("cmd", "affrun", "func", URLEncoder.encode(f)), "{'arg':[],'key':'key0'}");
+        String ret = makePostRequest(F.asMap("cmd", "affrun", "func", URLEncoder.encode(f)), "{\"arg\":[],\"key\":\"key0\"}");
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
@@ -1089,7 +1087,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      */
     public void testMapReduceScript() throws Exception {
         String map = "function(nodes, arg) {" +
-            "var words = arg.split(' ');" +
+            "var words = arg.split(\" \");" +
             "for (var i = 0; i < words.length; i++) {" +
             "var f = function (word) {" +
             "return word.length;" +
@@ -1107,7 +1105,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
             "};";
 
         String ret = makePostRequest(F.asMap("cmd", "excmapreduce", "map", URLEncoder.encode(map),
-            "reduce", URLEncoder.encode(reduce)), "{'arg': 'Hello world!'}");
+            "reduce", URLEncoder.encode(reduce)), "{\"arg\": \"Hello world!\"}");
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
@@ -1125,7 +1123,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         String ret = makePostRequest(F.asMap("cmd", "qryexecute", "type", "String", "psz", "1",
                 "qry", URLEncoder.encode("select * from String")),
-            "{'arg': []}");
+            "{\"arg\": []}");
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
