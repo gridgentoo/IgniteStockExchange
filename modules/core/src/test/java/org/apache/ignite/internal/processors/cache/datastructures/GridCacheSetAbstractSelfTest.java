@@ -27,12 +27,15 @@ import org.apache.ignite.internal.util.lang.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.testframework.*;
+import org.apache.ignite.transactions.*;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 import static org.apache.ignite.cache.CacheMode.*;
+import static org.apache.ignite.transactions.TransactionConcurrency.PESSIMISTIC;
+import static org.apache.ignite.transactions.TransactionIsolation.REPEATABLE_READ;
 
 /**
  * Cache set tests.
@@ -379,6 +382,30 @@ public abstract class GridCacheSetAbstractSelfTest extends IgniteCollectionAbstr
      */
     public void testIterator() throws Exception {
         testIterator(false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testSetWithinUserTx() throws Exception {
+        IgniteEx ig = grid(0);
+
+        ig.set("warmup", new CollectionConfiguration()).close();
+
+        try (Transaction tx = ig.transactions().txStart(PESSIMISTIC, REPEATABLE_READ)) {
+            String setName = UUID.randomUUID().toString();
+
+            IgniteSet<Object> set = ig.set(setName, new CollectionConfiguration());
+
+            set.add("1");
+            set.add("2");
+            set.add("3");
+            set.add("1");
+
+            assertEquals(3, set.size());
+
+            tx.commit();
+        }
     }
 
     /**

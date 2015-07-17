@@ -165,6 +165,23 @@ public abstract class GridCacheSequenceApiSelfAbstractTest extends IgniteAtomics
     /**
      * @throws Exception If failed.
      */
+    public void testSequenceWithinUserTx() throws Exception {
+        String seqName = UUID.randomUUID().toString();
+
+        IgniteEx ig = grid();
+
+        try (Transaction tx = ig.transactions().txStart(PESSIMISTIC, REPEATABLE_READ)) {
+            IgniteAtomicSequence seq = ig.atomicSequence(seqName, 0, true);
+
+            assertEquals(1, seq.incrementAndGet());
+
+            tx.commit();
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testAddWrongValue() throws Exception {
         for (IgniteAtomicSequence seq : seqArr) {
             try {

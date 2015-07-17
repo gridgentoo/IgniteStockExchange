@@ -19,11 +19,14 @@ package org.apache.ignite.internal.processors.cache.datastructures;
 
 import org.apache.ignite.*;
 import org.apache.ignite.configuration.*;
+import org.apache.ignite.internal.*;
 import org.apache.ignite.transactions.*;
 
 import java.util.*;
 
 import static org.apache.ignite.cache.CacheAtomicityMode.*;
+import static org.apache.ignite.transactions.TransactionConcurrency.*;
+import static org.apache.ignite.transactions.TransactionIsolation.*;
 
 /**
  * Cache atomic long api test.
@@ -92,6 +95,23 @@ public abstract class IgniteAtomicLongApiAbstractSelfTest extends IgniteAtomicsA
         }
         catch (IllegalStateException | IgniteException e) {
             info("Caught expected exception: " + e.getMessage());
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testAtomicLongWithinUserTransaction() throws Exception {
+        IgniteEx ig = grid(0);
+
+        try (Transaction tx = ig.transactions().txStart(PESSIMISTIC, REPEATABLE_READ)) {
+            String name = UUID.randomUUID().toString();
+
+            IgniteAtomicLong atomic = ig.atomicLong(name, 0, true);
+
+            assertEquals(1, atomic.incrementAndGet());
+
+            tx.commit();
         }
     }
 
