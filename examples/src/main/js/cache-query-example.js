@@ -103,16 +103,16 @@ main = function() {
 
     // Initialize cache for people.
     function initializeEntries() {
-        var key1 = "1";
-        var value1 = {"firstName" : "John", "lastName" : "Doe", "salary" : 2000};
-        var key2 = "2";
-        var value2 = {"firstName" : "Jane", "lastName" : "Doe", "salary" : 1000};
-        var key3 = "3";
-        var value3 = {"firstName" : "John", "lastName" : "Smith", "salary" : 1000};
-        var key4 = "4";
-        var value4 = {"firstName" : "Jane", "lastName" : "Smith", "salary" : 2000};
-        var key5 = "5";
-        var value5 = {"firstName" : "Ann", "lastName" : "Smith", "salary" : 3000};
+        var key1 = 1;
+        var value1 = {"name" : "John", "id" : 1, "salary" : 2000, "address" : {"street" : "1st Avenue"}};
+        var key2 = 2;
+        var value2 = {"name" : "Jane", "id" : 2, "salary" : 1000, "address" : {"street" : "1st Avenue"}};
+        var key3 = 3;
+        var value3 = {"name" : "John", "id" : 3, "salary" : 1000, "address" : {"street" : "1st Avenue"}};
+        var key4 = 4;
+        var value4 = {"name" : "Jane", "id" : 4, "salary" : 2000, "address" : {"street" : "1st Avenue"}};
+        var key5 = 5;
+        var value5 = {"name" : "Ann", "id" : 5, "salary" : 3000, "address" : {"street" : "1st Avenue"}};
 
         return [new CacheEntry(key1, value1), new CacheEntry(key2, value2),
             new CacheEntry(key3, value3), new CacheEntry(key4, value4)];
