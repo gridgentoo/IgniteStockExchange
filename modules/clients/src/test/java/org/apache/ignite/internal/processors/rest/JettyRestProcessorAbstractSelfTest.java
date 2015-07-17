@@ -1095,7 +1095,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         String map = "function(nodes, arg) {" +
             "var words = arg.split(\" \");" +
             "for (var i = 0; i < words.length; i++) {" +
-            "var f = function (word) {" +
+            "var f = function(word) {" +
             "return word.length;" +
             "};" +
             "emit(f, words[i], nodes[i %  nodes.length]);" +
@@ -1104,8 +1104,8 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         String reduce =  "function(results) {"+
             "var sum = 0;"+
-            "for (var i = 0; i < results.length; ++i) {"+
-            "sum += results[i];"+
+            "for (var i = 0; i < results.size(); ++i) {"+
+            "sum += results.get(i).intValue();"+
             "}" +
             "return sum;" +
             "};";
