@@ -19,6 +19,7 @@ package org.apache.ignite.internal;
 
 import org.apache.ignite.*;
 import org.apache.ignite.configuration.*;
+import org.apache.ignite.internal.processors.json.*;
 import org.apache.ignite.internal.managers.checkpoint.*;
 import org.apache.ignite.internal.managers.collision.*;
 import org.apache.ignite.internal.managers.communication.*;
@@ -553,6 +554,11 @@ public interface GridKernalContext extends Iterable<GridComponent> {
      * @return Cluster processor.
      */
     public ClusterProcessor cluster();
+
+    /**
+     * @return Json processor.
+     */
+    public IgniteJsonProcessor json();
 
     /**
      * Gets marshaller context.

@@ -83,6 +83,14 @@ public enum IgniteComponentType {
         "org.apache.ignite.internal.processors.schedule.IgniteNoopScheduleProcessor",
         "org.apache.ignite.internal.processors.schedule.IgniteScheduleProcessor",
         "ignite-schedule"
+    ),
+
+    /** JSON API. */
+    JSON(
+        "org.apache.ignite.internal.processors.json.IgniteJsonNoopProcessor",
+        "org.apache.ignite.internal.processors.json.IgniteJsonProcessorImpl",
+        "ignite-json",
+        "org.apache.ignite.internal.processors.json.IgniteJsonMessageFactory"
     );
 
     /** No-op class name. */

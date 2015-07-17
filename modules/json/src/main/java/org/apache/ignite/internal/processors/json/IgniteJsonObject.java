@@ -15,19 +15,20 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import javax.json.*;
+import java.io.*;
 import java.util.*;
 
 /**
- * JsonObject implementation.
+ * IgniteJsonObject implementation.
  */
-public class JsonObjectImpl extends HashMap<String, JsonValue> implements JsonObject {
+public class IgniteJsonObject extends HashMap<String, JsonValue> implements javax.json.JsonObject, Serializable {
     /**
      * @param val Map to store.
      */
-    public JsonObjectImpl(Map<String, JsonValue> val) {
+    public IgniteJsonObject(Map<String, JsonValue> val) {
         super(val);
     }
 
@@ -37,8 +38,8 @@ public class JsonObjectImpl extends HashMap<String, JsonValue> implements JsonOb
     }
 
     /** {@inheritDoc} */
-    @Override public JsonObject getJsonObject(String name) {
-        return (JsonObject)get(name);
+    @Override public javax.json.JsonObject getJsonObject(String name) {
+        return (javax.json.JsonObject)get(name);
     }
 
     /** {@inheritDoc} */

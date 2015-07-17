@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import org.apache.ignite.internal.util.typedef.internal.*;
 
@@ -26,7 +26,7 @@ import java.util.*;
 /**
  * Json object builder implementation.
  */
-public class JsonObjectBuilderImpl implements JsonObjectBuilder {
+public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
     /** Json object map. */
     private Map<String, JsonValue> jsonMap = new HashMap<>();
 
@@ -43,7 +43,7 @@ public class JsonObjectBuilderImpl implements JsonObjectBuilder {
     @Override public JsonObjectBuilder add(String name, String val) {
         A.notNull(name, "key", val, "value");
 
-        jsonMap.put(name, new JsonStringImpl(val));
+        jsonMap.put(name, new IgniteJsonString(val));
 
         return this;
     }
@@ -53,7 +53,7 @@ public class JsonObjectBuilderImpl implements JsonObjectBuilder {
         A.notNull(name, "key", val, "value");
 
         //TODO: optimize for value
-        jsonMap.put(name, new JsonNumberImpl(new BigDecimal(val)));
+        jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
@@ -63,7 +63,7 @@ public class JsonObjectBuilderImpl implements JsonObjectBuilder {
         A.notNull(name, "key", val, "value");
 
         //TODO: optimize for value
-        jsonMap.put(name, new JsonNumberImpl(val));
+        jsonMap.put(name, new IgniteJsonNumber(val));
 
         return this;
     }
@@ -73,7 +73,7 @@ public class JsonObjectBuilderImpl implements JsonObjectBuilder {
         A.notNull(name, "key");
 
         //TODO: optimize for value
-        jsonMap.put(name, new JsonNumberImpl(new BigDecimal(val)));
+        jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
@@ -83,7 +83,7 @@ public class JsonObjectBuilderImpl implements JsonObjectBuilder {
         A.notNull(name, "key");
 
             //TODO: optimize for value
-            jsonMap.put(name, new JsonNumberImpl(new BigDecimal(val)));
+            jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
@@ -93,7 +93,7 @@ public class JsonObjectBuilderImpl implements JsonObjectBuilder {
         A.notNull(name, "key");
 
         //TODO: optimize for value
-        jsonMap.put(name, new JsonNumberImpl(new BigDecimal(val)));
+        jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
@@ -135,7 +135,7 @@ public class JsonObjectBuilderImpl implements JsonObjectBuilder {
     }
 
     /** {@inheritDoc} */
-    @Override public JsonObject build() {
-        return new JsonObjectImpl(jsonMap);
+    @Override public javax.json.JsonObject build() {
+        return new IgniteJsonObject(jsonMap);
     }
 }
