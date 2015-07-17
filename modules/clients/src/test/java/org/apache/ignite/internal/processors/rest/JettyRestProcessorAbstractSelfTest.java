@@ -54,6 +54,11 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     }
 
     /** {@inheritDoc} */
+    @Override protected void beforeTest() throws Exception {
+        grid(0).cache(null).clear();
+    }
+
+    /** {@inheritDoc} */
     @Override protected int gridCount() {
         return GRID_CNT;
     }
