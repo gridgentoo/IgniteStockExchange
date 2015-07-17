@@ -496,7 +496,8 @@ public class GridJettyRestHandler extends AbstractHandler {
                     restReq0.cacheFlags(intValue("cacheFlags", params, 0));
                     restReq0.ttl(longValue("exp", params, null));
 
-                    if (cmd == CACHE_GET_ALL || cmd == CACHE_PUT_ALL || cmd == CACHE_REMOVE_ALL) {
+                    if (cmd == CACHE_GET_ALL || cmd == CACHE_PUT_ALL || cmd == CACHE_REMOVE_ALL ||
+                        cmd == CACHE_CONTAINS_KEYS) {
                         List<Object> keys = values("k", params);
                         List<Object> vals = values("v", params);
 
@@ -580,8 +581,12 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.script((String)params.get("func"));
 
-                Map o = parseRequest(req);
-                restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
+                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
+                    Map o = parseRequest(req);
+                    restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
+                }
+                else
+                    restReq0.argument(params.get("arg"));
 
                 restReq = restReq0;
 
@@ -594,11 +599,17 @@ public class GridJettyRestHandler extends AbstractHandler {
                 restReq0.script((String)params.get("func"));
                 restReq0.cacheName((String) params.get("cacheName"));
 
-                Map o = parseRequest(req);
-                restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
+                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
+                    Map o = parseRequest(req);
+                    restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
 
-                Object cacheObj = ctx.scripting().toJavaObject(o.get("key"));
-                restReq0.affinityKey(cacheObj);
+                    Object cacheObj = ctx.scripting().toJavaObject(o.get("key"));
+                    restReq0.affinityKey(cacheObj);
+                }
+                else {
+                    restReq0.argument(params.get("arg"));
+                    restReq0.affinityKey(params.get("key"));
+                }
 
                 restReq = restReq0;
 
@@ -610,8 +621,13 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.mapFunction((String) params.get("map"));
 
-                Map o = parseRequest(req);
-                restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
+
+                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
+                    Map o = parseRequest(req);
+                    restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
+                }
+                else
+                    restReq0.argument(params.get("arg"));
 
                 restReq0.reduceFunction((String) params.get("reduce"));
 

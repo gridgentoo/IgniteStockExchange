@@ -477,7 +477,164 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     /**
      * @throws Exception If failed.
      */
+    public void testContainesKey() throws Exception {
+        grid(0).cache(null).put("key0", "val0");
+
+        String ret = content(F.asMap("cmd", "containskey", "key", "key0"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern(true, true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testContainesKeys() throws Exception {
+        grid(0).cache(null).put("key0", "val0");
+        grid(0).cache(null).put("key1", "val1");
+
+        String ret = content(F.asMap("cmd", "containskeys", "k1", "key0", "k2", "key1"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cacheBulkPattern(true, true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testGetAndPut() throws Exception {
+        grid(0).cache(null).put("key0", "val0");
+
+        String ret = content(F.asMap("cmd", "getandput", "key", "key0", "val", "val1"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern("val0", true));
+
+        assertEquals("val1", grid(0).cache(null).get("key0"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testGetAndPutIfAbsent() throws Exception {
+        grid(0).cache(null).put("key0", "val0");
+
+        String ret = content(F.asMap("cmd", "getandputifabsent", "key", "key0", "val", "val1"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern("val0", true));
+
+        assertEquals("val0", grid(0).cache(null).get("key0"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testPutIfAbsent2() throws Exception {
+        String ret = content(F.asMap("cmd", "putifabsent", "key", "key0", "val", "val1"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern(true, true));
+
+        assertEquals("val1", grid(0).cache(null).get("key0"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRemoveValue() throws Exception {
+        grid(0).cache(null).put("key0", "val0");
+
+        String ret = content(F.asMap("cmd", "rmvvalue", "key", "key0", "val", "val1"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern(false, true));
+
+        assertEquals("val0", grid(0).cache(null).get("key0"));
+
+        ret = content(F.asMap("cmd", "rmvvalue", "key", "key0", "val", "val0"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern(true, true));
+
+        assertNull(grid(0).cache(null).get("key0"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testGetAndRemove() throws Exception {
+        grid(0).cache(null).put("key0", "val0");
+
+        String ret = content(F.asMap("cmd", "getandrmv", "key", "key0"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern("val0", true));
+
+        assertNull(grid(0).cache(null).get("key0"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testReplaceValue() throws Exception {
+        grid(0).cache(null).put("key0", "val0");
+
+        String ret = content(F.asMap("cmd", "repval", "key", "key0", "val", "val1", "val2", "val2"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern(false, true));
+
+        assertEquals("val0", grid(0).cache(null).get("key0"));
+
+        ret = content(F.asMap("cmd", "repval", "key", "key0", "val", "val1", "val2", "val0"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern(true, true));
+
+        assertEquals("val1", grid(0).cache(null).get("key0"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testGetAndReplace() throws Exception {
+        grid(0).cache(null).put("key0", "val0");
+
+        String ret = content(F.asMap("cmd", "getandreplace", "key", "key0", "val", "val1"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern("val0", true));
+
+        assertEquals("val1", grid(0).cache(null).get("key0"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testGetAndPutPost() throws Exception {
         String val = "{\"key\":\"key0\", \"val\":\"val0\"}";
         String ret = makePostRequest(F.asMap("cmd", "getandput"), val);
 
@@ -1054,26 +1211,33 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     /**
      * @throws Exception If failed.
      */
-    public void testRunScript() throws Exception {
-        String f = "function(){return ignite.name();}";
-        String ret = makePostRequest(F.asMap("cmd", "runscript", "func", URLEncoder.encode(f)), "{\"arg\":[]}");
+    public void testRunScriptPost() throws Exception {
+        String f = "function(param){return param;}";
+        String ret = makePostRequest(F.asMap("cmd", "runscript", "func", URLEncoder.encode(f)), "{\"arg\":\"hello\"}");
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
 
-        jsonEquals(ret, stringPattern(getTestGridName(1), true));
+        jsonEquals(ret, stringPattern("hello", true));
     }
 
     /**
      * @throws Exception If failed.
      */
-    public void testRunAffinityScript() throws Exception {
-        String f = "function(){return ignite.name();}";
-        String ret = makePostRequest(F.asMap("cmd", "affrun", "func", URLEncoder.encode(f)), "{\"arg\":[],\"key\":\"key0\"}");
+    public void testRunScript() throws Exception {
+        String f = "function(param){return param;}";
+        String ret = content(F.asMap("cmd", "runscript", "func", URLEncoder.encode(f), "arg", "hello"));
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
 
+        jsonEquals(ret, stringPattern("hello", true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRunAffinityScriptPost() throws Exception {
         ClusterNode node = grid(0).affinity(null).mapKeyToNode("key0");
 
         Ignite ignite = null;
@@ -1085,7 +1249,80 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertNotNull(ignite);
 
+        String f = "function(expName){"+
+            "if (expName.toString() !== ignite.name().toString()) {" +
+            "throw \"Not correct name.\"" +
+            "}" +
+            "return ignite.name();}";
+
+        String ret = makePostRequest(F.asMap("cmd", "affrun", "func", URLEncoder.encode(f)),
+            "{\"arg\":\"" + ignite.name() + "\",\"key\":\"key0\"}");
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
         jsonEquals(ret, stringPattern(ignite.name(), true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRunAffinityScript() throws Exception {
+        ClusterNode node = grid(0).affinity(null).mapKeyToNode("key0");
+
+        Ignite ignite = null;
+
+        for (int i = 0; i < GRID_CNT; ++i) {
+            if (grid(i).localNode().equals(node))
+                ignite = grid(i);
+        }
+
+        assertNotNull(ignite);
+
+        String f = "function(expName){"+
+            "if (expName != ignite.name()) {" +
+            "throw \"Not correct name.\"" +
+            "}" +
+            "return ignite.name();}";
+
+        String ret = content(F.asMap("cmd", "affrun", "func", URLEncoder.encode(f),
+            "key", "key0", "arg", ignite.name()));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, stringPattern(ignite.name(), true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testMapReduceScriptPost() throws Exception {
+        String map = "function(nodes, arg) {" +
+            "var words = arg.split(\" \");" +
+            "for (var i = 0; i < words.length; i++) {" +
+            "var f = function(word) {" +
+            "return word.length;" +
+            "};" +
+            "emit(f, words[i], nodes[i %  nodes.length]);" +
+            "}"+
+            "};";
+
+        String reduce =  "function(results) {"+
+            "var sum = 0;"+
+            "for (var i = 0; i < results.size(); ++i) {"+
+            "sum += results.get(i).intValue();"+
+            "}" +
+            "return sum;" +
+            "};";
+
+        String ret = makePostRequest(F.asMap("cmd", "excmapreduce", "map", URLEncoder.encode(map),
+            "reduce", URLEncoder.encode(reduce)), "{\"arg\": \"Hello world!\"}");
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, integerPattern(11, true));
     }
 
     /**
@@ -1110,8 +1347,8 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
             "return sum;" +
             "};";
 
-        String ret = makePostRequest(F.asMap("cmd", "excmapreduce", "map", URLEncoder.encode(map),
-            "reduce", URLEncoder.encode(reduce)), "{\"arg\": \"Hello world!\"}");
+        String ret = content(F.asMap("cmd", "excmapreduce", "map", URLEncoder.encode(map),
+            "reduce", URLEncoder.encode(reduce), "arg", URLEncoder.encode("Hello world!")));
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
