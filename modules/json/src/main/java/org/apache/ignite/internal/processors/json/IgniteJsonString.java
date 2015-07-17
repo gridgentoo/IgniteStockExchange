@@ -15,21 +15,22 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import javax.json.*;
+import java.io.*;
 
 /**
  * Json string implementation.
  */
-public class JsonStringImpl implements JsonString {
+public class IgniteJsonString implements JsonString, Serializable {
     /** Value. */
     private final String val;
 
     /**
      * @param val Value.
      */
-    public JsonStringImpl(String val) {
+    public IgniteJsonString(String val) {
         this.val = val;
     }
 
@@ -67,5 +68,10 @@ public class JsonStringImpl implements JsonString {
             return other.getString() == null;
 
         return val.equals(other.getString());
+    }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return val;
     }
 }

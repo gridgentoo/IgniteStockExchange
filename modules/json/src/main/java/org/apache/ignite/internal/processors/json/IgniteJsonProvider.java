@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import javax.json.*;
 import javax.json.spi.*;
@@ -26,7 +26,7 @@ import java.util.*;
 /**
  * Json provider implementation.
  */
-public class JsonProviderImpl extends JsonProvider {
+public class IgniteJsonProvider extends JsonProvider {
     /** {@inheritDoc} */
     @Override public JsonParser createParser(Reader reader) {
         return null;
@@ -44,7 +44,7 @@ public class JsonProviderImpl extends JsonProvider {
 
     /** {@inheritDoc} */
     @Override public JsonGenerator createGenerator(Writer writer) {
-        return new JsonGeneratorImpl(writer);
+        return new IgniteJsonGenerator(writer);
     }
 
     /** {@inheritDoc} */
@@ -89,12 +89,12 @@ public class JsonProviderImpl extends JsonProvider {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder createObjectBuilder() {
-        return new JsonObjectBuilderImpl();
+        return new IgniteJsonObjectBuilder();
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder createArrayBuilder() {
-        return new JsonArrayBuilderImpl();
+        return new IgniteJsonArrayBuilder();
     }
 
     /** {@inheritDoc} */

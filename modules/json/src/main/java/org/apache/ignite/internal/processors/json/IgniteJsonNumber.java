@@ -15,32 +15,32 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import javax.json.*;
+import java.io.*;
 import java.math.*;
 
 /**
  * Json number implementation.
- * //TODO: optimize for int, long, double...
+ *
+ * TODO IGNITE-962: optimize for int, long, double.
  */
-public class JsonNumberImpl implements JsonNumber {
+public class IgniteJsonNumber implements JsonNumber, Serializable {
     /** Value. */
     private final BigDecimal val;
 
     /**
      * @param val Value.
      */
-    public JsonNumberImpl(BigDecimal val){
+    public IgniteJsonNumber(BigDecimal val){
         this.val = val;
     }
 
     /** {@inheritDoc} */
     @Override public boolean isIntegral() {
-        if (val == null)
-            return false;
+        return val != null && val.scale() == 0;
 
-        return val.scale() == 0;
     }
 
     /** {@inheritDoc} */
@@ -103,10 +103,10 @@ public class JsonNumberImpl implements JsonNumber {
 
     /** {@inheritDoc} */
     @Override public boolean equals(Object obj) {
-        if (obj == null || !(obj instanceof JsonNumberImpl))
+        if (obj == null || !(obj instanceof IgniteJsonNumber))
             return false;
 
-        BigDecimal val0 = ((JsonNumberImpl)obj).val;
+        BigDecimal val0 = ((IgniteJsonNumber)obj).val;
 
         if (val == null)
             return val0 == null;

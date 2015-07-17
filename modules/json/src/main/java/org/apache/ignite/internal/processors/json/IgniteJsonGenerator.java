@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import javax.json.*;
 import javax.json.stream.*;
@@ -26,7 +26,7 @@ import java.util.*;
 /**
  * Json generator implementation.
  */
-public class JsonGeneratorImpl implements JsonGenerator {
+public class IgniteJsonGenerator implements JsonGenerator {
     /** Writer. */
     private final BufferedWriter writer;
 
@@ -35,7 +35,7 @@ public class JsonGeneratorImpl implements JsonGenerator {
     /**
      * @param writer Writer.
      */
-    public JsonGeneratorImpl(Writer writer) {
+    public IgniteJsonGenerator(Writer writer) {
         this.writer = new BufferedWriter(writer);
 
         ctx.push(new Element(Context.NONE, true));
@@ -140,7 +140,7 @@ public class JsonGeneratorImpl implements JsonGenerator {
                 }
 
                 case OBJECT: {
-                    JsonObject o = (JsonObject) val;
+                    IgniteJsonObject o = (IgniteJsonObject) val;
 
                     writeStartObject(name);
 
@@ -277,7 +277,7 @@ public class JsonGeneratorImpl implements JsonGenerator {
                 }
 
                 case OBJECT: {
-                    JsonObject o = (JsonObject) val;
+                    IgniteJsonObject o = (IgniteJsonObject) val;
 
                     writeStartObject();
 

@@ -70,6 +70,9 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     /** */
     private final GridQueryIndexing idx;
 
+    /** */
+    private TypeId jsonTypeId;
+
     /**
      * @param ctx Kernal context.
      */
@@ -144,6 +147,13 @@ public class GridQueryProcessor extends GridProcessorAdapter {
                         processPortableMeta(meta, desc);
 
                         typeId = new TypeId(ccfg.getName(), ctx.cacheObjects().typeId(meta.getValueType()));
+                    }
+                    else if (ctx.json().jsonType(desc.keyClass()) || ctx.json().jsonType(desc.valueClass())) {
+                        processJsonMeta(meta, desc);
+
+                        typeId = new TypeId(ccfg.getName(), valCls);
+
+                        jsonTypeId = typeId;
                     }
                     else {
                         processClassMeta(meta, desc);
@@ -455,39 +465,48 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             if (coctx == null)
                 coctx = cacheObjectContext(space);
 
-            Class<?> valCls = null;
+            TypeDescriptor desc;
 
-            TypeId id;
+            if (ctx.json().jsonObject(val)) {
+                desc = types.get(jsonTypeId);
 
-            boolean portableVal = ctx.cacheObjects().isPortableObject(val);
-
-            if (portableVal) {
-                int typeId = ctx.cacheObjects().typeId(val);
-
-                id = new TypeId(space, typeId);
+                assert desc != null && desc.registered() : desc;
             }
             else {
-                valCls = val.value(coctx, false).getClass();
+                Class<?> valCls = null;
 
-                id = new TypeId(space, valCls);
-            }
+                TypeId id;
 
-            TypeDescriptor desc = types.get(id);
+                boolean portableVal = ctx.cacheObjects().isPortableObject(val);
 
-            if (desc == null || !desc.registered())
-                return;
+                if (portableVal) {
+                    int typeId = ctx.cacheObjects().typeId(val);
 
-            if (!portableVal && !desc.valueClass().isAssignableFrom(valCls))
-                throw new IgniteCheckedException("Failed to update index due to class name conflict" +
-                    "(multiple classes with same simple name are stored in the same cache) " +
-                    "[expCls=" + desc.valueClass().getName() + ", actualCls=" + valCls.getName() + ']');
+                    id = new TypeId(space, typeId);
+                }
+                else  {
+                    valCls = val.value(coctx, false).getClass();
 
-            if (!ctx.cacheObjects().isPortableObject(key)) {
-                Class<?> keyCls = key.value(coctx, false).getClass();
+                    id = new TypeId(space, valCls);
+                }
 
-                if (!desc.keyClass().isAssignableFrom(keyCls))
-                    throw new IgniteCheckedException("Failed to update index, incorrect key class [expCls=" +
-                        desc.keyClass().getName() + ", actualCls=" + keyCls.getName() + "]");
+                desc = types.get(id);
+
+                if (desc == null || !desc.registered())
+                    return;
+
+                if (!portableVal && !desc.valueClass().isAssignableFrom(valCls))
+                    throw new IgniteCheckedException("Failed to update index due to class name conflict" +
+                        "(multiple classes with same simple name are stored in the same cache) " +
+                        "[expCls=" + desc.valueClass().getName() + ", actualCls=" + valCls.getName() + ']');
+
+                if (!ctx.cacheObjects().isPortableObject(key)) {
+                    Class<?> keyCls = key.value(coctx, false).getClass();
+
+                    if (!desc.keyClass().isAssignableFrom(keyCls))
+                        throw new IgniteCheckedException("Failed to update index, incorrect key class [expCls=" +
+                            desc.keyClass().getName() + ", actualCls=" + keyCls.getName() + "]");
+                }
             }
 
             idx.store(space, desc, key, val, ver, expirationTime);
@@ -1236,6 +1255,98 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     }
 
     /**
+     * Processes declarative metadata for json object.
+     *
+     * @param meta Declared metadata.
+     * @param d Type descriptor.
+     * @throws IgniteCheckedException If failed.
+     */
+    private void processJsonMeta(CacheTypeMetadata meta, TypeDescriptor d)
+        throws IgniteCheckedException {
+        for (Map.Entry<String, Class<?>> entry : meta.getAscendingFields().entrySet()) {
+            JsonProperty prop = buildJsonProperty(entry.getKey(), entry.getValue());
+
+            d.addProperty(prop, false);
+
+            String idxName = prop.name() + "_idx";
+
+            d.addIndex(idxName, idx.isGeometryClass(prop.type()) ? GEO_SPATIAL : SORTED);
+
+            d.addFieldToIndex(idxName, prop.name(), 0, false);
+        }
+
+        for (Map.Entry<String, Class<?>> entry : meta.getDescendingFields().entrySet()) {
+            JsonProperty prop = buildJsonProperty(entry.getKey(), entry.getValue());
+
+            d.addProperty(prop, false);
+
+            String idxName = prop.name() + "_idx";
+
+            d.addIndex(idxName, idx.isGeometryClass(prop.type()) ? GEO_SPATIAL : SORTED);
+
+            d.addFieldToIndex(idxName, prop.name(), 0, true);
+        }
+
+        for (String txtIdx : meta.getTextFields()) {
+            JsonProperty prop = buildJsonProperty(txtIdx, String.class);
+
+            d.addProperty(prop, false);
+
+            d.addFieldToTextIndex(prop.name());
+        }
+
+        Map<String, LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>>> grps = meta.getGroups();
+
+        if (grps != null) {
+            for (Map.Entry<String, LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>>> entry : grps.entrySet()) {
+                String idxName = entry.getKey();
+
+                LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>> idxFields = entry.getValue();
+
+                int order = 0;
+
+                for (Map.Entry<String, IgniteBiTuple<Class<?>, Boolean>> idxField : idxFields.entrySet()) {
+                    JsonProperty prop = buildJsonProperty(idxField.getKey(), idxField.getValue().get1());
+
+                    d.addProperty(prop, false);
+
+                    Boolean descending = idxField.getValue().get2();
+
+                    d.addFieldToIndex(idxName, prop.name(), order, descending != null && descending);
+
+                    order++;
+                }
+            }
+        }
+
+        for (Map.Entry<String, Class<?>> entry : meta.getQueryFields().entrySet()) {
+            JsonProperty prop = buildJsonProperty(entry.getKey(), entry.getValue());
+
+            if (!d.props.containsKey(prop.name()))
+                d.addProperty(prop, false);
+        }
+    }
+
+    /**
+     * Builds portable object property.
+     *
+     * @param pathStr String representing path to the property. May contains dots '.' to identify
+     *      nested fields.
+     * @param resType Result type.
+     * @return Portable property.
+     */
+    private JsonProperty buildJsonProperty(String pathStr, Class<?> resType) {
+        String[] path = pathStr.split("\\.");
+
+        JsonProperty res = null;
+
+        for (String prop : path)
+            res = new JsonProperty(prop, res, resType);
+
+        return res;
+    }
+
+    /**
      * Processes declarative metadata for portable object.
      *
      * @param meta Declared metadata.
@@ -1620,6 +1731,84 @@ public class GridQueryProcessor extends GridProcessorAdapter {
          */
         public boolean knowsClass(Class<?> cls) {
             return member.getDeclaringClass() == cls || (parent != null && parent.knowsClass(cls));
+        }
+    }
+
+    /**
+     *
+     */
+    private class JsonProperty extends Property {
+        /** Property name. */
+        private String propName;
+
+        /** Parent property. */
+        private JsonProperty parent;
+
+        /** Result class. */
+        private Class<?> type;
+
+        /** */
+        private volatile int isKeyProp;
+
+        /**
+         * Constructor.
+         *
+         * @param propName Property name.
+         * @param parent Parent property.
+         * @param type Result type.
+         */
+        private JsonProperty(String propName, JsonProperty parent, Class<?> type) {
+            this.propName = propName;
+            this.parent = parent;
+            this.type = type;
+        }
+
+        /** {@inheritDoc} */
+        @Override public Object value(Object key, Object val) throws IgniteCheckedException {
+            Object obj;
+
+            if (parent != null) {
+                obj = parent.value(key, val);
+
+                if (obj == null)
+                    return null;
+
+                if (!ctx.json().jsonObject(obj))
+                    throw new IgniteCheckedException("Non-json object received as a result of property extraction " +
+                        "[parent=" + parent + ", propName=" + propName + ", obj=" + obj + ']');
+            }
+            else {
+                int isKeyProp0 = isKeyProp;
+
+                if (isKeyProp0 == 0) {
+                    // Key is allowed to be a non-portable object here.
+                    // We check key before value consistently with ClassProperty.
+                    if (ctx.json().jsonObject(key) && ctx.json().hasField(key, propName))
+                        isKeyProp = isKeyProp0 = 1;
+                    else if (ctx.json().hasField(val, propName))
+                        isKeyProp = isKeyProp0 = -1;
+                    else {
+                        U.warn(log, "Neither key nor value have property " +
+                            "[propName=" + propName + ", key=" + key + ", val=" + val + "]");
+
+                        return null;
+                    }
+                }
+
+                obj = isKeyProp0 == 1 ? key : val;
+            }
+
+            return ctx.json().field(obj, propName);
+        }
+
+        /** {@inheritDoc} */
+        @Override public String name() {
+            return propName;
+        }
+
+        /** {@inheritDoc} */
+        @Override public Class<?> type() {
+            return type;
         }
     }
 
