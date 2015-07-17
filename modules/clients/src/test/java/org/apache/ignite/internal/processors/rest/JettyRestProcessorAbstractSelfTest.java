@@ -26,6 +26,7 @@ import org.apache.ignite.cluster.*;
 import org.apache.ignite.configuration.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.util.typedef.*;
+import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.testframework.*;
 
 import java.io.*;
@@ -50,6 +51,8 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         System.setProperty(IGNITE_JETTY_PORT, Integer.toString(restPort()));
 
         super.beforeTestsStarted();
+
+        initCache();
     }
 
     /** {@inheritDoc} */
@@ -1256,13 +1259,13 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         assertNotNull(ignite);
 
         String f = "function(expName){"+
-            "if (expName.toString() !== ignite.name().toString()) {" +
-            "throw \"Not correct name.\"" +
+            "if (expName !== \"hello\") {" +
+            "throw \"Not correct arg.\"" +
             "}" +
             "return ignite.name();}";
 
         String ret = makePostRequest(F.asMap("cmd", "affrun", "func", URLEncoder.encode(f)),
-            "{\"arg\":\"" + ignite.name() + "\",\"key\":\"key0\"}");
+            "{\"arg\":\"" + "hello" + "\",\"key\":\"key0\"}");
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
@@ -1286,13 +1289,13 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         assertNotNull(ignite);
 
         String f = "function(expName){"+
-            "if (expName != ignite.name()) {" +
-            "throw \"Not correct name.\"" +
+            "if (expName !== \"hello\") {" +
+            "throw \"Not correct arg.\"" +
             "}" +
             "return ignite.name();}";
 
         String ret = content(F.asMap("cmd", "affrun", "func", URLEncoder.encode(f),
-            "key", "key0", "arg", ignite.name()));
+            "key", "key0", "arg", "hello"));
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
@@ -1390,14 +1393,14 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         Integer qryId0 = (Integer)((Map)json.get("response")).get("queryId");
 
         assertEquals(qryId0, qryId);
+
+        ret = content(F.asMap("cmd", "qryclose", "qryId", String.valueOf(qryId)));
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testQueryArgsPost() throws Exception {
-        initCache();
-
         String qry = "salary > ? and salary <= ?";
 
         String ret = makePostRequest(F.asMap("cmd", "qryexecute", "type", "Person", "psz", "10", "cacheName", "person",
@@ -1429,8 +1432,6 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      * @throws Exception If failed.
      */
     public void testQueryArgs() throws Exception {
-        initCache();
-
         String qry = "salary > ? and salary <= ?";
 
         Map<String, String> params = new HashMap<>();
@@ -1469,8 +1470,6 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      * @throws Exception If failed.
      */
     public void testQueryClose() throws Exception {
-        initCache();
-
         String qry = "salary > ? and salary <= ?";
 
         String ret = makePostRequest(F.asMap("cmd", "qryexecute", "type", "Person", "psz", "1", "cacheName", "person",

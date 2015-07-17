@@ -290,6 +290,10 @@ public class RendezvousAffinityFunction implements AffinityFunction, Externaliza
             try {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
 
+                if (ignite == null)
+                    System.out.println("IGNITE IS NULL!!!");
+
+
                 byte[] nodeHashBytes = ignite.configuration().getMarshaller().marshal(nodeHash);
 
                 out.write(U.intToBytes(part), 0, 4); // Avoid IOException.
