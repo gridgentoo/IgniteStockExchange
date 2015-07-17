@@ -101,7 +101,15 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         return buf.toString();
     }
 
-    private String makePostRequest(Map<String, String> params, String urlParameters) throws Exception {
+    /**
+     * Runs post request.
+     *
+     * @param params Url parameters.
+     * @param postParams Post parameters.
+     * @return Request result.
+     * @throws Exception If failed.
+     */
+    private String makePostRequest(Map<String, String> params, String postParams) throws Exception {
         String addr = "http://" + LOC_HOST + ":" + restPort() + "/ignite?";
 
         for (Map.Entry<String, String> e : params.entrySet())
@@ -109,7 +117,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         URL url = new URL(addr);
 
-        byte[] data = urlParameters.getBytes(Charset.forName("UTF-8"));
+        byte[] data = postParams.getBytes(Charset.forName("UTF-8"));
 
         HttpURLConnection conn = (HttpURLConnection)url.openConnection();
 
@@ -130,7 +138,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         conn.setDoOutput(true);
 
         try (PrintStream wr = new PrintStream(conn.getOutputStream())) {
-            wr.print(urlParameters);
+            wr.print(postParams);
             wr.flush();
             wr.close();
         }
