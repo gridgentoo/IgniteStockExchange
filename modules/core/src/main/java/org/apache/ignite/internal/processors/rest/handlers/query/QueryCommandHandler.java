@@ -197,6 +197,9 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                 cur.close();
 
+                qryCurs.remove(req.queryId());
+                curs.remove(req.queryId());
+
                 return new GridRestResponse(true);
             }
             catch (Exception e) {

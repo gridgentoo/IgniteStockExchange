@@ -20,13 +20,19 @@ package org.apache.ignite.internal.processors.rest;
 import net.sf.json.*;
 import org.apache.ignite.*;
 import org.apache.ignite.cache.*;
+import org.apache.ignite.cache.query.*;
+import org.apache.ignite.cache.query.annotations.*;
 import org.apache.ignite.cluster.*;
+import org.apache.ignite.configuration.*;
+import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.util.typedef.*;
+import org.apache.ignite.testframework.*;
 
 import java.io.*;
 import java.net.*;
 import java.nio.charset.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.regex.*;
 
 import static org.apache.ignite.IgniteSystemProperties.*;
@@ -1386,5 +1392,262 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         assertEquals(qryId0, qryId);
     }
 
+    /**
+     * @throws Exception If failed.
+     */
+    public void testQueryArgsPost() throws Exception {
+        initCache();
+
+        String qry = "salary > ? and salary <= ?";
+
+        String ret = makePostRequest(F.asMap("cmd", "qryexecute", "type", "Person", "psz", "10", "cacheName", "person",
+                "qry", URLEncoder.encode(qry)),
+            "{\"arg\": [1000, 2000]}");
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        List items = (List)((Map)json.get("response")).get("items");
+
+        assertEquals(2, items.size());
+
+        for (int i = 0; i < GRID_CNT; ++i) {
+            Map<GridRestCommand, GridRestCommandHandler> handlers =
+                GridTestUtils.getFieldValue(grid(i).context().rest(), "handlers");
+
+            GridRestCommandHandler qryHnd = handlers.get(GridRestCommand.CLOSE_SQL_QUERY);
+
+            ConcurrentHashMap<Long, Iterator> its = GridTestUtils.getFieldValue(qryHnd, "curs");
+
+            assertEquals(0, its.size());
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testQueryArgs() throws Exception {
+        initCache();
+
+        String qry = "salary > ? and salary <= ?";
+
+        Map<String, String> params = new HashMap<>();
+        params.put("cmd", "qryexecute");
+        params.put("type", "Person");
+        params.put("psz", "10");
+        params.put("cacheName", "person");
+        params.put("qry", URLEncoder.encode(qry));
+        params.put("arg1", "1000");
+        params.put("arg2", "2000");
+
+        String ret = content(params);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        List items = (List)((Map)json.get("response")).get("items");
+
+        assertEquals(2, items.size());
+
+        for (int i = 0; i < GRID_CNT; ++i) {
+            Map<GridRestCommand, GridRestCommandHandler> handlers =
+                GridTestUtils.getFieldValue(grid(i).context().rest(), "handlers");
+
+            GridRestCommandHandler qryHnd = handlers.get(GridRestCommand.CLOSE_SQL_QUERY);
+
+            ConcurrentHashMap<Long, Iterator> its = GridTestUtils.getFieldValue(qryHnd, "curs");
+
+            assertEquals(0, its.size());
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testQueryClose() throws Exception {
+        initCache();
+
+        String qry = "salary > ? and salary <= ?";
+
+        String ret = makePostRequest(F.asMap("cmd", "qryexecute", "type", "Person", "psz", "1", "cacheName", "person",
+                "qry", URLEncoder.encode(qry)),
+            "{\"arg\": [1000, 2000]}");
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        List items = (List)((Map)json.get("response")).get("items");
+
+        assertEquals(1, items.size());
+
+        boolean found = false;
+
+        for (int i = 0; i < GRID_CNT; ++i) {
+            Map<GridRestCommand, GridRestCommandHandler> handlers =
+                GridTestUtils.getFieldValue(grid(i).context().rest(), "handlers");
+
+            GridRestCommandHandler qryHnd = handlers.get(GridRestCommand.CLOSE_SQL_QUERY);
+
+            ConcurrentHashMap<Long, Iterator> its = GridTestUtils.getFieldValue(qryHnd, "curs");
+
+            found |= its.size() != 0;
+        }
+
+        assertTrue(found);
+
+        Integer qryId = (Integer)((Map)json.get("response")).get("queryId");
+
+        assertNotNull(qryId);
+
+        ret = content(F.asMap("cmd", "qryclose", "cacheName", "person", "qryId", String.valueOf(qryId)));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        found = false;
+
+        for (int i = 0; i < GRID_CNT; ++i) {
+            Map<GridRestCommand, GridRestCommandHandler> handlers =
+                GridTestUtils.getFieldValue(grid(i).context().rest(), "handlers");
+
+            GridRestCommandHandler qryHnd = handlers.get(GridRestCommand.CLOSE_SQL_QUERY);
+
+            ConcurrentHashMap<Long, Iterator> its = GridTestUtils.getFieldValue(qryHnd, "curs");
+
+            found |= its.size() != 0;
+        }
+
+        assertFalse(found);
+    }
+
     protected abstract String signature() throws Exception;
+
+
+    /**
+     * Init cache.
+     */
+    private void initCache() {
+        CacheConfiguration<Integer, Person> personCacheCfg = new CacheConfiguration<>("person");
+        personCacheCfg.setIndexedTypes(Integer.class, Person.class);
+
+        IgniteCache<Integer, Person> personCache = grid(0).getOrCreateCache(personCacheCfg);
+
+        personCache.clear();
+
+        Person p1 = new Person("John", "Doe", 2000);
+        Person p2 = new Person("Jane", "Doe", 1000);
+        Person p3 = new Person("John", "Smith", 1000);
+        Person p4 = new Person("Jane", "Smith", 2000);
+
+        personCache.put(p1.getId(), p1);
+        personCache.put(p2.getId(), p2);
+        personCache.put(p3.getId(), p3);
+        personCache.put(p4.getId(), p4);
+
+        SqlQuery<Integer, Person> qry = new SqlQuery<>(Person.class, "salary > ? and salary <= ?");
+
+        qry.setArgs(1000, 2000);
+
+        assertEquals(2, personCache.query(qry).getAll().size());
+    }
+
+    /**
+     * Person class.
+     */
+    public static class Person implements Serializable {
+        /** Person id. */
+        private static int PERSON_ID = 0;
+
+        /** Person ID (indexed). */
+        @QuerySqlField(index = true)
+        private Integer id;
+
+        /** First name (not-indexed). */
+        @QuerySqlField
+        private String firstName;
+
+        /** Last name (not indexed). */
+        @QuerySqlField
+        private String lastName;
+
+        /** Salary (indexed). */
+        @QuerySqlField(index = true)
+        private double salary;
+
+        /**
+         * @param firstName First name.
+         * @param lastName Last name.
+         * @param salary Salary.
+         */
+        Person(String firstName, String lastName, double salary) {
+            id = PERSON_ID++;
+
+            this.firstName = firstName;
+            this.lastName = lastName;
+            this.salary = salary;
+        }
+
+        /**
+         * @param firstName First name.
+         */
+        public void setFirstName(String firstName) {
+            this.firstName = firstName;
+        }
+
+        /**
+         * @return First name.
+         */
+        public String getFirstName() {
+            return firstName;
+        }
+
+        /**
+         * @param lastName Last name.
+         */
+        public void setLastName(String lastName) {
+            this.lastName = lastName;
+        }
+
+        /**
+         * @return Last name.
+         */
+        public String getLastName() {
+            return lastName;
+        }
+
+        /**
+         * @param id Id.
+         */
+        public void setId(Integer id) {
+            this.id = id;
+        }
+
+        /**
+         * @param salary Salary.
+         */
+        public void setSalary(double salary) {
+            this.salary = salary;
+        }
+
+        /**
+         * @return Salary.
+         */
+        public double getSalary() {
+
+            return salary;
+        }
+
+        /**
+         * @return Id.
+         */
+        public Integer getId() {
+            return id;
+        }
+    }
 }
