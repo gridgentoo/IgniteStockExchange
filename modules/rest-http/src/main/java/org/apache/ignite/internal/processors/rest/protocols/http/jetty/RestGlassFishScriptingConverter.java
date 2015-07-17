@@ -26,7 +26,7 @@ import java.util.*;
 /**
  * Converter for glassfish objects.
  */
-public class GlassFishScriptingConverter extends IgniteScriptingConverter {
+public class RestGlassFishScriptingConverter extends IgniteScriptingConverter {
     /** {@inheritDoc} */
     @Override public Object toJavaObject(Object o) {
         if (o == null)
