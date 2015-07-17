@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import javax.json.stream.*;
 
 /**
  * Json location implementation.
  */
-public class JsonLocationImpl implements JsonLocation {
+public class IgniteJsonLocation implements JsonLocation {
     /** Column number. */
     private final long col;
 
@@ -37,7 +37,7 @@ public class JsonLocationImpl implements JsonLocation {
      * @param col Column number.
      * @param streamOff Stream offset.
      */
-    JsonLocationImpl(long line, long col, long streamOff) {
+    IgniteJsonLocation(long line, long col, long streamOff) {
         this.line = line;
         this.col = col;
         this.off = streamOff;

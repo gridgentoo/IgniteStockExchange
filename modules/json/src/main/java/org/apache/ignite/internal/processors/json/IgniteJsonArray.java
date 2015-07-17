@@ -15,28 +15,29 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import javax.json.*;
+import java.io.*;
 import java.util.*;
 
 /**
  * Implementation of JsonArray
  */
-public class JsonArrayImpl extends ArrayList<JsonValue> implements JsonArray {
+public class IgniteJsonArray extends ArrayList<JsonValue> implements JsonArray, Serializable {
     /** Values for getValueAs. */
     private List<JsonValue> val;
 
     /**
      * @param val List json values.
      */
-    public JsonArrayImpl(List<JsonValue> val) {
+    public IgniteJsonArray(List<JsonValue> val) {
         super(val);
     }
 
     /** {@inheritDoc} */
-    @Override public JsonObject getJsonObject(int idx) {
-        return (JsonObject)get(idx);
+    @Override public IgniteJsonObject getJsonObject(int idx) {
+        return (IgniteJsonObject)get(idx);
     }
 
     /** {@inheritDoc} */

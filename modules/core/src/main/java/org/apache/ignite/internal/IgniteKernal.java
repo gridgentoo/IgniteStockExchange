@@ -786,6 +786,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
                 IgniteComponentType.HADOOP.createIfInClassPath(ctx, cfg.getHadoopConfiguration() != null)));
             startProcessor(new GridServiceProcessor(ctx));
             startProcessor(new DataStructuresProcessor(ctx));
+            startProcessor((GridProcessor)IgniteComponentType.JSON.createIfInClassPath(ctx, false));
 
             // Start plugins.
             for (PluginProvider provider : ctx.plugins().allProviders()) {

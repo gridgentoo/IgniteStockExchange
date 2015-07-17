@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.ignite;
+package org.apache.ignite.internal.processors.json;
 
 import org.apache.ignite.internal.util.typedef.internal.*;
 
@@ -26,7 +26,7 @@ import java.util.*;
 /**
  * Json array builder.
  */
-public class JsonArrayBuilderImpl implements JsonArrayBuilder {
+public class IgniteJsonArrayBuilder implements JsonArrayBuilder {
     /** Json array list. */
     private List<JsonValue> jsonList = new ArrayList<>();
 
@@ -43,7 +43,7 @@ public class JsonArrayBuilderImpl implements JsonArrayBuilder {
     @Override public JsonArrayBuilder add(String val) {
         A.notNull(val, "value");
 
-        jsonList.add(new JsonStringImpl(val));
+        jsonList.add(new IgniteJsonString(val));
 
         return this;
     }
@@ -52,7 +52,7 @@ public class JsonArrayBuilderImpl implements JsonArrayBuilder {
     @Override public JsonArrayBuilder add(BigDecimal val) {
         A.notNull(val, "value");
 
-        jsonList.add(new JsonNumberImpl(val));
+        jsonList.add(new IgniteJsonNumber(val));
 
         return this;
     }
@@ -62,7 +62,7 @@ public class JsonArrayBuilderImpl implements JsonArrayBuilder {
         A.notNull(val, "value");
 
         //TODO: optimize for value
-        jsonList.add(new JsonNumberImpl(new BigDecimal(val)));
+        jsonList.add(new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
@@ -70,7 +70,7 @@ public class JsonArrayBuilderImpl implements JsonArrayBuilder {
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(int val) {
         //TODO: optimize for value
-        jsonList.add(new JsonNumberImpl(new BigDecimal(val)));
+        jsonList.add(new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
@@ -78,7 +78,7 @@ public class JsonArrayBuilderImpl implements JsonArrayBuilder {
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(long val) {
         //TODO: optimize for value
-        jsonList.add(new JsonNumberImpl(new BigDecimal(val)));
+        jsonList.add(new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
@@ -86,7 +86,7 @@ public class JsonArrayBuilderImpl implements JsonArrayBuilder {
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(double val) {
         //TODO: optimize for value
-        jsonList.add(new JsonNumberImpl(new BigDecimal(val)));
+        jsonList.add(new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
@@ -125,6 +125,6 @@ public class JsonArrayBuilderImpl implements JsonArrayBuilder {
 
     /** {@inheritDoc} */
     @Override public JsonArray build() {
-        return new JsonArrayImpl(jsonList);
+        return new IgniteJsonArray(jsonList);
     }
 }

@@ -20,6 +20,7 @@ package org.apache.ignite.internal;
 import org.apache.ignite.*;
 import org.apache.ignite.cluster.*;
 import org.apache.ignite.configuration.*;
+import org.apache.ignite.internal.processors.json.*;
 import org.apache.ignite.internal.managers.checkpoint.*;
 import org.apache.ignite.internal.managers.collision.*;
 import org.apache.ignite.internal.managers.communication.*;
@@ -245,6 +246,10 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
     /** */
     @GridToStringExclude
     private ClusterProcessor cluster;
+
+    /** */
+    @GridToStringExclude
+    private IgniteJsonProcessor json;
 
     /** */
     @GridToStringExclude
@@ -491,7 +496,9 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
         else if (comp instanceof ClusterProcessor)
             cluster = (ClusterProcessor)comp;
         else if (comp instanceof IgniteScriptingProcessor)
-            scriptProc = (IgniteScriptingProcessor) comp;
+            scriptProc = (IgniteScriptingProcessor)comp;
+        else if (comp instanceof IgniteJsonProcessor)
+            json = (IgniteJsonProcessor)comp;
         else if (!(comp instanceof DiscoveryNodeValidationProcessor))
             assert (comp instanceof GridPluginComponent) : "Unknown manager class: " + comp.getClass();
 
@@ -916,6 +923,11 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
     /** {@inheritDoc} */
     @Override public ClusterProcessor cluster() {
         return cluster;
+    }
+
+    /** {@inheritDoc} */
+    @Override public IgniteJsonProcessor json() {
+        return json;
     }
 
     /** {@inheritDoc} */
