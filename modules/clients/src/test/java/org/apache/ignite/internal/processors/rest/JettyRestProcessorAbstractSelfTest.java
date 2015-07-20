@@ -1125,7 +1125,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
             GridRestCommandHandler qryHnd = handlers.get(GridRestCommand.CLOSE_SQL_QUERY);
 
-            ConcurrentHashMap<Long, Iterator> its = GridTestUtils.getFieldValue(qryHnd, "curs");
+            ConcurrentHashMap<Long, Iterator> its = GridTestUtils.getFieldValue(qryHnd, "qryCurs");
 
             found |= its.size() != 0;
         }
