@@ -199,6 +199,18 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     }
 
     /**
+     * @param err Error.
+     * @return Regex pattern for JSON.
+     */
+    private String errorPattern(String err) {
+        return "\\{" +
+            "\\\"error\\\":\\\"" + err + "\\\"\\," +
+            "\\\"response\\\":null\\," +
+            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"successStatus\\\":" + 1 + "\\}";
+    }
+
+    /**
      * @param res Response.
      * @param success Success flag.
      * @return Regex pattern for JSON.
@@ -486,7 +498,19 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     /**
      * @throws Exception If failed.
      */
-    public void testContainesKey() throws Exception {
+    public void testIncorrectPutPost() throws Exception {
+        String val = "{\"key\":\"key0\"}";
+        String ret = makePostRequest(F.asMap("cmd", "put"), val);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+        jsonEquals(ret, errorPattern("Failed to find mandatory parameter in request: val"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testContainsKey() throws Exception {
         grid(0).cache(null).put("key0", "val0");
 
         String ret = content(F.asMap("cmd", "containskey", "key", "key0"));
@@ -1593,24 +1617,10 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         }
 
         /**
-         * @param firstName First name.
-         */
-        public void setFirstName(String firstName) {
-            this.firstName = firstName;
-        }
-
-        /**
          * @return First name.
          */
         public String getFirstName() {
             return firstName;
-        }
-
-        /**
-         * @param lastName Last name.
-         */
-        public void setLastName(String lastName) {
-            this.lastName = lastName;
         }
 
         /**
@@ -1619,21 +1629,6 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         public String getLastName() {
             return lastName;
         }
-
-        /**
-         * @param id Id.
-         */
-        public void setId(Integer id) {
-            this.id = id;
-        }
-
-        /**
-         * @param salary Salary.
-         */
-        public void setSalary(double salary) {
-            this.salary = salary;
-        }
-
         /**
          * @return Salary.
          */
