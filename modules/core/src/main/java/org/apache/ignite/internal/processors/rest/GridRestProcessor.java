@@ -581,6 +581,14 @@ public class GridRestProcessor extends GridProcessorAdapter {
             case QUIT:
             case ATOMIC_INCREMENT:
             case ATOMIC_DECREMENT:
+            case NAME:
+            case LOG:
+            case GET_OR_CREATE_CACHE:
+            case DESTROY_CACHE:
+            case EXECUTE_SQL_QUERY:
+            case EXECUTE_SQL_FIELDS_QUERY:
+            case CLOSE_SQL_QUERY:
+            case FETCH_SQL_QUERY:
                 break;
 
             default:
