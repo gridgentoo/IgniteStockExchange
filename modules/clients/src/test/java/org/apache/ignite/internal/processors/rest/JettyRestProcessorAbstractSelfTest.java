@@ -328,7 +328,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
         jsonEquals(ret,
             // getKey[12] is used since the order is not determined.
             cacheBulkPattern("\\{\\\"getKey[12]\\\":\\\"getVal[12]\\\"\\,\\\"getKey[12]\\\":\\\"getVal[12]\\\"\\}",
-            true));
+                true));
     }
 
     /**
@@ -1024,6 +1024,56 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     /**
      * @throws Exception If failed.
      */
+    public void testQuery() throws Exception {
+        grid(0).cache(null).put("1", "1");
+        grid(0).cache(null).put("2", "2");
+        grid(0).cache(null).put("3", "3");
+
+        Map<String, String> params = new HashMap<>();
+        params.put("cmd", "qryexecute");
+        params.put("type", "String");
+        params.put("psz", "1");
+        params.put("qry", URLEncoder.encode("select * from String"));
+
+        String ret = content(params);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        Integer qryId = (Integer)((Map)json.get("response")).get("queryId");
+
+        assertNotNull(qryId);
+
+        ret = content(F.asMap("cmd", "qryfetch", "psz", "1", "qryId", String.valueOf(qryId)));
+
+        json = JSONObject.fromObject(ret);
+
+        Integer qryId0 = (Integer)((Map)json.get("response")).get("queryId");
+
+        Boolean last = (Boolean)((Map)json.get("response")).get("last");
+
+        assertEquals(qryId0, qryId);
+        assertFalse(last);
+
+        ret = content(F.asMap("cmd", "qryfetch", "psz", "1", "qryId", String.valueOf(qryId)));
+
+        json = JSONObject.fromObject(ret);
+
+        qryId0 = (Integer)((Map)json.get("response")).get("queryId");
+
+        last = (Boolean)((Map)json.get("response")).get("last");
+
+        assertEquals(qryId0, qryId);
+        assertTrue(last);
+
+        assertFalse(queryCursorFound());
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testQueryClose() throws Exception {
         String qry = "salary > ? and salary <= ?";
 
@@ -1047,6 +1097,26 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertEquals(1, items.size());
 
+        assertTrue(queryCursorFound());
+
+        Integer qryId = (Integer)((Map)json.get("response")).get("queryId");
+
+        assertNotNull(qryId);
+
+        ret = content(F.asMap("cmd", "qryclose", "cacheName", "person", "qryId", String.valueOf(qryId)));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        assertFalse(queryCursorFound());
+    }
+
+    protected abstract String signature() throws Exception;
+
+    /**
+     * @return True if any query cursor is available.
+     */
+    private boolean queryCursorFound() {
         boolean found = false;
 
         for (int i = 0; i < GRID_CNT; ++i) {
@@ -1060,34 +1130,8 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
             found |= its.size() != 0;
         }
 
-        assertTrue(found);
-
-        Integer qryId = (Integer)((Map)json.get("response")).get("queryId");
-
-        assertNotNull(qryId);
-
-        ret = content(F.asMap("cmd", "qryclose", "cacheName", "person", "qryId", String.valueOf(qryId)));
-
-        assertNotNull(ret);
-        assertTrue(!ret.isEmpty());
-
-        found = false;
-
-        for (int i = 0; i < GRID_CNT; ++i) {
-            Map<GridRestCommand, GridRestCommandHandler> handlers =
-                GridTestUtils.getFieldValue(grid(i).context().rest(), "handlers");
-
-            GridRestCommandHandler qryHnd = handlers.get(GridRestCommand.CLOSE_SQL_QUERY);
-
-            ConcurrentHashMap<Long, Iterator> its = GridTestUtils.getFieldValue(qryHnd, "curs");
-
-            found |= its.size() != 0;
-        }
-
-        assertFalse(found);
+        return found;
     }
-
-    protected abstract String signature() throws Exception;
 
     /**
      * Init cache.

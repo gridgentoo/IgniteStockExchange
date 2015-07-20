@@ -113,7 +113,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
          * @param curs Queries cursors.
          */
         public ExecuteQueryCallable(GridKernalContext ctx, RestSqlQueryRequest req,
-                                    ConcurrentHashMap<Long, Iterator> curs, ConcurrentHashMap<Long, QueryCursor> qryCurs) {
+            ConcurrentHashMap<Long, Iterator> curs, ConcurrentHashMap<Long, QueryCursor> qryCurs) {
             this.ctx = ctx;
             this.req = req;
             this.curs = curs;
@@ -122,6 +122,8 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
         /** {@inheritDoc} */
         @Override public GridRestResponse call() throws Exception {
+            long qryId = qryIdGen.getAndIncrement();
+
             try {
                 Query qry;
 
@@ -140,13 +142,11 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                 if (cache == null)
                     return new GridRestResponse(GridRestResponse.STATUS_FAILED,
-                        "No cache with name. [cacheName=" + req.cacheName() + "]");
+                        "No cache with name [cacheName=" + req.cacheName() + "]");
 
                 QueryCursor qryCur = cache.query(qry);
 
                 Iterator cur = qryCur.iterator();
-
-                long qryId = qryIdGen.getAndIncrement();
 
                 qryCurs.put(qryId, qryCur);
                 curs.put(qryId, cur);
@@ -156,6 +156,9 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
                 return new GridRestResponse(res);
             }
             catch (Exception e) {
+                qryCurs.remove(qryId);
+                curs.remove(qryId);
+
                 return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
             }
         }
@@ -179,8 +182,8 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
          * @param curs Queries cursors.
          */
         public CloseQueryCallable(RestSqlQueryRequest req,
-                                  ConcurrentHashMap<Long, Iterator> curs,
-                                  ConcurrentHashMap<Long, QueryCursor> qryCurs) {
+            ConcurrentHashMap<Long, Iterator> curs,
+            ConcurrentHashMap<Long, QueryCursor> qryCurs) {
             this.req = req;
             this.curs = curs;
             this.qryCurs = qryCurs;
@@ -229,7 +232,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
          * @param curs Queries cursors.
          */
         public FetchQueryCallable(RestSqlQueryRequest req, ConcurrentHashMap<Long, Iterator> curs,
-                                  ConcurrentHashMap<Long, QueryCursor> qryCurs) {
+            ConcurrentHashMap<Long, QueryCursor> qryCurs) {
             this.req = req;
             this.curs = curs;
             this.qryCurs = qryCurs;
@@ -266,8 +269,8 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
      * @return Query result with items.
      */
     private static CacheQueryResult createQueryResult(ConcurrentHashMap<Long, QueryCursor> qryCurs,
-                                                      ConcurrentHashMap<Long, Iterator> curs, Iterator cur,
-                                                      RestSqlQueryRequest req, Long qryId) {
+        ConcurrentHashMap<Long, Iterator> curs, Iterator cur,
+        RestSqlQueryRequest req, Long qryId) {
         CacheQueryResult res = new CacheQueryResult();
 
         List<Object> items = new ArrayList<>();
