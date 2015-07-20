@@ -439,8 +439,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         assert cfg != null;
 
         return F.transform(cfg.getUserAttributes().entrySet(), new C1<Map.Entry<String, ?>, String>() {
-            @Override
-            public String apply(Map.Entry<String, ?> e) {
+            @Override public String apply(Map.Entry<String, ?> e) {
                 return e.getKey() + ", " + e.getValue().toString();
             }
         });
@@ -2465,7 +2464,6 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
             unguard();
         }
     }
-
 
     /** {@inheritDoc} */
     @Override public <K, V> IgniteCache<K, V> getOrCreateCache(String cacheName) {

@@ -172,11 +172,11 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 case GET_OR_CREATE_CACHE: {
                     fut = new GetOrCreateCacheClosure(cacheName).apply(ctx).chain(
                         new CX1<IgniteInternalFuture<?>, GridRestResponse>() {
-                        @Override public GridRestResponse applyx(IgniteInternalFuture<?> f)
-                            throws IgniteCheckedException {
-                            return new GridRestResponse(f.get());
-                        }
-                    });
+                            @Override public GridRestResponse applyx(IgniteInternalFuture<?> f)
+                                throws IgniteCheckedException {
+                                return new GridRestResponse(f.get());
+                            }
+                        });
 
                     break;
                 }
@@ -1353,7 +1353,12 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
      * Destroy cache callable.
      */
     private static class DestroyCacheCommand extends GetOrCreateCacheClosure {
+        /** */
+        private static final long serialVersionUID = 0L;
 
+        /**
+         * @param cacheName Cache name.
+         */
         public DestroyCacheCommand(String cacheName) {
             super(cacheName);
         }
@@ -1369,6 +1374,8 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
      */
     private static class GetOrCreateCacheClosure implements
         IgniteClosure<GridKernalContext, IgniteInternalFuture<?>> {
+        /** */
+        private static final long serialVersionUID = 0L;
 
         /** Cache name. */
         protected String cacheName;
