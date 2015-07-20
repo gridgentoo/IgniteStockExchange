@@ -26,7 +26,6 @@ import org.apache.ignite.cluster.*;
 import org.apache.ignite.configuration.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.testframework.*;
 
 import java.io.*;
@@ -1550,7 +1549,6 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
     }
 
     protected abstract String signature() throws Exception;
-
 
     /**
      * Init cache.

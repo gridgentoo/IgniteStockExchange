@@ -25,7 +25,6 @@ import org.apache.ignite.internal.*;
 import org.apache.ignite.internal.processors.cache.*;
 import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
 import org.jetbrains.annotations.*;
 import org.jsr166.*;
 
@@ -185,13 +184,6 @@ public class GridAffinityAssignmentCache {
 
             Collections.sort(sorted, GridNodeOrderComparator.INSTANCE);
         }
-
-        /*try {
-            ctx.grid().context().resource().injectGeneric(aff);
-        }
-        catch (IgniteCheckedException e) {
-            U.convertException(e);
-        }*/
 
         List<List<ClusterNode>> prevAssignment = prev == null ? null : prev.assignment();
 
