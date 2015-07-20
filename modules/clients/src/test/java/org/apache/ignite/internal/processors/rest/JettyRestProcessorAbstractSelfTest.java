@@ -61,7 +61,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
     /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
-        grid(0).cache(null).clear();
+        grid(0).cache(null).removeAll();
     }
 
     /** {@inheritDoc} */
@@ -1009,16 +1009,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertEquals(2, items.size());
 
-        for (int i = 0; i < GRID_CNT; ++i) {
-            Map<GridRestCommand, GridRestCommandHandler> handlers =
-                GridTestUtils.getFieldValue(grid(i).context().rest(), "handlers");
-
-            GridRestCommandHandler qryHnd = handlers.get(GridRestCommand.CLOSE_SQL_QUERY);
-
-            ConcurrentHashMap<Long, Iterator> its = GridTestUtils.getFieldValue(qryHnd, "curs");
-
-            assertEquals(0, its.size());
-        }
+        assertFalse(queryCursorFound());
     }
 
     /**
@@ -1067,6 +1058,32 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
 
         assertEquals(qryId0, qryId);
         assertTrue(last);
+
+        assertFalse(queryCursorFound());
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testSqlFieldsQuery() throws Exception {
+        String qry = "select concat(firstName, ' ', lastName) from Person";
+
+        Map<String, String> params = new HashMap<>();
+        params.put("cmd", "qryfieldsexecute");
+        params.put("psz", "10");
+        params.put("cacheName", "person");
+        params.put("qry", URLEncoder.encode(qry));
+
+        String ret = content(params);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        List items = (List)((Map)json.get("response")).get("items");
+
+        assertEquals(4, items.size());
 
         assertFalse(queryCursorFound());
     }
