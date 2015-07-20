@@ -18,7 +18,6 @@
 package org.apache.ignite.internal.util.offheap.unsafe;
 
 import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.testframework.junits.common.*;
 
 import java.util.*;
@@ -290,7 +289,7 @@ public class GridOffheapSnapTreeSelfTest extends GridCommonAbstractTest {
         @Override public void decrementRefCount() {
             int res = refs.decrementAndGet();
 
-            assert res >= 0 : D.dumpWithStop() + ptr;
+            assert res >= 0 : ptr;
         }
 
         @SuppressWarnings("SubtractionInCompareTo")

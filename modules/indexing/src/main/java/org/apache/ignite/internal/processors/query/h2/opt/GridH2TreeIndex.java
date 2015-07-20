@@ -147,6 +147,26 @@ public class GridH2TreeIndex extends GridH2IndexBase implements Comparator<GridS
             U.closeQuiet((Closeable)s);
     }
 
+    /** {@inheritDoc} */
+    @Override public String validate() {
+        Iterator<GridH2Row> iter = rows();
+
+        if (iter.hasNext()) {
+            GridH2Row prev = iter.next();
+
+            while (iter.hasNext()) {
+                GridH2Row next = iter.next();
+
+                if (compareRows(prev, next) >= 0)
+                    return "Wrong order: " + prev + " > " + next;
+
+                prev = next;
+            }
+        }
+
+        return "OK";
+    }
+
     /**
      * @return Snapshot for current thread if there is one.
      */

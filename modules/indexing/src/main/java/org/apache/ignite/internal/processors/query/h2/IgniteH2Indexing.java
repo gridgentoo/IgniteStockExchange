@@ -2102,7 +2102,7 @@ public class IgniteH2Indexing implements GridQueryIndexing {
                     return ValueTime.get((Time)obj);
                 case Value.TIMESTAMP:
                     if (obj instanceof java.util.Date && !(obj instanceof Timestamp))
-                        obj = new Timestamp(((java.util.Date) obj).getTime());
+                        obj = new Timestamp(((java.util.Date)obj).getTime());
 
                     return GridH2Utils.toValueTimestamp((Timestamp)obj);
                 case Value.DECIMAL:
@@ -2134,11 +2134,13 @@ public class IgniteH2Indexing implements GridQueryIndexing {
         }
 
         /** {@inheritDoc} */
-        @Override public GridH2Row createRow(CacheObject key, @Nullable CacheObject val, long expirationTime)
-            throws IgniteCheckedException {
+        @Override public GridH2Row createRow(CacheObject key, @Nullable CacheObject val, long expirationTime,
+            boolean search) throws IgniteCheckedException {
             try {
-                if (val == null) // Only can happen for remove operation, can create simple search row.
-                    return new GridH2Row(wrap(key, keyType), null);
+                assert val != null || search : "Only can happen for remove or swap operations.";
+
+                if (search)
+                    return new GridH2Row(wrap(key, keyType), val == null ? null : wrap(val, valType));
 
                 return schema.offheap == null ?
                     new GridH2KeyValueRowOnheap(this, key, keyType, val, valType, expirationTime) :

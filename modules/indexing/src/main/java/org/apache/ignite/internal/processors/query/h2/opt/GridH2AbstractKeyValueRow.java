@@ -19,7 +19,9 @@ package org.apache.ignite.internal.processors.query.h2.opt;
 
 import org.apache.ignite.*;
 import org.apache.ignite.internal.processors.query.*;
+import org.apache.ignite.internal.util.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
+import org.apache.ignite.lang.*;
 import org.h2.message.*;
 import org.h2.result.*;
 import org.h2.value.*;
@@ -102,6 +104,8 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
      * @throws IgniteCheckedException If failed.
      */
     public synchronized void onSwap() throws IgniteCheckedException {
+        D.debug("onSwap", getValue(KEY_COL).getInt());
+
         setValue(VAL_COL, null);
     }
 
@@ -113,6 +117,8 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
      * @throws IgniteCheckedException If failed.
      */
     public synchronized void onUnswap(Object val, boolean beforeRmv) throws IgniteCheckedException {
+        D.debug("onUnswap", getValue(KEY_COL).getInt(), val, val.getClass());
+
         setValue(VAL_COL, desc.wrap(val, desc.valueType()));
 
         notifyAll();
@@ -176,9 +182,11 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
     /** {@inheritDoc} */
     @Override public Value getValue(int col) {
         if (col < DEFAULT_COLUMNS_COUNT) {
-            Value v = peekValue(col);
+            Value v = null;
 
             if (col == VAL_COL) {
+                v = syncValue(0);
+
                 long start = 0;
                 int attempt = 0;
 
@@ -194,22 +202,46 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
                         return v;
                     }
 
-                    Object k = getValue(KEY_COL).getObject();
+                    final Object k = getValue(KEY_COL).getObject();
+
+                    final Integer kx = getValue(KEY_COL).getInt();
 
                     try {
                         Object valObj = desc.readFromSwap(k);
 
                         if (valObj != null) {
-                            Value upd = desc.wrap(valObj, desc.valueType());
+                            // Even if valObj was found in swap we still have to recheck if this row was concurrently
+                            // unswapped because we can racy read wrong value from swap here.
+                            if ((v = syncValue(0)) == null && (v = getOffheapValue(VAL_COL)) == null) {
+                                try {
+                                    Value upd = desc.wrap(valObj, desc.valueType());
 
-                            v = updateWeakValue(upd);
+                                    v = updateWeakValue(upd);
 
-                            return v == null ? upd : v;
+                                    return v == null ? upd : v;
+                                }
+                                catch (ClassCastException e) {
+                                    D.dumpWithStop(new IgnitePredicate<GridDebug.Item>() {
+                                        @Override public boolean apply(GridDebug.Item item) {
+                                            Integer k0 = null;
+
+                                            try {
+                                                k0 = desc.wrap(item.data[1], Value.INT).getInt();
+                                            }
+                                            catch (IgniteCheckedException e1) {
+                                                e1.printStackTrace();
+                                            }
+
+                                            return kx.equals(k0);
+                                        }
+                                    });
+
+                                    throw new IllegalStateException(e);
+                                }
+                            }
                         }
-                        else {
-                            // If nothing found in swap then we should be already unswapped.
+                        else // If nothing found in swap then we should be already unswapped.
                             v = syncValue(attempt);
-                        }
                     }
                     catch (IgniteCheckedException e) {
                         throw new IgniteException(e);
@@ -225,20 +257,22 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
                 }
             }
 
-            if (v == null) {
-                assert col == KEY_COL : col;
+            if (col == KEY_COL) {
+                v = peekValue(KEY_COL);
 
-                v = getOffheapValue(KEY_COL);
+                if (v == null) {
+                    v = getOffheapValue(KEY_COL);
 
-                assert v != null : v;
+                    assert v != null : v;
 
-                setValue(KEY_COL, v);
+                    setValue(KEY_COL, v);
 
-                if (peekValue(VAL_COL) == null)
-                    cache();
+                    if (peekValue(VAL_COL) == null)
+                        cache();
+                }
             }
 
-            assert !(v instanceof WeakValue) : v;
+            assert v != null;
 
             return v;
         }

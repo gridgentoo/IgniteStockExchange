@@ -39,10 +39,11 @@ public interface GridH2RowDescriptor extends GridOffHeapSmartPointerFactory<Grid
      * @param key Key.
      * @param val Value.
      * @param expirationTime Expiration time in millis.
+     * @param search Create search row for remove or swap.
      * @return Row.
      * @throws IgniteCheckedException If failed.
      */
-    public GridH2Row createRow(CacheObject key, @Nullable CacheObject val, long expirationTime)
+    public GridH2Row createRow(CacheObject key, @Nullable CacheObject val, long expirationTime, boolean search)
         throws IgniteCheckedException;
 
     /**

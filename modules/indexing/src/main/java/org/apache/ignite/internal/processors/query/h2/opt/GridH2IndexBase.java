@@ -107,6 +107,13 @@ public abstract class GridH2IndexBase extends BaseIndex {
     }
 
     /**
+     * @return Validation message for index.
+     */
+    public String validate() {
+        return "???";
+    }
+
+    /**
      * Filters rows from expired ones and using predicate.
      *
      * @param iter Iterator over rows.

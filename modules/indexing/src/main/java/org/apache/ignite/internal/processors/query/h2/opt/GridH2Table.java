@@ -19,7 +19,10 @@ package org.apache.ignite.internal.processors.query.h2.opt;
 
 import org.apache.ignite.*;
 import org.apache.ignite.internal.processors.cache.*;
+import org.apache.ignite.internal.util.*;
 import org.apache.ignite.internal.util.offheap.unsafe.*;
+import org.apache.ignite.internal.util.typedef.internal.*;
+import org.apache.ignite.lang.*;
 import org.h2.api.*;
 import org.h2.command.ddl.*;
 import org.h2.engine.*;
@@ -36,6 +39,8 @@ import java.sql.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
+
+import static org.apache.ignite.internal.processors.query.h2.opt.GridH2AbstractKeyValueRow.*;
 
 /**
  * H2 Table implementation.
@@ -140,7 +145,7 @@ public class GridH2Table extends TableBase {
 
         assert desc != null;
 
-        GridH2Row searchRow = desc.createRow(key, null, 0);
+        GridH2Row searchRow = desc.createRow(key, null, 0, true);
 
         GridUnsafeMemory mem = desc.memory();
 
@@ -151,6 +156,8 @@ public class GridH2Table extends TableBase {
 
         try {
             GridH2AbstractKeyValueRow row = (GridH2AbstractKeyValueRow)pk.findOne(searchRow);
+
+//            D.debug("onSwapUnswap", key, getName(), row == null, val);
 
             if (row == null)
                 return false;
@@ -305,7 +312,9 @@ public class GridH2Table extends TableBase {
         throws IgniteCheckedException {
         assert desc != null;
 
-        GridH2Row row = desc.createRow(key, val, expirationTime);
+        D.debug("update", key, getName(), rmv, val);
+
+        GridH2Row row = desc.createRow(key, val, expirationTime, rmv);
 
         return doUpdate(row, rmv);
     }
@@ -380,20 +389,32 @@ public class GridH2Table extends TableBase {
                 //  index(1) is PK, get full row from there (search row here contains only key but no other columns).
                 GridH2Row old = pk.remove(row);
 
-                if (old instanceof GridH2AbstractKeyValueRow) { // Unswap value.
-                    Value v = row.getValue(GridH2AbstractKeyValueRow.VAL_COL);
-
-                    if (v != null)
-                        ((GridH2AbstractKeyValueRow)old).onUnswap(v.getObject(), true);
-                }
-
                 if (old != null) {
+                    if (old instanceof GridH2AbstractKeyValueRow) { // Unswap value.
+                        Value v = row.getValue(VAL_COL);
+
+                        if (v != null)
+                            ((GridH2AbstractKeyValueRow)old).onUnswap(v.getObject(), true);
+                    }
+
                     // Remove row from all indexes.
                     // Start from 2 because 0 - Scan (don't need to update), 1 - PK (already updated).
                     for (int i = 2, len = idxs.size(); i < len; i++) {
                         Row res = index(i).remove(old);
 
-                        assert eq(pk, res, old): "\n" + old + "\n" + res;
+                        assert eq(pk, res, old): "\n" + old + "\n" + res + "\n" + i + " -> " + index(i).getName() +
+                            " -> " + index(i).validate() + D.dumpWithStop(new IgnitePredicate<GridDebug.Item>() {
+                            @Override public boolean apply(GridDebug.Item item) {
+                                try {
+                                    return row.getValue(KEY_COL).getInt() == desc.wrap(item.data[1], Value.INT).getInt();
+                                }
+                                catch (IgniteCheckedException e1) {
+                                    e1.printStackTrace();
+                                }
+
+                                return false;
+                            }
+                        });
                     }
                 }
                 else

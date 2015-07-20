@@ -32,13 +32,14 @@ import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.spi.discovery.tcp.*;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.spi.swapspace.file.*;
+import org.apache.ignite.spi.swapspace.inmemory.*;
 import org.apache.ignite.testframework.junits.common.*;
 import org.jetbrains.annotations.*;
 
 import javax.cache.*;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 import static org.apache.ignite.cache.CacheAtomicityMode.*;
@@ -65,7 +66,10 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
     private static AtomicInteger idxUnswapCnt = new AtomicInteger();
 
     /** */
-    private static final long DURATION = 30 * 1000;
+    private static final long DURATION = 180 * 1000;
+
+    /** */
+    private static List<GridTestSwapSpaceSpi> swaps = new CopyOnWriteArrayList<>();
 
     /** Don't start grid by default. */
     public IgniteCacheQueryMultiThreadedSelfTest() {
@@ -82,7 +86,11 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
 
         cfg.setDiscoverySpi(disco);
 
-        cfg.setSwapSpaceSpi(new FileSwapSpaceSpi());
+        GridTestSwapSpaceSpi swapSpi = new GridTestSwapSpaceSpi();
+
+        swaps.add(swapSpi);
+
+        cfg.setSwapSpaceSpi(swapSpi);
 
         cfg.setCacheConfiguration(cacheConfiguration());
 
@@ -203,12 +211,20 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
                     c.remove(e.getKey());
             }
 
-            U.sleep(5000);
+            U.sleep(500);
 
             assertEquals("Swap keys: " + c.size(CachePeekMode.SWAP), 0, c.size(CachePeekMode.SWAP));
             assertEquals(0, c.size(CachePeekMode.OFFHEAP));
             assertEquals(0, c.size(CachePeekMode.PRIMARY));
             assertEquals(0, c.size());
+            assertEquals(0, swaps.get(i).size());
+
+            if (offheapEnabled()) {
+                String swapSpace = CU.swapSpaceName(((IgniteCacheProxy)c).context());
+
+                assertEquals(0, grid(i).context().offheap().allocatedSize(swapSpace));
+                assertEquals(0, grid(i).context().offheap().entriesCount(swapSpace));
+            }
         }
     }
 
@@ -328,8 +344,8 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
             return;
 
         assertEquals(0, g.cache(null).localSize());
-        assertEquals(0, c1.query(new SqlQuery(String.class, "1 = 1")).getAll().size());
-        assertEquals(0, c.query(new SqlQuery(Long.class, "1 = 1")).getAll().size());
+        assertEquals(0, c1.query(new SqlQuery<>(String.class, "1 = 1")).getAll().size());
+        assertEquals(0, c.query(new SqlQuery<>(Long.class, "1 = 1")).getAll().size());
 
         Random rnd = new Random();
 
@@ -390,7 +406,7 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
      */
     @SuppressWarnings({"TooBroadScope"})
     public void testMultiThreadedSwapUnswapLongString() throws Exception {
-        int threadCnt = 50;
+        int threadCnt = 100;
         final int keyCnt = 2000;
         final int valCnt = 10000;
 

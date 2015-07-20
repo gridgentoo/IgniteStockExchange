@@ -50,6 +50,18 @@ public class GridTestSwapSpaceSpi extends IgniteSpiAdapter implements SwapSpaceS
         // No-op.
     }
 
+    /**
+     * @return Size of all spaces.
+     */
+    public int size() {
+        int size = 0;
+
+        for (Space space : spaces.values())
+            size += space.size();
+
+        return size;
+    }
+
     /** {@inheritDoc} */
     @Override public void clear(@Nullable String spaceName) throws IgniteSpiException {
         Space space = space(spaceName);

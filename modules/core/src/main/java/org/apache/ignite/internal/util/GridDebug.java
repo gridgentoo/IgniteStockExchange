@@ -21,13 +21,13 @@ import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
 import org.jetbrains.annotations.*;
+import org.jsr166.*;
 
 import java.io.*;
 import java.lang.management.*;
 import java.nio.charset.*;
 import java.text.*;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 /**
@@ -35,8 +35,8 @@ import java.util.concurrent.atomic.*;
  */
 public class GridDebug {
     /** */
-    private static final AtomicReference<ConcurrentLinkedQueue<Item>> que =
-        new AtomicReference<>(new ConcurrentLinkedQueue<Item>());
+    private static final AtomicReference<ConcurrentHashMap8<Long, Que>> que =
+        new AtomicReference<>(new ConcurrentHashMap8<Long, Que>());
 
     /** */
     private static final SimpleDateFormat DEBUG_DATE_FMT = new SimpleDateFormat("HH:mm:ss,SSS");
@@ -80,15 +80,6 @@ public class GridDebug {
     }
 
     /**
-     * Gets collected debug items queue.
-     *
-     * @return Items queue.
-     */
-    public static ConcurrentLinkedQueue<Item> queue() {
-        return que.get();
-    }
-
-    /**
      * @param allow Write log.
      */
     public static synchronized void allowWriteLog(boolean allow) {
@@ -121,10 +112,22 @@ public class GridDebug {
      * @param x Debugging data.
      */
     public static void debug(Object ... x) {
-        ConcurrentLinkedQueue<Item> q = que.get();
+//        if (true)
+//            return;
 
-        if (q != null)
-            q.add(new Item(x));
+        ConcurrentHashMap8<Long,Que> m = que.get();
+
+        if (m == null)
+            return;
+
+        Item i = new Item(x);
+
+        Que q = m.get(i.threadId);
+
+        if (q == null)
+            m.put(i.threadId, q = new Que());
+
+        q.add(i);
     }
 
     /**
@@ -174,25 +177,6 @@ public class GridDebug {
     }
 
     /**
-     * Dumps given number of last events.
-     *
-     * @param n Number of last elements to dump.
-     */
-    public static void dumpLastAndStop(int n) {
-        ConcurrentLinkedQueue<Item> q = que.getAndSet(null);
-
-        if (q == null)
-            return;
-
-        int size = q.size();
-
-        while (size-- > n)
-            q.poll();
-
-        dump(q);
-    }
-
-    /**
      * Dump given queue to stdout.
      *
      * @param que Queue.
@@ -213,72 +197,32 @@ public class GridDebug {
     }
 
     /**
-     * Dump existing queue to stdout and atomically replace it with null so that no subsequent logging is possible.
+     * Dump existing queue to stdout.
      *
-     * @param x Parameters.
-     * @return Empty string (useful for assertions like {@code assert x == 0 : D.dumpWithStop();} ).
-     */
-    public static String dumpWithStop(Object... x) {
-        debug(x);
-        return dumpWithReset(null, null);
-    }
-
-    /**
-     * Dump existing queue to stdout and atomically replace it with new queue.
-     *
-     * @return Empty string (useful for assertions like {@code assert x == 0 : D.dumpWithReset();} ).
-     */
-    public static String dumpWithReset() {
-        return dumpWithReset(new ConcurrentLinkedQueue<Item>(), null);
-    }
-
-    /**
-     * Dump existing queue to stdout and atomically replace it with given.
-     *
-     * @param q2 Queue.
      * @param filter Filter for logged debug items.
      * @return Empty string.
      */
-    public static String dumpWithReset(
-        @Nullable ConcurrentLinkedQueue<Item> q2,
-        @Nullable IgnitePredicate<Item> filter
-    ) {
-        ConcurrentLinkedQueue<Item> q;
+    public static String dumpWithStop(@Nullable IgnitePredicate<Item> filter) {
+        ConcurrentHashMap8<Long,Que> m;
 
         do {
-            q = que.get();
+            m = que.get();
 
-            if (q == null)
-                break; // Stopped.
+            if (m == null)
+                return ""; // Stopped.
         }
-        while (!que.compareAndSet(q, q2));
+        while (!que.compareAndSet(m, null));
 
-        Collection<Item> col = null;
+        List<Item> col = new ArrayList<>();
 
-        if (filter == null)
-            col = q;
-        else if (q != null) {
-            col = new ArrayList<>();
+        for (Que q : m.values()) // Merge all threads together.
+            q.collect(col, filter);
 
-            for (Item item : q) {
-                if (filter.apply(item))
-                    col.add(item);
-            }
-        }
+        Collections.sort(col);
 
         dump(col);
 
         return "";
-    }
-
-    /**
-     * Reset queue to empty one.
-     */
-    public static void reset() {
-        ConcurrentLinkedQueue<Item> old = que.get();
-
-        if (old != null) // Was not stopped.
-            que.compareAndSet(old, new ConcurrentLinkedQueue<Item>());
     }
 
     /**
@@ -299,9 +243,9 @@ public class GridDebug {
      * Debug info queue item.
      */
     @SuppressWarnings({"PublicInnerClass", "PublicField"})
-    public static class Item {
+    public static class Item implements Comparable<Item> {
         /** */
-        public final long ts = System.currentTimeMillis();
+        public final long ts = U.currentTimeMillis();
 
         /** */
         public final String threadName;
@@ -311,6 +255,9 @@ public class GridDebug {
 
         /** */
         public final Object[] data;
+
+        /** */
+        public int order;
 
         /**
          * Constructor.
@@ -326,8 +273,76 @@ public class GridDebug {
         }
 
         /** {@inheritDoc} */
+        @Override public int compareTo(Item o) {
+            if (ts == o.ts)
+                return order > o.order ? 1 : -1;
+
+            return ts > o.ts ? 1 : -1;
+        }
+
+        /** {@inheritDoc} */
         @Override public String toString() {
             return formatEntry(ts, threadName, threadId, data);
+        }
+    }
+
+    public static class Que {
+        /** */
+        private static int BLOCK_SIZE = 1024;
+
+        /** */
+        private static int MASK = BLOCK_SIZE - 1;
+
+        /** */
+        private Block last;
+
+        /** */
+        private int curIdx;
+
+        public void add(Item item) {
+            assert item != null;
+
+            int idx = curIdx & MASK;
+
+            if (idx == 0)
+                last = new Block(last, BLOCK_SIZE);
+
+            item.order = curIdx++;
+
+            last.items[idx] = item;
+        }
+
+        public void collect(Collection<Item> to, IgnitePredicate<Item> filter) {
+            Block b = last;
+
+            while (b != null) {
+                for (Item item : b.items) {
+                    if (item == null)
+                        break;
+
+                    if (filter == null || filter.apply(item))
+                        to.add(item);
+                }
+
+                b = b.prev;
+            }
+        }
+    }
+
+    /**
+     *
+     */
+    private static class Block {
+        /** */
+        private final Item[] items;
+
+        /** */
+        private final Block prev;
+
+        public Block(Block prev, int cap) {
+            this.prev = prev;
+
+            items = new Item[cap];
         }
     }
 }
