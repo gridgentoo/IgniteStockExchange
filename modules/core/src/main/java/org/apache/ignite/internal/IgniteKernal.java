@@ -439,7 +439,8 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         assert cfg != null;
 
         return F.transform(cfg.getUserAttributes().entrySet(), new C1<Map.Entry<String, ?>, String>() {
-            @Override public String apply(Map.Entry<String, ?> e) {
+            @Override
+            public String apply(Map.Entry<String, ?> e) {
                 return e.getKey() + ", " + e.getValue().toString();
             }
         });
@@ -2440,16 +2441,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
 
     /** {@inheritDoc} */
     @Override public void destroyCache(String cacheName) {
-        guard();
-
-        IgniteInternalFuture<?> stopFut;
-
-        try {
-            stopFut = ctx.cache().dynamicDestroyCache(cacheName);
-        }
-        finally {
-            unguard();
-        }
+        IgniteInternalFuture stopFut = destroyCacheAsync(cacheName);
 
         try {
             stopFut.get();
@@ -2458,6 +2450,22 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
             throw CU.convertToCacheException(e);
         }
     }
+
+    /**
+     * @param cacheName Cache name.
+     * @return Ignite future.
+     */
+    public IgniteInternalFuture destroyCacheAsync(String cacheName) {
+        guard();
+
+        try {
+            return ctx.cache().dynamicDestroyCache(cacheName);
+        }
+        finally {
+            unguard();
+        }
+    }
+
 
     /** {@inheritDoc} */
     @Override public <K, V> IgniteCache<K, V> getOrCreateCache(String cacheName) {
@@ -2471,6 +2479,24 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
         }
         catch (IgniteCheckedException e) {
             throw CU.convertToCacheException(e);
+        }
+        finally {
+            unguard();
+        }
+    }
+
+    /**
+     * @param cacheName Cache name.
+     * @return Future that will be completed when cache is deployed.
+     */
+    public IgniteInternalFuture getOrCreateCacheAsync(String cacheName) {
+        guard();
+
+        try {
+            if (ctx.cache().cache(cacheName) == null)
+                ctx.cache().getOrCreateFromTemplate(cacheName);
+
+            return ctx.cache().dynamicStartCache(null, cacheName, null, false, true);
         }
         finally {
             unguard();
