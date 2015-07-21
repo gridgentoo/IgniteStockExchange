@@ -158,13 +158,25 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
 
             switch (cmd) {
                 case DESTROY_CACHE: {
-                    fut = ctx.closure().callLocalSafe(new DestroyCacheCommand(ctx, cacheName));
+                    fut = ((IgniteKernal)ctx.grid()).destroyCacheAsync(cacheName).chain(
+                        new CX1<IgniteInternalFuture<?>, GridRestResponse>() {
+                            @Override public GridRestResponse applyx(IgniteInternalFuture<?> f)
+                                throws IgniteCheckedException {
+                                return new GridRestResponse(f.get());
+                            }
+                        });
 
                     break;
                 }
 
                 case GET_OR_CREATE_CACHE: {
-                    fut = ctx.closure().callLocalSafe(new GetOrCreateCacheCallable(ctx, cacheName));
+                    fut = ((IgniteKernal)ctx.grid()).getOrCreateCacheAsync(cacheName).chain(
+                        new CX1<IgniteInternalFuture<?>, GridRestResponse>() {
+                            @Override public GridRestResponse applyx(IgniteInternalFuture<?> f)
+                                throws IgniteCheckedException {
+                                return new GridRestResponse(f.get());
+                            }
+                        });
 
                     break;
                 }
@@ -1334,60 +1346,6 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.sizeAsync(new CachePeekMode[]{CachePeekMode.PRIMARY});
-        }
-    }
-
-    /**
-     * Destroy cache callable.
-     */
-    private static class DestroyCacheCommand extends GetOrCreateCacheCallable {
-
-        public DestroyCacheCommand(GridKernalContext ctx, String cacheName) {
-            super(ctx, cacheName);
-        }
-
-        /** {@inheritDoc} */
-        @Override public GridRestResponse call() throws Exception {
-            try {
-                ctx.grid().destroyCache(cacheName);
-
-                return new GridRestResponse();
-            }
-            catch (Exception e) {
-                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
-            }
-        }
-    }
-
-    /**
-     * Get or create cache callable.
-     */
-    private static class GetOrCreateCacheCallable implements Callable<GridRestResponse> {
-        /** Kernal context. */
-        protected GridKernalContext ctx;
-
-        /** Cache name. */
-        protected String cacheName;
-
-        /**
-         * @param ctx Kernal context.
-         * @param cacheName Cache name.
-         */
-        public GetOrCreateCacheCallable(GridKernalContext ctx, String cacheName) {
-            this.ctx = ctx;
-            this.cacheName = cacheName;
-        }
-
-        /** {@inheritDoc} */
-        @Override public GridRestResponse call() throws Exception {
-            try {
-                ctx.grid().getOrCreateCache(cacheName);
-
-                return new GridRestResponse();
-            }
-            catch (Exception e) {
-                return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
-            }
         }
     }
 }
