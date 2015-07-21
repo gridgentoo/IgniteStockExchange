@@ -178,7 +178,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
         /** {@inheritDoc} */
         @Override public GridRestResponse call() throws Exception {
-            try { 
+            try {
                 QueryCursor cur = qryCurs.get(req.queryId()).get1();
 
                 if (cur == null)

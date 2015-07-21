@@ -385,7 +385,6 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertNull(grid(0).cache("testCache"));
     }
 
-
     /**
      * @throws Exception If failed.
      */
@@ -511,7 +510,6 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertTrue(!ret.isEmpty());
         jsonEquals(ret, errorPattern("Failed to find mandatory parameter in request: val"));
     }
-
 
     /**
      * @throws Exception If failed.
