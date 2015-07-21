@@ -467,7 +467,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
 
             TypeDescriptor desc;
 
-            if (ctx.json().jsonObject(val)) {
+            if (ctx.json().jsonObject(val) && jsonTypeId != null) {
                 desc = types.get(jsonTypeId);
 
                 assert desc != null && desc.registered() : desc;

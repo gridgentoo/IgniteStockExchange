@@ -40,9 +40,9 @@ main = function() {
         console.log(">>> Cache sql fields query example started.");
 
         // Create cache on server with cacheName.
-        ignite.getOrCreateCache(cacheName).then(function(cache){
-            cacheSqlFieldsQuery(ignite, cache);
-        });
+        var cache = ignite.cache(cacheName);
+
+        cacheSqlFieldsQuery(ignite, cache);
     }).catch(function(err) {
         if (err !== null)
             console.log("Start remote node with config examples/config/example-ignite.xml.");
@@ -57,95 +57,32 @@ main = function() {
             console.log(">>> Create cache for people.");
 
             //Sql query to get names of all employees.
-            var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
+            var qry = new SqlFieldsQuery("select concat(name, ' ', salary) from JsonObject");
 
             // Set page size for query.
             qry.setPageSize(2);
 
-            //Set salary range.
-            qry.setArguments([0, 2000]);
-
             // Run query.
-            ignite.cache(cacheName).query(qry).getAll(function(fullRes){
+            ignite.cache(cacheName).query(qry).getAll().then(function(fullRes){
                 console.log(">>> Names of all employees: " + JSON.stringify(fullRes));
 
-                // Destroying cache on the end of the example.
-                return ignite.destroyCache(cacheName);
-            }).then(function(){
-                console.log(">>> End of sql fields query example.");
+               console.log(">>> End of sql fields query example.");
             });
         });
     }
 
     // Initialize cache for people.
     function initializeEntries() {
-        var key1 = "1";
-        var value1 = {"firstName" : "John", "lastName" : "Doe", "salary" : 2000};
-        var key2 = "2";
-        var value2 = {"firstName" : "Jane", "lastName" : "Doe", "salary" : 1000};
-        var key3 = "3";
-        var value3 = {"firstName" : "John", "lastName" : "Smith", "salary" : 1000};
-        var key4 = "4";
-        var value4 = {"firstName" : "Jane", "lastName" : "Smith", "salary" : 2000};
-        var key5 = "5";
-        var value5 = {"firstName" : "Ann", "lastName" : "Smith", "salary" : 3000};
-
-        return [new CacheEntry(key1, value1), new CacheEntry(key2, value2),
-            new CacheEntry(key3, value3), new CacheEntry(key4, value4)];
-    }
-}
-
-main();
-
-
-    function cacheSqlFieldsQuery(ignite, cache, entries) {
-        cache.putAll(entries, onCachePut.bind(null, ignite));
-
-        function onCachePut(ignite, err) {
-            console.log(">>> Create cache for people.")
-
-            //Sql query to get names of all employees.
-            var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
-
-            // Set page size for query.
-            qry.setPageSize(2);
-
-            var fullRes = [];
-
-            //This function is called when we get part of query result.
-            qry.on("page", function(res) {
-                console.log(">>> Get result on page: " + JSON.stringify(res));
-
-                fullRes = fullRes.concat(res);
-            });
-
-            //This function is called when query is finished.
-            qry.on("end", function(err) {
-                console.log(">>> Names of all employees: " + JSON.stringify(fullRes));
-                    
-                // Destroying cache.
-                ignite.destroyCache(cacheName, function(err) {
-                    console.log(">>> End of sql fields query example.");
-                });
-            });
-
-            //Run query.
-            ignite.cache(cacheName).query(qry);
-        }
-    }
-
-    // Initialize cache for people.
-    function initializeEntries() {
-        var key1 = "1";
-        var value1 = {"firstName" : "John", "lastName" : "Doe", "salary" : 2000};
-        var key2 = "2";
-        var value2 = {"firstName" : "Jane", "lastName" : "Doe", "salary" : 1000};
-        var key3 = "3";
-        var value3 = {"firstName" : "John", "lastName" : "Smith", "salary" : 1000};
-        var key4 = "4";
-        var value4 = {"firstName" : "Jane", "lastName" : "Smith", "salary" : 2000};
-        var key5 = "5";
-        var value5 = {"firstName" : "Ann", "lastName" : "Smith", "salary" : 3000};
+        var key1 = 1;
+        var value1 = {"name" : "John", "id" : 1, "salary" : 2000, "address" : {"street" : "1st Avenue"}};
+        var key2 = 2;
+        var value2 = {"name" : "Jane", "id" : 2, "salary" : 1000, "address" : {"street" : "1st Avenue"}};
+        var key3 = 3;
+        var value3 = {"name" : "John", "id" : 3, "salary" : 1000, "address" : {"street" : "1st Avenue"}};
+        var key4 = 4;
+        var value4 = {"name" : "Jane", "id" : 4, "salary" : 2000, "address" : {"street" : "1st Avenue"}};
+        var key5 = 5;
+        var value5 = {"name" : "Ann", "id" : 5, "salary" : 3000, "address" : {"street" : "1st Avenue"}};
 
         return [new CacheEntry(key1, value1), new CacheEntry(key2, value2),
             new CacheEntry(key3, value3), new CacheEntry(key4, value4)];

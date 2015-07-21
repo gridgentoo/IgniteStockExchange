@@ -17,41 +17,119 @@
 
 package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
 
+import net.sf.json.*;
+import org.apache.ignite.*;
+import org.apache.ignite.internal.*;
+import org.apache.ignite.internal.processors.cache.*;
+import org.apache.ignite.internal.processors.json.*;
 import org.apache.ignite.internal.processors.scripting.*;
 import org.apache.ignite.json.*;
 
+import javax.cache.*;
 import javax.json.*;
+import javax.json.spi.*;
+import java.math.*;
 import java.util.*;
 
 /**
  * Converter for glassfish objects.
  */
 public class RestGlassFishScriptingConverter extends IgniteScriptingConverter {
+    /** Grid kernal context. */
+    GridKernalContext ctx;
+
+    /**
+     * @param ctx Grid context.
+     */
+    public RestGlassFishScriptingConverter(GridKernalContext ctx) {
+        this.ctx = ctx;
+    }
+
     /** {@inheritDoc} */
-    @Override public Object toJavaObject(Object o) {
+    @Override public JsonValue toJavaObject(Object o) {
         if (o == null)
             return null;
 
         if (o instanceof Map) {
             Map o1 = (Map)o;
 
-            JSONCacheObject res = new JSONCacheObject();
+            JsonProvider provider = IgniteJson.jsonProvider(ctx.grid());
+
+            JsonObjectBuilder bld = provider.createObjectBuilder();
+
+            for (Object key : o1.keySet()) {
+                assert (key instanceof String) || (key instanceof JSONString);
+
+                if (key instanceof JSONString)
+                    bld.add(((JsonString) key).getString(), toJavaObject(o1.get(key)));
+                else
+                    bld.add((String)key, toJavaObject(o1.get(key)));
+            }
+
+            return bld.build();
+        }
+        else if (o instanceof List) {
+            List o1 = (List) o;
+
+            JsonProvider provider = IgniteJson.jsonProvider(ctx.grid());
+
+            JsonArrayBuilder bld = provider.createArrayBuilder();
+
+            for (Object v : o1)
+                bld.add(toJavaObject(v));
+
+            return bld.build();
+        }
+        else if (o instanceof JsonString)
+            return new IgniteJsonString(((JsonString) o).getString());
+        else if (o instanceof JsonNumber)
+            return new IgniteJsonNumber(((JsonNumber) o).bigDecimalValue());
+        else if (o.equals(JsonValue.FALSE))
+            return JsonValue.FALSE;
+        else if (o.equals(JsonValue.TRUE))
+            return JsonValue.TRUE;
+        else if (o.equals(JsonValue.NULL))
+            return JsonValue.NULL;
+        else if (o instanceof String)
+            return new IgniteJsonString((String)o);
+        else if (o instanceof Integer)
+            return new IgniteJsonNumber(new BigDecimal((Integer)o));
+        else if (o instanceof Long)
+            return new IgniteJsonNumber(new BigDecimal((Long)o));
+        else if (o instanceof Double)
+            return new IgniteJsonNumber(new BigDecimal((Double)o));
+
+        throw new IgniteException("Do not support type: " + o.getClass());
+    }
+
+    /** {@inheritDoc} */
+    @Override public Object toScriptObject(Object o) {
+        if (o == null)
+            return null;
+
+        if (o instanceof Map) {
+            Map o1 = (Map)o;
+
+            Map<Object, Object> res = new HashMap<>();
 
             for (Object key : o1.keySet())
-                res.put(toJavaObject(key), toJavaObject(o1.get(key)));
+                res.put(toScriptObject(key), toScriptObject(o1.get(key)));
 
             return res;
         }
         else if (o instanceof List) {
             List o1 = (List) o;
 
-            List<Object> val = new ArrayList<>();
+            List<Object> res = new ArrayList<>();
 
             for (Object v : o1)
-                val.add(toJavaObject(v));
+                res.add(toScriptObject(v));
 
-            return val;
+            return res;
         }
+        else if (o instanceof Cache.Entry)
+            return new CacheEntryImpl<>(toScriptObject(((Cache.Entry) o).getKey()),
+                toScriptObject(((Cache.Entry) o).getValue()));
         else if (o instanceof JsonString)
             return ((JsonString) o).getString();
         else if (o instanceof JsonNumber)
@@ -64,5 +142,14 @@ public class RestGlassFishScriptingConverter extends IgniteScriptingConverter {
             return null;
 
         return o;
+    }
+
+
+    /** {@inheritDoc} */
+    @Override public Object getField(String key, Object o) {
+        if (o instanceof JsonObject)
+            return ((JsonObject)o).get(key);
+
+        return null;
     }
 }

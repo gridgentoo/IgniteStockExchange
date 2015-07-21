@@ -100,4 +100,19 @@ public class JsonCacheObject extends CacheObjectAdapter implements KeyCacheObjec
     Object field(String fieldName) {
         return IgniteJsonProcessorImpl.value((JsonObject)val, fieldName);
     }
+
+    /** {@inheritDoc}*/
+    @Override public int hashCode() {
+        //TODO: do correct
+        return val.hashCode();
+    }
+
+    /** {@inheritDoc}*/
+    @Override public boolean equals(Object obj) {
+        //TODO: do correct
+        if (obj == null || !(obj instanceof JsonCacheObject))
+            return false;
+
+        return val.equals(((JsonCacheObject) obj).val);
+    }
 }

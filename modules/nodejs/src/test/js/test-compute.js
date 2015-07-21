@@ -520,7 +520,11 @@ testComputeMapReduceGetAndRemoveObject = function() {
                     throw "Incorrect put if absent result."
                 }
 
-                return cache.getAndRemove(entry.key);
+                var res = cache.getAndRemove(entry.key);
+
+                print("RES=" + JSON.stringify(res));
+
+                return res;
             };
 
             emit(f, entries[i], nodes[i % nodes.length]);

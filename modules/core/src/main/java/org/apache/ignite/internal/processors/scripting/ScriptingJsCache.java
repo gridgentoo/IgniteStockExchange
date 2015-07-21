@@ -58,7 +58,7 @@ public class ScriptingJsCache {
     public Object get(Object key) {
         Object cacheKey = proc.toJavaObject(key);
 
-        return cache.get(cacheKey);
+        return proc.toScriptObject(cache.get(cacheKey));
     }
 
     /**
@@ -93,7 +93,8 @@ public class ScriptingJsCache {
         List<Object> res = new ArrayList<>();
 
         for (Map.Entry<Object, Object> e : entries.entrySet())
-            res.add(proc.createScriptingEntry(e.getKey(), e.getValue()));
+            res.add(proc.createScriptingEntry(
+                proc.toScriptObject(e.getKey()), proc.toScriptObject(e.getValue())));
 
         return res;
     }
@@ -130,7 +131,7 @@ public class ScriptingJsCache {
         Object cacheKey = proc.toJavaObject(key);
         Object cacheVal = proc.toJavaObject(val);
 
-        return cache.getAndPut(cacheKey, cacheVal);
+        return proc.toScriptObject(cache.getAndPut(cacheKey, cacheVal));
     }
 
     /**
@@ -144,7 +145,7 @@ public class ScriptingJsCache {
 
         Object o = cache.getAndReplace(cacheKey, cacheVal);
 
-        return o;
+        return proc.toScriptObject(o);
     }
 
     /**
@@ -156,7 +157,7 @@ public class ScriptingJsCache {
         Object cacheKey = proc.toJavaObject(key);
         Object cacheVal = proc.toJavaObject(val);
 
-        return cache.getAndPutIfAbsent(cacheKey, cacheVal);
+        return proc.toScriptObject(cache.getAndPutIfAbsent(cacheKey, cacheVal));
     }
 
     /**
@@ -166,7 +167,7 @@ public class ScriptingJsCache {
     public Object getAndRemove(Object key) {
         Object cacheKey = proc.toJavaObject(key);
 
-        return cache.getAndRemove(cacheKey);
+        return proc.toScriptObject(cache.getAndRemove(cacheKey));
     }
 
     /**
@@ -229,7 +230,7 @@ public class ScriptingJsCache {
      * @param val Value.
      * @return Previous value.
      */
-    public Object putIfAbsent(Object key, Object val) {
+    public boolean putIfAbsent(Object key, Object val) {
         Object cacheKey = proc.toJavaObject(key);
         Object cacheVal = proc.toJavaObject(val);
 

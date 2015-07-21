@@ -193,13 +193,6 @@ public class NodeJsCacheApiSelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void testIncorrectReplaceObject() throws Exception {
-        runJsScript("testIncorrectReplaceObject");
-    }
-
-    /**
-     * @throws Exception If failed.
-     */
     public void testReplaceObject() throws Exception {
         runJsScript("testReplaceObject");
     }

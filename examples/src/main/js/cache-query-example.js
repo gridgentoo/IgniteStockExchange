@@ -40,9 +40,8 @@ main = function() {
         console.log(">>> Cache query example started.");
 
         // Create cache on server with cacheName.
-        ignite.getOrCreateCache(cacheName).then(function(cache){
-            cacheQuery(ignite, cache);
-        });
+        var cache = ignite.cache(cacheName);
+        cacheQuery(ignite, cache);
     }).catch(function(err) {
         if (err !== null)
             console.log("Start remote node with config examples/config/example-ignite.xml.");
@@ -58,7 +57,7 @@ main = function() {
 
             //SQL clause which selects salaries based on range.
             var qry = new SqlQuery("salary > ? and salary <= ?");
-            qry.setReturnType("Object");
+            qry.setReturnType("JsonObject");
 
             // Set page size for query.
             qry.setPageSize(2);
@@ -77,15 +76,18 @@ main = function() {
                 console.log(">>> Get result on page: " + JSON.stringify(page));
 
                 //Concat query page results.
-                fullRes.concat(page);
+                fullRes = fullRes.concat(page);
 
                 // IsFinished return true if it is the last page.
                 if (cursor.isFinished()) {
-                    console.log(">>> People with salaries between 0 and 2000 (queried with SQL query): " +
-                        JSON.stringify(fullRes));
+                    console.log(">>> People with salaries between 0 and 2000 (queried with SQL query): ");
 
-                    //Destroying cache on the end of the example.
-                    return ignite.destroyCache(cacheName);
+                    for (var person of fullRes)
+                        console.log(person["key"] + " " + person["value"]["name"]);
+
+                    console.log(">>> End of sql query example.");
+
+                    return;
                 }
 
                 //Get Promise for next page.
@@ -95,9 +97,7 @@ main = function() {
             }
 
             // Get query's page.
-            return cursor.nextPage().then(onQuery).then(function(){
-                console.log(">>> End of sql query example.");
-            });
+            return cursor.nextPage().then(onQuery);
         })
     }
 

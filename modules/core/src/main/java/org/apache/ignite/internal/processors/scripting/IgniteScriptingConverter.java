@@ -32,6 +32,14 @@ public class IgniteScriptingConverter {
     }
 
     /**
+     * @param o Object.
+     * @return Script object.
+     */
+    public Object toScriptObject(Object o) {
+        return o;
+    }
+
+    /**
      * @param o Object from script.
      * @return Object to store in cache.
      */

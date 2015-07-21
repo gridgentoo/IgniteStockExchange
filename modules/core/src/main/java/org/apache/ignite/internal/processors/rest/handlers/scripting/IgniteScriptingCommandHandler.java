@@ -164,7 +164,8 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             try {
                 Map<ComputeJob, ClusterNode> map = new HashMap<>();
 
-                ctx.scripting().invokeFunction(mapFunc, nodes.toArray(new ClusterNode[nodes.size()]), this.arg);
+                ctx.scripting().invokeFunction(mapFunc, nodes.toArray(new ClusterNode[nodes.size()]),
+                    ctx.scripting().toScriptObject(this.arg));
 
                 List<T3<Object, Object, Object>> jsMapRes = emitRes.getEmitResult();
 
@@ -227,7 +228,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
         public JsCallFunctionJob(IgniteScriptingProcessor proc, String func, Object argv) {
             this.func = func;
 
-            this.argv = proc.toJavaObject(argv);
+            this.argv = proc.toScriptObject(argv);
         }
 
         /** {@inheritDoc} */

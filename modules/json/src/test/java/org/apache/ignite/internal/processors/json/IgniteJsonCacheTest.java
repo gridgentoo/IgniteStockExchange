@@ -99,6 +99,31 @@ public class IgniteJsonCacheTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testPutGet() throws Exception {
+        IgniteCache<JsonObject, JsonObject> cache = ignite(1).cache(null);
+        JsonProvider provider = IgniteJson.jsonProvider(ignite(1));
+
+        JsonObjectBuilder keyO = provider.createObjectBuilder();
+
+        keyO.add("name", "a");
+
+        JsonObject key = keyO.build();
+
+        JsonObjectBuilder person = provider.createObjectBuilder();
+
+        person.add("salary", 1);
+        person.add("id", 1);
+
+        JsonObject obj = person.build();
+
+        cache.put(key, obj);
+
+        assertNotNull(cache.get(key));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testQuery() throws Exception {
         IgniteCache<Integer, JsonObject> cache = ignite(1).cache(null);
 

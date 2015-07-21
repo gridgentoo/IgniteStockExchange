@@ -545,27 +545,6 @@ testReplaceValueObject = function() {
     });
 }
 
-testIncorrectReplaceObject = function() {
-    var key = {"name" : "Paul"};
-    var val = {"age" : 12, "books" : ["1", "Book"]};
-    var val2 = "7";
-
-    TestUtils.startIgniteNode().then(function(ignite) {
-        var cache = ignite.cache("mycache");
-
-        cache.put(key, val).then(function() {
-            return cache.replace(key, val2);
-        }).then(function(res) {
-            assert(false, "Do not get exception.");
-        }).catch(function (err) {
-            assert(err !== null, "Do not get error");
-            assert(err.indexOf("Failed to update keys") > -1, "Incorrect error message: " + err);
-
-            TestUtils.testDone();
-        })
-    });
-}
-
 testSize = function() {
     var key = {"name" : "Paul"};
     var val = {"age" : 12, "books" : ["1", "Book"]};

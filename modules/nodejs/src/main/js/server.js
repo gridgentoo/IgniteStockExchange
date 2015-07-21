@@ -86,7 +86,7 @@ Server.prototype.runCommand = function(cmd, callback) {
         });
 
         response.on('end', function () {
-            console.log("Full response:" + fullResponseString);
+            //console.log("Full response:" + fullResponseString);
 
             if (response.statusCode !== 200) {
                 if (response.statusCode === 401) {

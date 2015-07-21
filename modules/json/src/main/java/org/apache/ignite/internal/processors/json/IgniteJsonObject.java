@@ -114,4 +114,17 @@ public class IgniteJsonObject extends HashMap<String, JsonValue> implements java
     @Override public ValueType getValueType() {
         return ValueType.OBJECT;
     }
+
+    /** {@inheritDoc}*/
+    @Override public boolean equals(Object o) {
+        if (o == null || !(o instanceof IgniteJsonObject))
+            return false;
+
+        return super.equals(o);
+    }
+
+    /** {@inheritDoc}*/
+    @Override public int hashCode() {
+        return super.hashCode();
+    }
 }

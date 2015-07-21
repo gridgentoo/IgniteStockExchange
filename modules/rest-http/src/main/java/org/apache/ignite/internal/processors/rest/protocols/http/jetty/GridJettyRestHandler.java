@@ -340,7 +340,8 @@ public class GridJettyRestHandler extends AbstractHandler {
             List<Object> res = new ArrayList<>();
 
             for (Object k : o.keySet())
-                res.add(ctx.scripting().createScriptingEntry(k, o.get(k)));
+                res.add(ctx.scripting().createScriptingEntry(ctx.scripting().toScriptObject(k),
+                    ctx.scripting().toScriptObject(o.get(k))));
 
             cmdRes.setResponse(res);
 
@@ -348,7 +349,7 @@ public class GridJettyRestHandler extends AbstractHandler {
         else {
             Object o = cmdRes.getResponse();
 
-            cmdRes.setResponse(o);
+            cmdRes.setResponse(ctx.scripting().toScriptObject(o));
         }
     }
 
@@ -644,7 +645,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
                     Map o = parseRequest(req);
-                    List args = (List) ctx.scripting().toJavaObject(o.get("arg"));
+                    List args = (List) ctx.scripting().toScriptObject(o.get("arg"));
                     restReq0.arguments(args.toArray());
                 }
                 else
