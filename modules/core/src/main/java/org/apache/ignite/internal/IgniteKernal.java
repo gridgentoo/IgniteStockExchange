@@ -2454,7 +2454,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
      * @param cacheName Cache name.
      * @return Ignite future.
      */
-    public IgniteInternalFuture destroyCacheAsync(String cacheName) {
+    public IgniteInternalFuture<?> destroyCacheAsync(String cacheName) {
         guard();
 
         try {
@@ -2487,14 +2487,14 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
      * @param cacheName Cache name.
      * @return Future that will be completed when cache is deployed.
      */
-    public IgniteInternalFuture getOrCreateCacheAsync(String cacheName) {
+    public IgniteInternalFuture<?> getOrCreateCacheAsync(String cacheName) {
         guard();
 
         try {
             if (ctx.cache().cache(cacheName) == null)
-                ctx.cache().getOrCreateFromTemplate(cacheName);
+                return ctx.cache().getOrCreateFromTemplate(cacheName);
 
-            return ctx.cache().dynamicStartCache(null, cacheName, null, false, true);
+            return new GridFinishedFuture<>();
         }
         finally {
             unguard();

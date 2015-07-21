@@ -158,7 +158,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
 
             switch (cmd) {
                 case DESTROY_CACHE: {
-                    fut = new DestroyCacheCommand(cacheName).apply(ctx).chain(
+                    fut = ((IgniteKernal)ctx.grid()).destroyCacheAsync(cacheName).chain(
                         new CX1<IgniteInternalFuture<?>, GridRestResponse>() {
                             @Override public GridRestResponse applyx(IgniteInternalFuture<?> f)
                                 throws IgniteCheckedException {
@@ -170,7 +170,7 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 }
 
                 case GET_OR_CREATE_CACHE: {
-                    fut = new GetOrCreateCacheClosure(cacheName).apply(ctx).chain(
+                    fut = ((IgniteKernal)ctx.grid()).getOrCreateCacheAsync(cacheName).chain(
                         new CX1<IgniteInternalFuture<?>, GridRestResponse>() {
                             @Override public GridRestResponse applyx(IgniteInternalFuture<?> f)
                                 throws IgniteCheckedException {
@@ -1346,50 +1346,6 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.sizeAsync(new CachePeekMode[]{CachePeekMode.PRIMARY});
-        }
-    }
-
-    /**
-     * Destroy cache callable.
-     */
-    private static class DestroyCacheCommand extends GetOrCreateCacheClosure {
-        /** */
-        private static final long serialVersionUID = 0L;
-
-        /**
-         * @param cacheName Cache name.
-         */
-        public DestroyCacheCommand(String cacheName) {
-            super(cacheName);
-        }
-
-        /** {@inheritDoc} */
-        @Override public IgniteInternalFuture<?> apply(GridKernalContext ctx) {
-            return ((IgniteKernal)ctx.grid()).destroyCacheAsync(cacheName);
-        }
-    }
-
-    /**
-     * Get or create cache callable.
-     */
-    private static class GetOrCreateCacheClosure implements
-        IgniteClosure<GridKernalContext, IgniteInternalFuture<?>> {
-        /** */
-        private static final long serialVersionUID = 0L;
-
-        /** Cache name. */
-        protected String cacheName;
-
-        /**
-         * @param cacheName Cache name.
-         */
-        public GetOrCreateCacheClosure(String cacheName) {
-            this.cacheName = cacheName;
-        }
-
-        /** {@inheritDoc} */
-        @Override public IgniteInternalFuture<?> apply(GridKernalContext ctx) {
-            return ((IgniteKernal)ctx.grid()).getOrCreateCacheAsync(cacheName);
         }
     }
 }
