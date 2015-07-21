@@ -477,8 +477,13 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.arguments(values("arg", params).toArray());
 
-                restReq0.typeName((String)params.get("type"));
-                restReq0.pageSize(Integer.parseInt((String) params.get("psz")));
+                restReq0.typeName((String) params.get("type"));
+
+                String psz = (String) params.get("psz");
+
+                if (psz != null)
+                    restReq0.pageSize(Integer.parseInt(psz));
+
                 restReq0.cacheName((String)params.get("cacheName"));
 
                 restReq = restReq0;
@@ -489,8 +494,16 @@ public class GridJettyRestHandler extends AbstractHandler {
             case FETCH_SQL_QUERY: {
                 RestSqlQueryRequest restReq0 = new RestSqlQueryRequest();
 
-                restReq0.queryId(Long.parseLong((String)params.get("qryId")));
-                restReq0.pageSize(Integer.parseInt((String)params.get("psz")));
+                String qryId = (String) params.get("qryId");
+
+                if (qryId != null)
+                    restReq0.queryId(Long.parseLong(qryId));
+
+                String psz = (String) params.get("psz");
+
+                if (psz != null)
+                    restReq0.pageSize(Integer.parseInt(psz));
+
                 restReq0.cacheName((String)params.get("cacheName"));
 
                 restReq = restReq0;
@@ -501,7 +514,11 @@ public class GridJettyRestHandler extends AbstractHandler {
             case CLOSE_SQL_QUERY: {
                 RestSqlQueryRequest restReq0 = new RestSqlQueryRequest();
 
-                restReq0.queryId(Long.parseLong((String)params.get("qryId")));
+                String qryId = (String) params.get("qryId");
+
+                if (qryId != null)
+                    restReq0.queryId(Long.parseLong(qryId));
+
                 restReq0.cacheName((String)params.get("cacheName"));
 
                 restReq = restReq0;

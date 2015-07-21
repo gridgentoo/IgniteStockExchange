@@ -39,7 +39,7 @@ import static org.apache.ignite.IgniteSystemProperties.*;
  * Tests for Jetty REST protocol.
  */
 @SuppressWarnings("unchecked")
-abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorSelfTest {
+public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorSelfTest {
     /** Grid count. */
     private static final int GRID_CNT = 3;
 
@@ -80,7 +80,7 @@ abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestProcessorS
      * @return Returned content.
      * @throws Exception If failed.
      */
-    private String content(Map<String, String> params) throws Exception {
+    protected String content(Map<String, String> params) throws Exception {
         String addr = "http://" + LOC_HOST + ":" + restPort() + "/ignite?";
 
         for (Map.Entry<String, String> e : params.entrySet())
