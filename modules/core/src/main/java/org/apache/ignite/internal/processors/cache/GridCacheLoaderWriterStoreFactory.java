@@ -56,4 +56,18 @@ class GridCacheLoaderWriterStoreFactory<K, V> implements Factory<CacheStore<K, V
 
         return new GridCacheLoaderWriterStore<>(ldr, writer);
     }
+
+    /**
+     * @return Loader factory.
+     */
+    public Factory<CacheLoader<K, V>> loaderFactory() {
+        return ldrFactory;
+    }
+
+    /**
+     * @return Writer factory.
+     */
+    public Factory<CacheWriter<K, V>> writerFactory() {
+        return writerFactory;
+    }
 }
