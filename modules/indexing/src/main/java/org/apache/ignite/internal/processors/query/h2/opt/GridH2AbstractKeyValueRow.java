@@ -19,9 +19,7 @@ package org.apache.ignite.internal.processors.query.h2.opt;
 
 import org.apache.ignite.*;
 import org.apache.ignite.internal.processors.query.*;
-import org.apache.ignite.internal.util.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
 import org.h2.message.*;
 import org.h2.result.*;
 import org.h2.value.*;
@@ -104,8 +102,6 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
      * @throws IgniteCheckedException If failed.
      */
     public synchronized void onSwap() throws IgniteCheckedException {
-        D.debug("onSwap", getValue(KEY_COL).getInt());
-
         setValue(VAL_COL, null);
     }
 
@@ -117,8 +113,6 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
      * @throws IgniteCheckedException If failed.
      */
     public synchronized void onUnswap(Object val, boolean beforeRmv) throws IgniteCheckedException {
-        D.debug("onUnswap", getValue(KEY_COL).getInt(), val, val.getClass());
-
         setValue(VAL_COL, desc.wrap(val, desc.valueType()));
 
         notifyAll();
@@ -213,31 +207,11 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
                             // Even if valObj was found in swap we still have to recheck if this row was concurrently
                             // unswapped because we can racy read wrong value from swap here.
                             if ((v = syncValue(0)) == null && (v = getOffheapValue(VAL_COL)) == null) {
-                                try {
-                                    Value upd = desc.wrap(valObj, desc.valueType());
+                                Value upd = desc.wrap(valObj, desc.valueType());
 
-                                    v = updateWeakValue(upd);
+                                v = updateWeakValue(upd);
 
-                                    return v == null ? upd : v;
-                                }
-                                catch (ClassCastException e) {
-                                    D.dumpWithStop(new IgnitePredicate<GridDebug.Item>() {
-                                        @Override public boolean apply(GridDebug.Item item) {
-                                            Integer k0 = null;
-
-                                            try {
-                                                k0 = desc.wrap(item.data[1], Value.INT).getInt();
-                                            }
-                                            catch (IgniteCheckedException e1) {
-                                                e1.printStackTrace();
-                                            }
-
-                                            return kx.equals(k0);
-                                        }
-                                    });
-
-                                    throw new IllegalStateException(e);
-                                }
+                                return v == null ? upd : v;
                             }
                         }
                         else // If nothing found in swap then we should be already unswapped.

@@ -19,10 +19,7 @@ package org.apache.ignite.internal.processors.query.h2.opt;
 
 import org.apache.ignite.*;
 import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.*;
 import org.apache.ignite.internal.util.offheap.unsafe.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
 import org.h2.api.*;
 import org.h2.command.ddl.*;
 import org.h2.engine.*;
@@ -312,12 +309,10 @@ public class GridH2Table extends TableBase {
         throws IgniteCheckedException {
         assert desc != null;
 
-        D.debug("update", key, getName(), rmv, val);
-
         GridH2Row row = desc.createRow(key, val, expirationTime, rmv);
 
         return doUpdate(row, rmv);
-    }
+    }gnite
 
     /**
      * Gets index by index.
@@ -403,18 +398,7 @@ public class GridH2Table extends TableBase {
                         Row res = index(i).remove(old);
 
                         assert eq(pk, res, old): "\n" + old + "\n" + res + "\n" + i + " -> " + index(i).getName() +
-                            " -> " + index(i).validate() + D.dumpWithStop(new IgnitePredicate<GridDebug.Item>() {
-                            @Override public boolean apply(GridDebug.Item item) {
-                                try {
-                                    return row.getValue(KEY_COL).getInt() == desc.wrap(item.data[1], Value.INT).getInt();
-                                }
-                                catch (IgniteCheckedException e1) {
-                                    e1.printStackTrace();
-                                }
-
-                                return false;
-                            }
-                        });
+                            " -> " + index(i).validate();
                     }
                 }
                 else
