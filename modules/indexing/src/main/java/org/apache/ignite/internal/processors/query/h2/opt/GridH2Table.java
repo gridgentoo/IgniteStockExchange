@@ -312,7 +312,7 @@ public class GridH2Table extends TableBase {
         GridH2Row row = desc.createRow(key, val, expirationTime, rmv);
 
         return doUpdate(row, rmv);
-    }gnite
+    }
 
     /**
      * Gets index by index.

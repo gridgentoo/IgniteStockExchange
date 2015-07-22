@@ -66,7 +66,7 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
     private static AtomicInteger idxUnswapCnt = new AtomicInteger();
 
     /** */
-    private static final long DURATION = 180 * 1000;
+    private static final long DURATION = 30 * 1000;
 
     /** */
     private static List<GridTestSwapSpaceSpi> swaps = new CopyOnWriteArrayList<>();
@@ -211,7 +211,7 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
                     c.remove(e.getKey());
             }
 
-            U.sleep(500);
+            U.sleep(3000);
 
             assertEquals("Swap keys: " + c.size(CachePeekMode.SWAP), 0, c.size(CachePeekMode.SWAP));
             assertEquals(0, c.size(CachePeekMode.OFFHEAP));
