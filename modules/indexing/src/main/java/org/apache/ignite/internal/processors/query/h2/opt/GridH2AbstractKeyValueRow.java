@@ -198,8 +198,6 @@ public abstract class GridH2AbstractKeyValueRow extends GridH2Row {
 
                     final Object k = getValue(KEY_COL).getObject();
 
-                    final Integer kx = getValue(KEY_COL).getInt();
-
                     try {
                         Object valObj = desc.readFromSwap(k);
 

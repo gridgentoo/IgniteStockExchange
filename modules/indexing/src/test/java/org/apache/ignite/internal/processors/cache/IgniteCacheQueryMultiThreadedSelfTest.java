@@ -211,7 +211,7 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
                     c.remove(e.getKey());
             }
 
-            U.sleep(3000);
+            U.sleep(5000);
 
             assertEquals("Swap keys: " + c.size(CachePeekMode.SWAP), 0, c.size(CachePeekMode.SWAP));
             assertEquals(0, c.size(CachePeekMode.OFFHEAP));
@@ -406,7 +406,7 @@ public class IgniteCacheQueryMultiThreadedSelfTest extends GridCommonAbstractTes
      */
     @SuppressWarnings({"TooBroadScope"})
     public void testMultiThreadedSwapUnswapLongString() throws Exception {
-        int threadCnt = 100;
+        int threadCnt = 50;
         final int keyCnt = 2000;
         final int valCnt = 10000;
 

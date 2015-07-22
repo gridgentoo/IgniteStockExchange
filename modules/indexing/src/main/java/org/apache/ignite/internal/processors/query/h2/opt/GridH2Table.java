@@ -154,8 +154,6 @@ public class GridH2Table extends TableBase {
         try {
             GridH2AbstractKeyValueRow row = (GridH2AbstractKeyValueRow)pk.findOne(searchRow);
 
-//            D.debug("onSwapUnswap", key, getName(), row == null, val);
-
             if (row == null)
                 return false;
 
