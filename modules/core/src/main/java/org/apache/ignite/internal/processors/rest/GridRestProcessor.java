@@ -581,6 +581,13 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
                 break;
 
+            case GET_OR_CREATE_CACHE:
+            case DESTROY_CACHE:
+                perm = SecurityPermission.ADMIN_CACHE;
+                name = ((GridRestCacheRequest)req).cacheName();
+
+                break;
+
             case CACHE_METRICS:
             case CACHE_SIZE:
             case TOPOLOGY:
@@ -592,8 +599,6 @@ public class GridRestProcessor extends GridProcessorAdapter {
             case ATOMIC_DECREMENT:
             case NAME:
             case LOG:
-            case GET_OR_CREATE_CACHE:
-            case DESTROY_CACHE:
                 break;
 
             default:
