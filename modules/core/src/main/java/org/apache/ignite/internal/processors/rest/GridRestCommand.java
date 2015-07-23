@@ -34,25 +34,25 @@ public enum GridRestCommand {
     CACHE_GET("get"),
 
     /** Contains cached value. */
-    CACHE_CONTAINS_KEY("containskey"),
+    CACHE_CONTAINS_KEY("conkey"),
 
     /** Contains cached values. */
-    CACHE_CONTAINS_KEYS("containskeys"),
+    CACHE_CONTAINS_KEYS("conkeys"),
 
     /** Get several cached values. */
     CACHE_GET_ALL("getall"),
 
     /** Store value in cache and return previous value. */
-    CACHE_GET_AND_PUT("getandput"),
+    CACHE_GET_AND_PUT("getput"),
 
     /** Store value in cache and return previous value. */
-    CACHE_GET_AND_PUT_IF_ABSENT("getandputifabsent"),
+    CACHE_GET_AND_PUT_IF_ABSENT("getputifabs"),
 
     /** Store value in cache. */
     CACHE_PUT("put"),
 
     /** Store value in cache. */
-    CACHE_PUT_IF_ABSENT("putifabsent"),
+    CACHE_PUT_IF_ABSENT("putifabs"),
 
     /** Store value in cache if it doesn't exist. */
     CACHE_ADD("add"),
@@ -64,10 +64,10 @@ public enum GridRestCommand {
     CACHE_REMOVE("rmv"),
 
     /** Remove value from cache. */
-    CACHE_REMOVE_VALUE("rmvvalue"),
+    CACHE_REMOVE_VALUE("rmvval"),
 
     /** Remove value from cache. */
-    CACHE_GET_AND_REMOVE("getandrmv"),
+    CACHE_GET_AND_REMOVE("getrmv"),
 
     /** Remove several values from cache. */
     CACHE_REMOVE_ALL("rmvall"),
@@ -79,7 +79,7 @@ public enum GridRestCommand {
     CACHE_REPLACE_VALUE("repval"),
 
     /** Replace cache value only if there is currently a mapping for it. */
-    CACHE_GET_AND_REPLACE("getandreplace"),
+    CACHE_GET_AND_REPLACE("getrep"),
 
     /** Compare and set. */
     CACHE_CAS("cas"),
@@ -94,7 +94,7 @@ public enum GridRestCommand {
     CACHE_METRICS("cache"),
 
     /** Cache size. */
-    CACHE_SIZE("cachesize"),
+    CACHE_SIZE("size"),
 
     /** Increment. */
     ATOMIC_INCREMENT("incr"),
@@ -130,10 +130,10 @@ public enum GridRestCommand {
     QUIT("quit"),
 
     /** Get or create cache. */
-    GET_OR_CREATE_CACHE("getorcreatecache"),
+    GET_OR_CREATE_CACHE("getorcreate"),
 
     /** Stops dynamically started cache. */
-    DESTROY_CACHE("destroycache"),
+    DESTROY_CACHE("destcache"),
 
     /** Run script. */
     RUN_SCRIPT("runscript"),
@@ -145,16 +145,16 @@ public enum GridRestCommand {
     EXECUTE_MAP_REDUCE_SCRIPT("excmapreduce"),
 
     /** Execute sql query. */
-    EXECUTE_SQL_QUERY("qryexecute"),
+    EXECUTE_SQL_QUERY("qryexe"),
 
     /** Execute sql fields query. */
-    EXECUTE_SQL_FIELDS_QUERY("qryfieldsexecute"),
+    EXECUTE_SQL_FIELDS_QUERY("qryfldexe"),
 
     /** Fetch query results. */
     FETCH_SQL_QUERY("qryfetch"),
 
     /** Close query. */
-    CLOSE_SQL_QUERY("qryclose");
+    CLOSE_SQL_QUERY("qrycls");
 
     /** Enum values. */
     private static final GridRestCommand[] VALS = values();
