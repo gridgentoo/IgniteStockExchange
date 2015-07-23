@@ -584,7 +584,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
                     Map o = parseRequest(req);
-                    restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
+                    restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
                 }
                 else
                     restReq0.argument(params.get("arg"));
@@ -602,7 +602,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
                     Map o = parseRequest(req);
-                    restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
+                    restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
 
                     Object cacheObj = ctx.scripting().toJavaObject(o.get("key"));
                     restReq0.affinityKey(cacheObj);
@@ -625,7 +625,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
                     Map o = parseRequest(req);
-                    restReq0.argument(ctx.scripting().toJavaObject(o.get("arg")));
+                    restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
                 }
                 else
                     restReq0.argument(params.get("arg"));

@@ -60,7 +60,7 @@ Ignite.prototype.cache = function(cacheName) {
 Ignite.prototype.getOrCreateCache = function(cacheName) {
     var server = this._server;
     return new Promise(function(resolve, reject) {
-        server.runCommand(new Command("getorcreatecache").addParam("cacheName", cacheName),
+        server.runCommand(new Command("getorcreate").addParam("cacheName", cacheName),
             function(err, res) {
                 if (err != null) {
                     reject(err);
@@ -79,7 +79,7 @@ Ignite.prototype.getOrCreateCache = function(cacheName) {
  * @param {string} cacheName Cache name to stop
  */
 Ignite.prototype.destroyCache = function(cacheName) {
-    return this._createPromise(new Command("destroycache").addParam("cacheName", cacheName));
+    return this._createPromise(new Command("destcache").addParam("cacheName", cacheName));
 }
 
 /**
