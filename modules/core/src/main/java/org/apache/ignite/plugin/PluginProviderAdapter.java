@@ -59,7 +59,7 @@ public class PluginProviderAdapter<C extends PluginConfiguration> implements Plu
     }
 
     /** {@inheritDoc} */
-    @Override public void onBeforeStart() throws IgniteCheckedException {
+    @Override public void onBeforeStart(PluginContext ctx) throws IgniteCheckedException {
         // No-op.
     }
 

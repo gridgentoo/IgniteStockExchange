@@ -77,9 +77,10 @@ public interface PluginProvider<C extends PluginConfiguration> {
     /**
      * Callback that notifies that Ignite prepares to start plugin.
      *
+     * @param ctx Plugin context.
      * @throws IgniteCheckedException Thrown in case of any errors.
      */
-    public void onBeforeStart() throws IgniteCheckedException;
+    public void onBeforeStart(PluginContext ctx) throws IgniteCheckedException;
 
     /**
      * Starts grid component.

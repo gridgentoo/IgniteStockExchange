@@ -50,7 +50,7 @@ public class TestPluginProvider extends PluginProviderAdapter<TestPluginProvider
     }
 
     /** {@inheritDoc} */
-    @Override public void onBeforeStart() throws IgniteCheckedException {
+    @Override public void onBeforeStart(PluginContext ctx) throws IgniteCheckedException {
         if (enableAssert) {
             bfStart = true;
 

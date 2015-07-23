@@ -132,11 +132,29 @@ public class IgnitePluginProcessor extends GridProcessorAdapter {
 
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
-        for (PluginProvider plugin : plugins.values())
-            // TODO: Why not passing PluginContext here? We already have it at that point.
-            plugin.onBeforeStart();
+        for (Map.Entry<PluginProvider, GridPluginContext> e : pluginCtxMap.entrySet())
+            e.getKey().onBeforeStart(e.getValue());
 
         ackPluginsInfo();
+    }
+
+    /** {@inheritDoc} */
+    @Override public void stop(boolean cancel) throws IgniteCheckedException {
+        boolean errOnStop = false;
+
+        for (PluginProvider plugin : plugins.values()) {
+            try {
+                plugin.onAfterStop(cancel);
+            }
+            catch (Exception e) {
+                errOnStop = true;
+
+                U.error(log, "Failed to invoke afterStop for plugin (ignoring): " + plugin, e);
+            }
+        }
+
+        if (errOnStop)
+            throw new IgniteCheckedException("Failed to stop plugins.");
     }
 
     /** {@inheritDoc} */
