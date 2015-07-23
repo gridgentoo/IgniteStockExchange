@@ -17,8 +17,6 @@
 
 package org.apache.ignite.internal.processors.scripting;
 
-import org.apache.ignite.json.*;
-
 /**
  * Convert json object ot java objects.
  */
@@ -28,7 +26,7 @@ public class IgniteScriptingConverter {
      * @return  Object for Ignite cache.
      */
     public Object toJavaObject(Object o) {
-        return JSONCacheObject.toSimpleObject(o);
+        return o;
     }
 
     /**
@@ -44,9 +42,6 @@ public class IgniteScriptingConverter {
      * @return Object to store in cache.
      */
     public Object getField(String key, Object o) {
-        if (o instanceof JSONCacheObject)
-            return ((JSONCacheObject)o).getField(key);
-
         return null;
     }
 }
