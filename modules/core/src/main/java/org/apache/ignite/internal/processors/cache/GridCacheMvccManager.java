@@ -51,9 +51,9 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
     private static final int MAX_REMOVED_LOCKS = 10240;
 
     /** Pending locks per thread. */
-    private final ThreadLocal<Queue<GridCacheMvccCandidate>> pending =
-        new ThreadLocal<Queue<GridCacheMvccCandidate>>() {
-            @Override protected Queue<GridCacheMvccCandidate> initialValue() {
+    private final ThreadLocal<LinkedList<GridCacheMvccCandidate>> pending =
+        new ThreadLocal<LinkedList<GridCacheMvccCandidate>>() {
+            @Override protected LinkedList<GridCacheMvccCandidate> initialValue() {
                 return new LinkedList<>();
             }
         };
@@ -751,43 +751,25 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
         if (cacheCtx.isNear() || cand.singleImplicit())
             return true;
 
-        Queue<GridCacheMvccCandidate> queue = pending.get();
-
-        boolean add = true;
+        LinkedList<GridCacheMvccCandidate> queue = pending.get();
 
         GridCacheMvccCandidate prev = null;
 
-        for (Iterator<GridCacheMvccCandidate> it = queue.iterator(); it.hasNext(); ) {
-            GridCacheMvccCandidate c = it.next();
+        if (!queue.isEmpty())
+            prev = queue.getLast();
 
-            if (c.equals(cand))
-                add = false;
+        queue.add(cand);
 
-            if (c.used()) {
-                it.remove();
+        if (prev != null) {
+            prev.next(cand);
 
-                unlink(c);
-
-                continue;
-            }
-
-            prev = c;
+            cand.previous(prev);
         }
 
-        if (add) {
-            queue.add(cand);
+        if (log.isDebugEnabled())
+            log.debug("Linked new candidate: " + cand);
 
-            if (prev != null) {
-                prev.next(cand);
-
-                cand.previous(prev);
-            }
-
-            if (log.isDebugEnabled())
-                log.debug("Linked new candidate: " + cand);
-        }
-
-        return add;
+        return true;
     }
 
     /**
