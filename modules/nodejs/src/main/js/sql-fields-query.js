@@ -72,7 +72,7 @@ SqlFieldsQuery.prototype.page = function(res) {
  * @param {int} pageSz Page size.
  */
 SqlFieldsQuery.prototype.setPageSize = function(pageSz) {
-    this._pageSize = pageSz;
+    this._pageSz = pageSz;
 }
 
 /**
