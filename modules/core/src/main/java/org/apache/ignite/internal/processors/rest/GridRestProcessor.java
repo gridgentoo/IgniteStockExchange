@@ -580,6 +580,14 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
                 break;
 
+            case RUN_SCRIPT:
+            case AFFINITY_RUN_SCRIPT:
+            case EXECUTE_MAP_REDUCE_SCRIPT:
+                perm = SecurityPermission.TASK_EXECUTE;
+                name = "";
+
+                break;
+
             case GET_OR_CREATE_CACHE:
             case DESTROY_CACHE:
                 perm = SecurityPermission.ADMIN_CACHE;

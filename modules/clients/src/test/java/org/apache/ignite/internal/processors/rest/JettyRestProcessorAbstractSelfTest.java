@@ -124,7 +124,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
      * @return Request result.
      * @throws Exception If failed.
      */
-    private String makePostRequest(Map<String, String> params, String postParams) throws Exception {
+    protected String makePostRequest(Map<String, String> params, String postParams) throws Exception {
         String addr = "http://" + LOC_HOST + ":" + restPort() + "/ignite?";
 
         for (Map.Entry<String, String> e : params.entrySet())
@@ -1390,6 +1390,37 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         List items = (List)((Map)json.get("response")).get("items");
 
         assertEquals(4, items.size());
+
+        assertFalse(queryCursorFound());
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testSqlFieldsMetadataQuery() throws Exception {
+        String qry = "select firstName, lastName from Person";
+
+        Map<String, String> params = new HashMap<>();
+        params.put("cmd", GridRestCommand.EXECUTE_SQL_FIELDS_QUERY.key());
+        params.put("psz", "10");
+        params.put("cacheName", "person");
+        params.put("qry", URLEncoder.encode(qry));
+
+        String ret = content(params);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        List items = (List)((Map)json.get("response")).get("items");
+
+        List meta = (List)((Map)json.get("response")).get("fieldsMetadata");
+
+        assertEquals(4, items.size());
+
+        assertEquals(2, meta.size());
+
 
         assertFalse(queryCursorFound());
     }
