@@ -1421,6 +1421,12 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         assertEquals(2, meta.size());
 
+        JSONObject o = (JSONObject)meta.get(0);
+
+        assertEquals("FIRSTNAME", o.get("fieldName"));
+        assertEquals("java.lang.String", o.get("fieldTypeName"));
+        assertEquals("person", o.get("schemaName"));
+        assertEquals("PERSON", o.get("typeName"));
 
         assertFalse(queryCursorFound());
     }
