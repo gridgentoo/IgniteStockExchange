@@ -269,7 +269,7 @@ Cache.prototype.size = function(callback) {
  * @returns {QueryCursor} Cursor for current query.
  */
 Cache.prototype.query = function(qry) {
-    return new QueryCursor(this, qry, true, null);
+    return new QueryCursor(this, qry, true, null, null);
 }
 
 Cache.prototype.__createPromise = function(cmd) {
@@ -302,12 +302,14 @@ Cache.prototype._createCommand = function(name) {
  * @param {SqlQuery|SqlFieldsQuery} qry Sql query
  * @param {boolean} init True if query is not started
  * @param {Object[]} res Current page result
+ * @param fieldsMeta Fields metadata.
  */
-QueryCursor = function(cache, qry, init, res) {
+QueryCursor = function(cache, qry, init, res, fieldsMeta) {
     this._qry = qry;
     this._cache = cache;
     this._init = init;
     this._res = res;
+    this._fieldsMeta = fieldsMeta;
 }
 
 /**
@@ -342,6 +344,10 @@ QueryCursor.prototype.getAll = function() {
             else {
                 cursor._res = res;
 
+                if (cursor._fieldsMeta === null) {
+                    cursor._fieldsMeta = res["fieldsMetadata"];
+                }
+
                 fullRes = fullRes.concat(res["items"]);
 
                 if (res["last"]) {
@@ -372,17 +378,33 @@ QueryCursor.prototype.nextPage = function() {
     var server = this._cache._server;
     var qry = this._qry;
     var cache = this._cache;
+    var fieldsMeta = this._fieldsMeta;
 
     return new Promise(function(resolve, reject) {
        server.runCommand(cmd, function(err, res) {
            if(err !== null) {
-               reject(err);
+                reject(err);
            }
            else {
-               resolve(new QueryCursor(cache, qry, false, res));
+                if (fieldsMeta !== null) {
+                    resolve(new QueryCursor(cache, qry, false, res, fieldsMeta));
+                }
+                else {
+                    resolve(new QueryCursor(cache, qry, false, res, res["fieldsMetadata"]))
+                }
            }
        });
     });
+}
+
+/**
+ * Gets query fields metadata
+ *
+ * @this{QueryCursor}
+ * @returns {Object[]} Query fields metadata.
+ */
+QueryCursor.prototype.fieldsMetadata = function() {
+    return this._fieldsMeta;
 }
 
 /**

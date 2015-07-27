@@ -124,6 +124,8 @@ testSqlFieldsGetAllQuery = function() {
     TestUtils.startIgniteNode().then(function(ignite) {
         var qry = new SqlFieldsQuery("select concat(firstName, ' ', lastName) from Person");
 
+        var cursor = ignite.cache("person").query(qry);
+
         function onQuery(fullRes) {
             assert(fullRes.length === 4, "Result length is not correct" +
                 "[expected=1, val = " + fullRes.length + "]");
@@ -135,12 +137,61 @@ testSqlFieldsGetAllQuery = function() {
 
             console.log("Result: " + JSON.stringify(fullRes));
 
+            var meta = cursor.fieldsMetadata();
+
+            assert(meta[0]["fieldName"] !== null, "Incorrect fields meta.")
+
             return ignite.cache("person").get("key");
         }
 
-        ignite.cache("person").query(qry).getAll().then(onQuery).then(function(){
+        cursor.getAll().then(onQuery).then(function(){
             TestUtils.testDone();
         })
+    }).catch(function(err) {
+        assert(err === null, err);
+    });
+}
+
+testSqlFieldsMeta = function() {
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var qry = new SqlFieldsQuery("select firstName, lastName from Person");
+
+        var fullRes = [];
+
+        function onQuery(cursor) {
+            var page = cursor.page();
+
+            fullRes = fullRes.concat(page);
+
+            var meta = cursor.fieldsMetadata();
+
+            console.log("Fields meta: " + JSON.stringify(meta))
+            assert(meta.length === 2, "Incorrect fields meta length [exp=2, val=" + meta.length + "]");
+
+            assert(meta[0]["fieldName"] === "FIRSTNAME", "Incorrect fields meta " +
+                "[exp=FIRSTNAME, val=" + meta[0]["fieldName"] + "]");
+            assert(meta[0]["fieldTypeName"] === "java.lang.String", "Incorrect fields meta " +
+                "[exp=java.lang.String, val=" + meta[0]["fieldTypeName"] + "]");
+            assert(meta[0]["schemaName"] === "person", "Incorrect fields meta " +
+                "[exp=person, val=" + meta[0]["schemaName"] + "]");
+            assert(meta[0]["typeName"] === "PERSON", "Incorrect fields meta " +
+                "[exp=PERSON, val=" + meta[0]["typeName"] + "]");
+
+            if (cursor.isFinished()) {
+                assert(fullRes.length === 4, "Result length is not correct" +
+                    "[expected=1, val = " + fullRes.length + "]");
+
+                console.log("Result: " + JSON.stringify(fullRes));
+
+                TestUtils.testDone();
+
+                return;
+            }
+
+            cursor.nextPage().then(onQuery);
+        }
+
+        ignite.cache("person").query(qry).nextPage().then(onQuery);
     }).catch(function(err) {
         assert(err === null, err);
     });

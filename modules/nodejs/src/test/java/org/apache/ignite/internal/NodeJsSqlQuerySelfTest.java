@@ -65,6 +65,15 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testSqlFieldsMeta() throws Exception {
+        initCache();
+
+        runJsScript("testSqlFieldsMeta");
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testCloseQuery() throws Exception {
         initCache();
 
