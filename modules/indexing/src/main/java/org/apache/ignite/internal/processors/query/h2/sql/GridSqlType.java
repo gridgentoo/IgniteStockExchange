@@ -17,12 +17,13 @@
 
 package org.apache.ignite.internal.processors.query.h2.sql;
 
+import org.apache.ignite.internal.util.typedef.internal.*;
 import org.h2.value.*;
 
 /**
  * SQL Data type based on H2.
  */
-public class GridSqlType {
+public final class GridSqlType {
     /** */
     public static final GridSqlType UNKNOWN = new GridSqlType(Value.UNKNOWN, 0, 0, 0, null);
 
@@ -106,5 +107,10 @@ public class GridSqlType {
      */
     public String sql() {
         return sql;
+    }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return S.toString(GridSqlType.class, this);
     }
 }

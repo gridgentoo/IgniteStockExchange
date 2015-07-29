@@ -29,6 +29,7 @@ import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.*;
 import org.apache.ignite.internal.processors.cache.query.*;
 import org.apache.ignite.internal.processors.query.*;
 import org.apache.ignite.internal.processors.query.h2.*;
+import org.apache.ignite.internal.processors.query.h2.sql.*;
 import org.apache.ignite.internal.processors.query.h2.twostep.messages.*;
 import org.apache.ignite.internal.util.*;
 import org.apache.ignite.internal.util.typedef.*;
@@ -36,9 +37,7 @@ import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
 import org.apache.ignite.marshaller.*;
 import org.apache.ignite.plugin.extensions.communication.*;
-import org.h2.command.*;
 import org.h2.command.ddl.*;
-import org.h2.command.dml.*;
 import org.h2.engine.*;
 import org.h2.expression.*;
 import org.h2.index.*;
@@ -55,7 +54,6 @@ import javax.cache.*;
 import java.lang.reflect.*;
 import java.sql.*;
 import java.util.*;
-import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
@@ -1053,17 +1051,24 @@ public class GridReduceQueryExecutor {
             data.create = true;
 
             if (!explain) {
-                Prepared prepare = ses.prepare(qry.query(), false);
+                LinkedHashMap<String,?> colsMap = qry.columns();
 
-                List<org.h2.expression.Parameter> parsedParams = prepare.getParameters();
+                assert colsMap != null;
 
-                for (int i = Math.min(parsedParams.size(), qry.parameters().length); --i >= 0; ) {
-                    Object val = qry.parameters()[i];
+                ArrayList<Column> cols = new ArrayList<>(colsMap.size());
 
-                    parsedParams.get(i).setValue(DataType.convertToValue(ses, val, Value.UNKNOWN));
+                for (Map.Entry<String,?> e : colsMap.entrySet()) {
+                    String alias = e.getKey();
+                    GridSqlType t = (GridSqlType)e.getValue();
+
+                    assert !F.isEmpty(alias);
+
+                    Column c = new Column(alias, t.type(), t.precision(), t.scale(), t.displaySize());
+
+                    cols.add(c);
                 }
 
-                data.columns = generateColumnsFromQuery((Query)prepare);
+                data.columns = cols;
             }
             else
                 data.columns = planColumns();

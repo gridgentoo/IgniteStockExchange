@@ -26,6 +26,7 @@ import org.apache.ignite.marshaller.*;
 import org.apache.ignite.plugin.extensions.communication.*;
 
 import java.nio.*;
+import java.util.*;
 
 /**
  * Query.
@@ -52,6 +53,11 @@ public class GridCacheSqlQuery implements Message {
     /** */
     private byte[] paramsBytes;
 
+    /** */
+    @GridToStringInclude
+    @GridDirectTransient
+    private LinkedHashMap<String, ?> columns;
+
     /**
      * For {@link Message}.
      */
@@ -71,6 +77,23 @@ public class GridCacheSqlQuery implements Message {
         this.qry = qry;
 
         this.params = F.isEmpty(params) ? EMPTY_PARAMS : params;
+    }
+
+    /**
+     * @return Columns.
+     */
+    public LinkedHashMap<String, ?> columns() {
+        return columns;
+    }
+
+    /**
+     * @param columns Columns.
+     * @return {@code this}.
+     */
+    public GridCacheSqlQuery columns(LinkedHashMap<String, ?> columns) {
+        this.columns = columns;
+
+        return this;
     }
 
     /**

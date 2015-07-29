@@ -113,4 +113,9 @@ public abstract class GridSqlElement implements Iterable<GridSqlElement> {
     @Override public Iterator<GridSqlElement> iterator() {
         return children.iterator();
     }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return getSQL();
+    }
 }
