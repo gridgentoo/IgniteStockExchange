@@ -88,7 +88,7 @@ public class GridSqlQuerySplitter {
 
         int c = 0;
 
-        for (GridSqlElement expr : left.select(true)) {
+        for (GridSqlElement expr : left.columns(true)) {
             String colName;
 
             if (expr instanceof GridSqlAlias)
@@ -101,12 +101,12 @@ public class GridSqlQuerySplitter {
                 expr = alias(colName, expr);
 
                 // Set generated alias to the expression.
-                left.setSelectExpression(c, expr);
+                left.setColumn(c, expr);
             }
 
             GridSqlColumn col = column(colName);
 
-            wrapQry.addSelectExpression(col, true);
+            wrapQry.addColumn(col, true);
 
             c++;
         }
@@ -147,7 +147,7 @@ public class GridSqlQuerySplitter {
 
         // Split all select expressions into map-reduce parts.
         List<GridSqlElement> mapExps = F.addAll(new ArrayList<GridSqlElement>(mapQry.allColumns()),
-            mapQry.select(false));
+            mapQry.columns(false));
 
         GridSqlElement[] rdcExps = new GridSqlElement[mapQry.visibleColumns()];
 
@@ -159,16 +159,16 @@ public class GridSqlQuerySplitter {
             aggregateFound |= splitSelectExpression(mapExps, rdcExps, colNames, i, collocated);
 
         // Fill select expressions.
-        mapQry.clearSelect();
+        mapQry.clearColumns();
 
         for (GridSqlElement exp : mapExps) // Add all map expressions as visible.
-            mapQry.addSelectExpression(exp, true);
+            mapQry.addColumn(exp, true);
 
         for (GridSqlElement rdcExp : rdcExps) // Add corresponding visible reduce columns.
-            rdcQry.addSelectExpression(rdcExp, true);
+            rdcQry.addColumn(rdcExp, true);
 
         for (int i = rdcExps.length; i < mapExps.size(); i++)  // Add all extra map columns as invisible reduce columns.
-            rdcQry.addSelectExpression(column(((GridSqlAlias)mapExps.get(i)).alias()), false);
+            rdcQry.addColumn(column(((GridSqlAlias)mapExps.get(i)).alias()), false);
 
         // -- GROUP BY
         if (mapQry.groupColumns() != null && !collocated)
@@ -242,7 +242,7 @@ public class GridSqlQuerySplitter {
 
             collectAllSpacesInFrom(select.from(), spaces);
 
-            for (GridSqlElement el : select.select(false))
+            for (GridSqlElement el : select.columns(false))
                 collectAllSpacesInSubqueries(el, spaces);
 
             collectAllSpacesInSubqueries(select.where(), spaces);
@@ -325,7 +325,7 @@ public class GridSqlQuerySplitter {
         if (params.length == 0)
             return target;
 
-        for (GridSqlElement el : qry.select(false))
+        for (GridSqlElement el : qry.columns(false))
             findParams(el, params, target);
 
         findParams(qry.from(), params, target);

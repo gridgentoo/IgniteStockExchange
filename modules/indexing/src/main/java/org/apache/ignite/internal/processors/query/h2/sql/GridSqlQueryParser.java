@@ -272,7 +272,7 @@ public class GridSqlQueryParser {
         ArrayList<Expression> expressions = select.getExpressions();
 
         for (int i = 0; i < expressions.size(); i++)
-            res.addSelectExpression(parseExpression(expressions.get(i)), i < select.getColumnCount());
+            res.addColumn(parseExpression(expressions.get(i)), i < select.getColumnCount());
 
         int[] grpIdx = GROUP_INDEXES.get(select);
 
