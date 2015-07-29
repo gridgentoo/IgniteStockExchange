@@ -22,7 +22,6 @@ import org.h2.command.*;
 import org.h2.command.dml.*;
 import org.h2.engine.*;
 import org.h2.expression.*;
-import org.h2.expression.Parameter;
 import org.h2.jdbc.*;
 import org.h2.result.*;
 import org.h2.table.*;
@@ -272,7 +271,7 @@ public class GridSqlQueryParser {
         ArrayList<Expression> expressions = select.getExpressions();
 
         for (int i = 0; i < expressions.size(); i++)
-            res.addColumn(parseExpression(expressions.get(i)), i < select.getColumnCount());
+            res.addColumn(parseExpressionWithType(expressions.get(i)), i < select.getColumnCount());
 
         int[] grpIdx = GROUP_INDEXES.get(select);
 
@@ -358,6 +357,7 @@ public class GridSqlQueryParser {
 
     /**
      * @param expression Expression.
+     * @return Parsed expression.
      */
     private GridSqlElement parseExpression(@Nullable Expression expression) {
         if (expression == null)
@@ -368,14 +368,6 @@ public class GridSqlQueryParser {
         if (res == null) {
             res = parseExpression0(expression);
 
-            if (expression.getType() != Value.UNKNOWN) {
-                Column c = new Column(null, expression.getType(), expression.getPrecision(), expression.getScale(),
-                    expression.getDisplaySize());
-
-                res.expressionResultType(new GridSqlType(c.getType(), c.getScale(), c.getPrecision(), c.getDisplaySize(),
-                    c.getCreateSQL()));
-            }
-
             h2ObjToGridObj.put(expression, res);
         }
 
@@ -383,7 +375,31 @@ public class GridSqlQueryParser {
     }
 
     /**
+     * @param expression H2 Expression.
+     * @return Parsed expression.
+     */
+    private GridSqlElement parseExpressionWithType(Expression expression) {
+        GridSqlElement res = parseExpression(expression);
+
+        if (res != null && res.expressionResultType() == null) {
+            GridSqlType type = GridSqlType.UNKNOWN;
+
+            if (expression.getType() != Value.UNKNOWN) {
+                Column c = new Column(null, expression.getType(), expression.getPrecision(), expression.getScale(),
+                    expression.getDisplaySize());
+
+                type = new GridSqlType(c.getType(), c.getScale(), c.getPrecision(), c.getDisplaySize(), c.getCreateSQL());
+            }
+
+            res.expressionResultType(type);
+        }
+
+        return res;
+    }
+
+    /**
      * @param expression Expression.
+     * @return Parsed expression.
      */
     private GridSqlElement parseExpression0(Expression expression) {
         if (expression instanceof ExpressionColumn) {

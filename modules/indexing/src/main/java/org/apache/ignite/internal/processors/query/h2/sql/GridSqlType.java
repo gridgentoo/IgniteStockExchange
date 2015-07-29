@@ -17,10 +17,15 @@
 
 package org.apache.ignite.internal.processors.query.h2.sql;
 
+import org.h2.value.*;
+
 /**
  * SQL Data type based on H2.
  */
 public class GridSqlType {
+    /** */
+    public static final GridSqlType UNKNOWN = new GridSqlType(Value.UNKNOWN, 0, 0, 0, null);
+
     /** H2 type. */
     private final int type;
 

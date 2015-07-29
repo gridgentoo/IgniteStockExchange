@@ -424,7 +424,9 @@ public class GridSqlQuerySplitter {
 
                 GridSqlType type = el.expressionResultType();
 
-                if (type != null && type.type() == Value.UUID) // There is no JDBC type UUID, so conversion to bytes occurs.
+                assert type != null;
+
+                if (type.type() == Value.UUID) // There is no JDBC type UUID, so conversion to bytes occurs.
                     rdcEl = function(CAST).setCastType("UUID").addChild(rdcEl); // TODO IGNITE-1142 - remove this cast when table function removed
 
                 if (colNames.add(rdcColAlias)) // To handle column name duplication (usually wildcard for few tables).
