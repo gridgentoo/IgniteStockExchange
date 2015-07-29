@@ -26,6 +26,17 @@ public class GridSqlType {
     /** */
     public static final GridSqlType UNKNOWN = new GridSqlType(Value.UNKNOWN, 0, 0, 0, null);
 
+    /** */
+    public static final GridSqlType BIGINT = new GridSqlType(Value.LONG, 0, ValueLong.PRECISION,
+        ValueLong.DISPLAY_SIZE, "BIGINT");
+
+    /** */
+    public static final GridSqlType DOUBLE = new GridSqlType(Value.DOUBLE, 0, ValueDouble.PRECISION,
+        ValueDouble.DISPLAY_SIZE, "DOUBLE");
+
+    /** */
+    public static final GridSqlType UUID = new GridSqlType(Value.UUID, 0, Integer.MAX_VALUE, 36, "UUID");
+
     /** H2 type. */
     private final int type;
 

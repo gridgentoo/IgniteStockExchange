@@ -38,7 +38,7 @@ public class GridCacheTwoStepQuery {
 
     /** */
     @GridToStringInclude
-    private GridCacheSqlQuery reduce;
+    private GridCacheSqlQuery rdc;
 
     /** */
     private int pageSize = DFLT_PAGE_SIZE;
@@ -51,13 +51,14 @@ public class GridCacheTwoStepQuery {
 
     /**
      * @param spaces All spaces accessed in query.
-     * @param qry Reduce query.
-     * @param params Reduce query parameters.
+     * @param rdc Reduce query.
      */
-    public GridCacheTwoStepQuery(Set<String> spaces, String qry, Object ... params) {
+    public GridCacheTwoStepQuery(Set<String> spaces, GridCacheSqlQuery rdc) {
+        assert rdc != null;
+
         this.spaces = spaces;
 
-        reduce = new GridCacheSqlQuery(null, qry, params);
+        this.rdc = rdc;
     }
 
     /**
@@ -89,17 +90,17 @@ public class GridCacheTwoStepQuery {
     }
 
     /**
-     * @param alias Alias.
      * @param qry SQL Query.
-     * @param params Query parameters.
      */
-    public void addMapQuery(String alias, String qry, Object ... params) {
+    public void addMapQuery(GridCacheSqlQuery qry) {
+        String alias = qry.alias();
+
         A.ensure(!F.isEmpty(alias), "alias must not be empty");
 
         if (mapQrys == null)
             mapQrys = new GridLeanMap<>();
 
-        if (mapQrys.put(alias, new GridCacheSqlQuery(alias, qry, params)) != null)
+        if (mapQrys.put(alias, qry) != null)
             throw new IgniteException("Failed to add query, alias already exists: " + alias + ".");
     }
 
@@ -107,7 +108,7 @@ public class GridCacheTwoStepQuery {
      * @return Reduce query.
      */
     public GridCacheSqlQuery reduceQuery() {
-        return reduce;
+        return rdc;
     }
 
     /**

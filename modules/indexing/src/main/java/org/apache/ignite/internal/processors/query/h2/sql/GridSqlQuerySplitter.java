@@ -214,11 +214,11 @@ public class GridSqlQuerySplitter {
         }
 
         // Build resulting two step query.
-        GridCacheTwoStepQuery res = new GridCacheTwoStepQuery(spaces, rdcQry.getSQL(),
-            findParams(rdcQry, params, new ArrayList<>()).toArray());
+        GridCacheTwoStepQuery res = new GridCacheTwoStepQuery(spaces, new GridCacheSqlQuery(null, rdcQry.getSQL(),
+            findParams(rdcQry, params, new ArrayList<>()).toArray()));
 
-        res.addMapQuery(mergeTable, mapQry.getSQL(),
-            findParams(mapQry, params, new ArrayList<>(params.length)).toArray());
+        res.addMapQuery(new GridCacheSqlQuery(mergeTable, mapQry.getSQL(),
+            findParams(mapQry, params, new ArrayList<>(params.length)).toArray()));
 
         res.explain(explain);
 
@@ -422,12 +422,12 @@ public class GridSqlQuerySplitter {
             if (idx < rdcSelect.length) { // SELECT __C0 AS original_alias
                 GridSqlElement rdcEl = column(mapColAlias);
 
-                GridSqlType type = el.expressionResultType();
+                GridSqlType type = el.resultType();
 
                 assert type != null;
 
                 if (type.type() == Value.UUID) // There is no JDBC type UUID, so conversion to bytes occurs.
-                    rdcEl = function(CAST).setCastType("UUID").addChild(rdcEl); // TODO IGNITE-1142 - remove this cast when table function removed
+                    rdcEl = function(CAST).resultType(GridSqlType.UUID).addChild(rdcEl); // TODO IGNITE-1142 - remove this cast when table function removed
 
                 if (colNames.add(rdcColAlias)) // To handle column name duplication (usually wildcard for few tables).
                     rdcEl = alias(rdcColAlias, rdcEl);
@@ -527,7 +527,7 @@ public class GridSqlQuerySplitter {
 
                 //-- AVG(CAST(x AS DOUBLE)) map
                 mapAgg = aggregate(agg.distinct(), AVG).addChild( // Add function argument.
-                    function(CAST).setCastType("DOUBLE").addChild(agg.child()));
+                    function(CAST).resultType(GridSqlType.DOUBLE).addChild(agg.child()));
 
                 //-- SUM( AVG(x)*COUNT(x) )/SUM( COUNT(x) ) reduce
                 GridSqlElement sumUpRdc = aggregate(false, SUM).addChild(
@@ -557,7 +557,7 @@ public class GridSqlQuerySplitter {
                     mapAgg.addChild(agg.child());
 
                 rdcAgg = aggregate(false, SUM).addChild(column(mapAggAlias.alias()));
-                rdcAgg = function(CAST).setCastType("BIGINT").addChild(rdcAgg);
+                rdcAgg = function(CAST).resultType(GridSqlType.BIGINT).addChild(rdcAgg);
 
                 break;
 

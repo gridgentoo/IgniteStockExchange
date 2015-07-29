@@ -381,7 +381,7 @@ public class GridSqlQueryParser {
     private GridSqlElement parseExpressionWithType(Expression expression) {
         GridSqlElement res = parseExpression(expression);
 
-        if (res != null && res.expressionResultType() == null) {
+        if (res != null && res.resultType() == null) {
             GridSqlType type = GridSqlType.UNKNOWN;
 
             if (expression.getType() != Value.UNKNOWN) {
@@ -391,7 +391,7 @@ public class GridSqlQueryParser {
                 type = new GridSqlType(c.getType(), c.getScale(), c.getPrecision(), c.getDisplaySize(), c.getCreateSQL());
             }
 
-            res.expressionResultType(type);
+            res.resultType(type);
         }
 
         return res;
@@ -544,9 +544,12 @@ public class GridSqlQueryParser {
                 }
             }
 
-            if (f.getFunctionType() == Function.CAST || f.getFunctionType() == Function.CONVERT)
-                res.setCastType(new Column(null, f.getType(), f.getPrecision(), f.getScale(), f.getDisplaySize())
-                    .getCreateSQL());
+            if (f.getFunctionType() == Function.CAST || f.getFunctionType() == Function.CONVERT) {
+                Column c = new Column(null, f.getType(), f.getPrecision(), f.getScale(), f.getDisplaySize());
+
+                res.resultType(new GridSqlType(c.getType(), c.getScale(), c.getPrecision(),
+                    c.getDisplaySize(), c.getCreateSQL()));
+            }
 
             return res;
         }
