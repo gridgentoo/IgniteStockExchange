@@ -1329,13 +1329,19 @@ public class IgniteH2Indexing implements GridQueryIndexing {
             }
         }
 
-        executeStatement("INFORMATION_SCHEMA", "SHUTDOWN");
-
         for (Connection c : conns)
             U.close(c, log);
 
         conns.clear();
         schemas.clear();
+
+        try (Connection c = DriverManager.getConnection(dbUrl);
+             Statement s = c.createStatement()) {
+            s.execute("SHUTDOWN");
+        }
+        catch (SQLException e) {
+            U.error(log, "Failed to shutdown database.", e);
+        }
 
         if (log.isDebugEnabled())
             log.debug("Cache query index stopped.");
@@ -1351,9 +1357,6 @@ public class IgniteH2Indexing implements GridQueryIndexing {
             throw new IgniteCheckedException("Cache already registered: " + U.maskName(ccfg.getName()));
 
         createSchema(schema);
-
-        executeStatement(schema, "CREATE ALIAS " + GridSqlQuerySplitter.TABLE_FUNC_NAME +
-            " NOBUFFER FOR \"" + GridReduceQueryExecutor.class.getName() + ".mergeTableFunction\"");
 
         createSqlFunctions(schema, ccfg.getSqlFunctionClasses());
     }

@@ -39,9 +39,6 @@ public class GridCacheSqlQuery implements Message {
     public static final Object[] EMPTY_PARAMS = {};
 
     /** */
-    private String alias;
-
-    /** */
     @GridToStringInclude
     private String qry;
 
@@ -66,14 +63,12 @@ public class GridCacheSqlQuery implements Message {
     }
 
     /**
-     * @param alias Alias.
      * @param qry Query.
      * @param params Query parameters.
      */
-    public GridCacheSqlQuery(String alias, String qry, Object[] params) {
+    public GridCacheSqlQuery(String qry, Object[] params) {
         A.ensure(!F.isEmpty(qry), "qry must not be empty");
 
-        this.alias = alias;
         this.qry = qry;
 
         this.params = F.isEmpty(params) ? EMPTY_PARAMS : params;
@@ -94,13 +89,6 @@ public class GridCacheSqlQuery implements Message {
         this.columns = columns;
 
         return this;
-    }
-
-    /**
-     * @return Alias.
-     */
-    public String alias() {
-        return alias;
     }
 
     /**
@@ -161,7 +149,7 @@ public class GridCacheSqlQuery implements Message {
 
         switch (writer.state()) {
             case 0:
-                if (!writer.writeString("alias", alias))
+                if (!writer.writeString("alias", null))
                     return false;
 
                 writer.incrementState();
@@ -192,7 +180,7 @@ public class GridCacheSqlQuery implements Message {
 
         switch (reader.state()) {
             case 0:
-                alias = reader.readString("alias");
+                reader.readString("alias");
 
                 if (!reader.isLastRead())
                     return false;

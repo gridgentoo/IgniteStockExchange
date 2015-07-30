@@ -17,10 +17,7 @@
 
 package org.apache.ignite.internal.processors.cache.query;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.util.*;
 import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 
 import java.util.*;
@@ -34,7 +31,7 @@ public class GridCacheTwoStepQuery {
 
     /** */
     @GridToStringInclude
-    private Map<String, GridCacheSqlQuery> mapQrys;
+    private List<GridCacheSqlQuery> mapQrys = new ArrayList<>();
 
     /** */
     @GridToStringInclude
@@ -93,15 +90,7 @@ public class GridCacheTwoStepQuery {
      * @param qry SQL Query.
      */
     public void addMapQuery(GridCacheSqlQuery qry) {
-        String alias = qry.alias();
-
-        A.ensure(!F.isEmpty(alias), "alias must not be empty");
-
-        if (mapQrys == null)
-            mapQrys = new GridLeanMap<>();
-
-        if (mapQrys.put(alias, qry) != null)
-            throw new IgniteException("Failed to add query, alias already exists: " + alias + ".");
+        mapQrys.add(qry);
     }
 
     /**
@@ -114,8 +103,8 @@ public class GridCacheTwoStepQuery {
     /**
      * @return Map queries.
      */
-    public Collection<GridCacheSqlQuery> mapQueries() {
-        return mapQrys.values();
+    public List<GridCacheSqlQuery> mapQueries() {
+        return mapQrys;
     }
 
     /**

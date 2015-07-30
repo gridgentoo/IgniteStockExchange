@@ -22,7 +22,6 @@ import org.apache.ignite.internal.processors.cache.query.*;
 import org.apache.ignite.internal.processors.query.h2.*;
 import org.apache.ignite.internal.util.typedef.*;
 import org.h2.jdbc.*;
-import org.h2.value.*;
 import org.jetbrains.annotations.*;
 
 import java.util.*;
@@ -35,20 +34,20 @@ import static org.apache.ignite.internal.processors.query.h2.sql.GridSqlPlacehol
  */
 public class GridSqlQuerySplitter {
     /** */
+    private static final String TABLE_SCHEMA = "PUBLIC";
+
+    /** */
     private static final String TABLE_PREFIX = "__T";
 
     /** */
     private static final String COLUMN_PREFIX = "__C";
 
-    /** */
-    public static final String TABLE_FUNC_NAME = "__Z0";
-
     /**
      * @param idx Index of table.
-     * @return Table name.
+     * @return Table.
      */
-    private static String table(int idx) {
-        return TABLE_PREFIX + idx;
+    public static GridSqlTable table(int idx) {
+        return new GridSqlTable(TABLE_SCHEMA, TABLE_PREFIX + idx);
     }
 
     /**
@@ -141,13 +140,11 @@ public class GridSqlQuerySplitter {
         // nullifying or updating things, have to make sure that we will not need them in the original form later.
         final GridSqlSelect mapQry = wrapUnion(collectAllSpaces(GridSqlQueryParser.parse(stmt), spaces));
 
-        final String mergeTable = TABLE_FUNC_NAME + "()"; // table(0); TODO IGNITE-1142
-
         final boolean explain = mapQry.explain();
 
         mapQry.explain(false);
 
-        GridSqlSelect rdcQry = new GridSqlSelect().from(new GridSqlFunction(null, TABLE_FUNC_NAME)); // table(mergeTable)); TODO IGNITE-1142
+        GridSqlSelect rdcQry = new GridSqlSelect().from(table(0));
 
         // Split all select expressions into map-reduce parts.
         List<GridSqlElement> mapExps = F.addAll(new ArrayList<GridSqlElement>(mapQry.allColumns()),
@@ -218,10 +215,10 @@ public class GridSqlQuerySplitter {
         }
 
         // Build resulting two step query.
-        GridCacheTwoStepQuery res = new GridCacheTwoStepQuery(spaces, new GridCacheSqlQuery(null, rdcQry.getSQL(),
+        GridCacheTwoStepQuery res = new GridCacheTwoStepQuery(spaces, new GridCacheSqlQuery(rdcQry.getSQL(),
             findParams(rdcQry, params, new ArrayList<>()).toArray()));
 
-        res.addMapQuery(new GridCacheSqlQuery(mergeTable, mapQry.getSQL(),
+        res.addMapQuery(new GridCacheSqlQuery(mapQry.getSQL(),
             findParams(mapQry, params, new ArrayList<>(params.length)).toArray())
             .columns(collectColumns(mapExps)));
 
@@ -458,13 +455,6 @@ public class GridSqlQuerySplitter {
             if (idx < rdcSelect.length) { // SELECT __C0 AS original_alias
                 GridSqlElement rdcEl = column(mapColAlias);
 
-                GridSqlType type = el.resultType();
-
-                assert type != null;
-
-                if (type.type() == Value.UUID) // There is no JDBC type UUID, so conversion to bytes occurs.
-                    rdcEl = function(CAST).resultType(GridSqlType.UUID).addChild(rdcEl); // TODO IGNITE-1142 - remove this cast when table function removed
-
                 if (colNames.add(rdcColAlias)) // To handle column name duplication (usually wildcard for few tables).
                     rdcEl = alias(rdcColAlias, rdcEl);
 
@@ -661,13 +651,5 @@ public class GridSqlQuerySplitter {
      */
     private static GridSqlFunction function(GridSqlFunctionType type) {
         return new GridSqlFunction(type);
-    }
-
-    /**
-     * @param name Table name.
-     * @return Table.
-     */
-    private static GridSqlTable table(String name) {
-        return new GridSqlTable(null, name);
     }
 }
