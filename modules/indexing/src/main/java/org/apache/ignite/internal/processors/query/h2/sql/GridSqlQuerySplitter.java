@@ -241,8 +241,11 @@ public class GridSqlQuerySplitter {
             GridSqlElement col = cols.get(i);
             GridSqlType t = col.resultType();
 
-            if (t == null || t == GridSqlType.UNKNOWN)
-                throw new IllegalStateException("Type: " + t + " -> " + col);
+            if (t == null)
+                throw new NullPointerException("Column type.");
+
+            if (t == GridSqlType.UNKNOWN)
+                throw new IllegalStateException("Unknown type: " + col);
 
             String alias;
 
