@@ -224,10 +224,16 @@ class HadoopV2JobResourceManager {
                     throw new IOException("Failed to create directory " +
                         "[path=" + archivesPath + ", jobId=" + jobId + ']');
 
+                // locName = dsdgen
+                // archiveFile = gridgain-community-hadoop-1.3.3-rc1/work/hadoop/node-0d52cede-c2ad-406b-bd2b-b22d96d071d6/job_0d52cede-c2ad-406b-bd2b-b22d96d071d6_1/.cached-archives/dsdgen
                 File archiveFile = new File(archivesPath, locName);
 
+                // srcPath = /tmp/-2be2732670ff4dfb167ff6671307bd82.jar#dsdgen
+                // dstPath = /home/ivan/hive-server-2/gridgain-community-hadoop-1.3.3-rc1/work/hadoop/node-0d52cede-c2ad-406b-bd2b-b22d96d071d6/job_0d52cede-c2ad-406b-bd2b-b22d96d071d6_1/dsdgen
+                // this somehow works, though fragment is not cut off:
                 FileUtil.copy(srcFs, srcPath, dstFs, new Path(archiveFile.toString()), false, cfg);
 
+                // archiveNameLC = dsdgen
                 String archiveNameLC = archiveFile.getName().toLowerCase();
 
                 if (archiveNameLC.endsWith(".jar"))
@@ -239,6 +245,7 @@ class HadoopV2JobResourceManager {
                     archiveNameLC.endsWith(".tar"))
                     FileUtil.unTar(archiveFile, dstPath);
                 else
+                // ***** fail there:
                     throw new IOException("Cannot unpack archive [path=" + srcPath + ", jobId=" + jobId + ']');
             }
             else
