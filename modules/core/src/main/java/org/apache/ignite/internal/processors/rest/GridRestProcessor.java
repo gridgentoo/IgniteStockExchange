@@ -540,10 +540,11 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
             case EXECUTE_SQL_QUERY:
             case EXECUTE_SQL_FIELDS_QUERY:
+            case EXECUTE_SCAN_QUERY:
             case CLOSE_SQL_QUERY:
             case FETCH_SQL_QUERY:
                 perm = SecurityPermission.CACHE_READ;
-                name = ((RestSqlQueryRequest)req).cacheName();
+                name = ((RestQueryRequest)req).cacheName();
 
                 break;
 

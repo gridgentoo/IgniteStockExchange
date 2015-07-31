@@ -18,43 +18,33 @@
 var Query = require("./query").Query
 
 /**
- * @this {SqlFieldsQuery}
- * @param {string} Sql query
+ * @this {ScanQuery}
  */
-function SqlFieldsQuery(sql) {
+function ScanQuery() {
     Query.apply(this, arguments);
-    this._qryType = "SqlFields";
-    this._sql = sql;
-    this._arg = [];
-    this._pageSz = 1;
+    this._className = null;
+    this._qryType = "Scan";
 }
 
-SqlFieldsQuery.prototype = Query.prototype;
+ScanQuery.prototype = Query.prototype;
 
-SqlFieldsQuery.prototype.constructor = SqlFieldsQuery;
+ScanQuery.prototype.constructor = ScanQuery;
 
-/**
- * @this {SqlFieldsQuery}
- * @param args Arguments
- */
-SqlFieldsQuery.prototype.setArguments = function(args) {
-    this._arg = args;
-}
 
 /**
- * @this {SqlFieldsQuery}
- * @returns Sql query
+ * @this {ScanQuery}
+ * @param type Filter class name
  */
-SqlFieldsQuery.prototype.query = function() {
-    return this._sql;
+ScanQuery.prototype.setFilterClassName = function(className) {
+    this._className = className;
 }
 
 /**
- * @this {SqlFieldsQuery}
- * @returns arguments
+ * @this {ScanQuery}
+ * @returns Filter class name
  */
-SqlFieldsQuery.prototype.arguments = function() {
-    return this._arg;
+ScanQuery.prototype.filterClassName = function() {
+    return this._className;
 }
 
-exports.SqlFieldsQuery = SqlFieldsQuery;
+exports.ScanQuery = ScanQuery;

@@ -22,5 +22,6 @@ module.exports = {
     Ignite : require('./ignite.js').Ignite,
     Compute : require('./compute.js').Compute,
     SqlQuery : require('./sql-query.js').SqlQuery,
-    SqlFieldsQuery : require('./sql-fields-query.js').SqlFieldsQuery
+    SqlFieldsQuery : require('./sql-fields-query.js').SqlFieldsQuery,
+    ScanQuery : require('./scan-query.js').ScanQuery
 }

@@ -29,6 +29,7 @@ import org.apache.ignite.internal.util.future.*;
 import org.apache.ignite.internal.util.typedef.internal.*;
 import org.apache.ignite.lang.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -42,6 +43,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
     /** Supported commands. */
     private static final Collection<GridRestCommand> SUPPORTED_COMMANDS = U.sealList(EXECUTE_SQL_QUERY,
         EXECUTE_SQL_FIELDS_QUERY,
+        EXECUTE_SCAN_QUERY,
         FETCH_SQL_QUERY,
         CLOSE_SQL_QUERY);
 
@@ -68,23 +70,24 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         assert req != null;
 
         assert SUPPORTED_COMMANDS.contains(req.command());
-        assert req instanceof RestSqlQueryRequest : "Invalid type of query request.";
+        assert req instanceof RestQueryRequest : "Invalid type of query request.";
 
         switch (req.command()) {
             case EXECUTE_SQL_QUERY:
-            case EXECUTE_SQL_FIELDS_QUERY: {
+            case EXECUTE_SQL_FIELDS_QUERY:
+            case EXECUTE_SCAN_QUERY: {
                 return ctx.closure().callLocalSafe(
-                    new ExecuteQueryCallable(ctx, (RestSqlQueryRequest)req, qryCurs), false);
+                    new ExecuteQueryCallable(ctx, (RestQueryRequest)req, qryCurs), false);
             }
 
             case FETCH_SQL_QUERY: {
                 return ctx.closure().callLocalSafe(
-                    new FetchQueryCallable(ctx, (RestSqlQueryRequest)req, qryCurs), false);
+                    new FetchQueryCallable(ctx, (RestQueryRequest)req, qryCurs), false);
             }
 
             case CLOSE_SQL_QUERY: {
                 return ctx.closure().callLocalSafe(
-                    new CloseQueryCallable((RestSqlQueryRequest)req, qryCurs), false);
+                    new CloseQueryCallable((RestQueryRequest)req, qryCurs), false);
             }
         }
 
@@ -99,7 +102,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         private GridKernalContext ctx;
 
         /** Execute query request. */
-        private RestSqlQueryRequest req;
+        private RestQueryRequest req;
 
         /** Queries cursors. */
         private ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs;
@@ -109,7 +112,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
          * @param req Execute query request.
          * @param qryCurs Queries cursors.
          */
-        public ExecuteQueryCallable(GridKernalContext ctx, RestSqlQueryRequest req,
+        public ExecuteQueryCallable(GridKernalContext ctx, RestQueryRequest req,
             ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs) {
             this.ctx = ctx;
             this.req = req;
@@ -123,22 +126,40 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
             try {
                 Query qry;
 
-                if (req.typeName() != null) {
-                    qry = new SqlQuery(req.typeName(), req.sqlQuery());
+                switch (req.queryType()) {
+                    case SQL:
+                        qry = new SqlQuery(req.typeName(), req.sqlQuery());
 
-                    ((SqlQuery)qry).setArgs(req.arguments());
-                }
-                else {
-                    qry = new SqlFieldsQuery(req.sqlQuery());
+                        ((SqlQuery)qry).setArgs(req.arguments());
 
-                    ((SqlFieldsQuery)qry).setArgs(req.arguments());
+                        break;
+
+                    case SQL_FIELDS:
+                        qry = new SqlFieldsQuery(req.sqlQuery());
+
+                        ((SqlFieldsQuery)qry).setArgs(req.arguments());
+
+                        break;
+
+                    case SCAN:
+                        IgniteBiPredicate pred = null;
+
+                        if (req.className() != null)
+                            pred = instance(IgniteBiPredicate.class, req.className());
+
+                        qry = new ScanQuery(pred);
+
+                        break;
+
+                    default:
+                        throw new IgniteException("Incorrect query type [type=" + req.queryType() + "]");
                 }
 
                 IgniteCache<Object, Object> cache = ctx.grid().cache(req.cacheName());
 
                 if (cache == null)
                     return new GridRestResponse(GridRestResponse.STATUS_FAILED,
-                        "No cache with name [cacheName=" + req.cacheName() + "]");
+                        "Failed to find cache with name: " + req.cacheName());
 
                 QueryCursor qryCur = cache.query(qry);
 
@@ -182,7 +203,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
      */
     private static class CloseQueryCallable implements Callable<GridRestResponse> {
         /** Execute query request. */
-        private RestSqlQueryRequest req;
+        private RestQueryRequest req;
 
         /** Queries cursors. */
         private final ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs;
@@ -191,7 +212,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
          * @param req Execute query request.
          * @param qryCurs Queries cursors.
          */
-        public CloseQueryCallable(RestSqlQueryRequest req,
+        public CloseQueryCallable(RestQueryRequest req,
             ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs) {
             this.req = req;
             this.qryCurs = qryCurs;
@@ -204,7 +225,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                 if (cur == null)
                     return new GridRestResponse(GridRestResponse.STATUS_FAILED,
-                        "Cannot find query [qryId=" + req.queryId() + "]");
+                        "Failed to find query with ID: " + req.queryId());
 
                 cur.close();
 
@@ -225,7 +246,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
      */
     private static class FetchQueryCallable implements Callable<GridRestResponse> {
         /** Execute query request. */
-        private RestSqlQueryRequest req;
+        private RestQueryRequest req;
 
         /** Queries cursors. */
         private final ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs;
@@ -238,7 +259,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
          * @param req Execute query request.
          * @param qryCurs Queries cursors.
          */
-        public FetchQueryCallable(GridKernalContext ctx, RestSqlQueryRequest req,
+        public FetchQueryCallable(GridKernalContext ctx, RestQueryRequest req,
             ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs) {
             this.ctx = ctx;
             this.req = req;
@@ -252,7 +273,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                 if (cur == null)
                     return new GridRestResponse(GridRestResponse.STATUS_FAILED,
-                        "Cannot find query [qryId=" + req.queryId() + "]");
+                        "Failed to find query with ID: " + req.queryId());
 
                 CacheQueryResult res = createQueryResult(qryCurs, cur, req, req.queryId(), ctx);
 
@@ -276,7 +297,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
      */
     private static CacheQueryResult createQueryResult(
         ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs,
-        Iterator cur, RestSqlQueryRequest req, Long qryId, GridKernalContext ctx) {
+        Iterator cur, RestQueryRequest req, Long qryId, GridKernalContext ctx) {
         CacheQueryResult res = new CacheQueryResult();
 
         List<Object> items = new ArrayList<>();
@@ -294,5 +315,46 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
             qryCurs.remove(qryId);
 
         return res;
+    }
+
+    /**
+     * Creates class instance.
+     *
+     * @param cls Target class.
+     * @param clsName Implementing class name.
+     * @return Class instance.
+     * @throws IgniteException If failed.
+     */
+    private static <T> T instance(Class<? extends T> cls, String clsName) throws IgniteException {
+        try {
+            Class<?> implCls = Class.forName(clsName);
+
+            if (!cls.isAssignableFrom(implCls))
+                throw new IgniteException("Failed to create instance (target class does not extend or implement " +
+                    "required class or interface) [cls=" + cls.getName() + ", clsName=" + clsName + ']');
+
+            Constructor<?> ctor = implCls.getConstructor();
+
+            return (T)ctor.newInstance();
+        }
+        catch (ClassNotFoundException e) {
+            throw new IgniteException("Failed to find target class: " + clsName, e);
+        }
+        catch (NoSuchMethodException e) {
+            throw new IgniteException("Failed to find constructor for provided arguments " +
+                "[clsName=" + clsName + ']', e);
+        }
+        catch (InstantiationException e) {
+            throw new IgniteException("Failed to instantiate target class " +
+                "[clsName=" + clsName + ']', e);
+        }
+        catch (IllegalAccessException e) {
+            throw new IgniteException("Failed to instantiate class (constructor is not available) " +
+                "[clsName=" + clsName + ']', e);
+        }
+        catch (InvocationTargetException e) {
+            throw new IgniteException("Failed to instantiate class (constructor threw an exception) " +
+                "[clsName=" + clsName + ']', e.getCause());
+        }
     }
 }

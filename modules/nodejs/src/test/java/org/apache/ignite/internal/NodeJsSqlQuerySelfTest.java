@@ -99,6 +99,15 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
     }
 
     /**
+     * @throws Exception If failed.
+     */
+    public void testScanQuery() throws Exception {
+        initCache();
+
+        runJsScript("testScanQuery");
+    }
+
+    /**
      * Init cache.
      */
     private void initCache() {

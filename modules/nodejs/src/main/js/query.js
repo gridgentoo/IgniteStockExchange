@@ -15,46 +15,36 @@
  * limitations under the License.
  */
 
-var Query = require("./query").Query
-
 /**
- * @this {SqlFieldsQuery}
- * @param {string} Sql query
+ * @this {Query}
  */
-function SqlFieldsQuery(sql) {
-    Query.apply(this, arguments);
-    this._qryType = "SqlFields";
-    this._sql = sql;
-    this._arg = [];
+function Query() {
+    this._qryType = "";
     this._pageSz = 1;
 }
 
-SqlFieldsQuery.prototype = Query.prototype;
-
-SqlFieldsQuery.prototype.constructor = SqlFieldsQuery;
-
 /**
- * @this {SqlFieldsQuery}
- * @param args Arguments
+ * @this {Query}
+ * @param {int} pageSz Page size.
  */
-SqlFieldsQuery.prototype.setArguments = function(args) {
-    this._arg = args;
+Query.prototype.setPageSize = function(pageSz) {
+    this._pageSz = pageSz;
 }
 
 /**
- * @this {SqlFieldsQuery}
- * @returns Sql query
+ * @this {Query}
+ * @returns pageSize
  */
-SqlFieldsQuery.prototype.query = function() {
-    return this._sql;
+Query.prototype.pageSize = function() {
+    return this._pageSz;
 }
 
 /**
- * @this {SqlFieldsQuery}
- * @returns arguments
+ * @this {Query}
+ * @returns "SqlFields"
  */
-SqlFieldsQuery.prototype.arguments = function() {
-    return this._arg;
+Query.prototype.type = function() {
+    return this._qryType;
 }
 
-exports.SqlFieldsQuery = SqlFieldsQuery;
+exports.Query = Query;

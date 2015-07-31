@@ -22,6 +22,7 @@ var assert = require("assert");
 var Ignite = require(TestUtils.scriptPath());
 var SqlQuery = Ignite.SqlQuery;
 var SqlFieldsQuery = Ignite.SqlFieldsQuery;
+var ScanQuery = Ignite.ScanQuery;
 
 testSqlQuery = function() {
     TestUtils.startIgniteNode().then(function(ignite) {
@@ -59,10 +60,46 @@ testSqlQuery = function() {
 
             cursor.nextPage().then(onQuery);
         }).catch(function(err) {
-            assert(err === null, err);
+            TestUtils.testFails(err);
         })
     }).catch(function(err) {
-        assert(err === null, err);
+        TestUtils.testFails(err);
+    });
+}
+
+testScanQuery = function() {
+    TestUtils.startIgniteNode().then(function(ignite) {
+        var qry = new ScanQuery();
+
+        var fullRes = [];
+
+        function onQuery(cursor) {
+            var page = cursor.page();
+
+            fullRes = fullRes.concat(page);
+
+            if (cursor.isFinished()) {
+                console.log("Full result=" + JSON.stringify(fullRes));
+
+                assert(fullRes.length === 4, "Result length is not correct" +
+                    "[expected=1, val = " + fullRes.length + "]");
+
+                fullRes.sort();
+
+                assert(fullRes[0]["key"] >= 0,
+                    "Result has incorrect index [res=" + fullRes[0]["key"] + "]");
+
+                return ignite.cache("person").get("key");
+            }
+
+            return cursor.nextPage().then(onQuery);
+        }
+
+        ignite.cache("person").query(qry).nextPage().then(onQuery).then(function(){
+            TestUtils.testDone();
+        })
+    }).catch(function(err) {
+        TestUtils.testFails(err);
     });
 }
 
@@ -98,7 +135,7 @@ testSqlFieldsQuery = function() {
             TestUtils.testDone();
         })
     }).catch(function(err) {
-        assert(err === null, err);
+        TestUtils.testFails(err);
     });
 }
 
@@ -148,7 +185,7 @@ testSqlFieldsGetAllQuery = function() {
             TestUtils.testDone();
         })
     }).catch(function(err) {
-        assert(err === null, err);
+        TestUtils.testFails(err);
     });
 }
 
@@ -193,7 +230,7 @@ testSqlFieldsMeta = function() {
 
         ignite.cache("person").query(qry).nextPage().then(onQuery);
     }).catch(function(err) {
-        assert(err === null, err);
+        TestUtils.testFails(err);
     });
 }
 
@@ -232,6 +269,6 @@ testSqlQueryWithParams = function() {
 
         ignite.cache("person").query(qry).nextPage().then(onQuery);
     }).catch(function(err) {
-        assert(err === null, err);
+        TestUtils.testFails(err);
     });
 }

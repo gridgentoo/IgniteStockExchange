@@ -463,17 +463,23 @@ QueryCursor.prototype.isFinished = function() {
 
 QueryCursor.prototype._getQueryCommand = function() {
     if (this._init) {
+        this._init = false;
+
         if (this._qry.type() === "Sql") {
             return this._sqlQuery(this._qry);
         }
+        else if (this._qry.type() == "SqlFields") {
+            return this._sqlFieldsQuery(this._qry);
+        }
+        else if (this._qry.type() == "Scan") {
+            return this._scanQuery(this._qry);
+        }
 
-        this._init = false;
-
-        return this._sqlFieldsQuery(this._qry);
+        return null;
     }
 
     return this._cache._createCommand("qryfetch").addParam("qryId", this._res.queryId).
-        addParam("psz", this._qry.pageSize());
+        addParam("pageSize", this._qry.pageSize());
 }
 
 QueryCursor.prototype._sqlFieldsQuery = function(qry) {
@@ -486,9 +492,19 @@ QueryCursor.prototype._sqlQuery = function(qry) {
         setPostData(JSON.stringify({"arg" : qry.arguments()}));
 }
 
+QueryCursor.prototype._scanQuery = function(qry) {
+    var cmd = new Command("qryscanexe").addParam("cacheName", this._cache._cacheName).
+        addParam("pageSize", qry.pageSize());
+
+    if (qry.filterClassName() != null)
+        cmd.addParam("classname", qry.filterClassName());
+
+    return cmd;
+}
+
 QueryCursor.prototype._createQueryCommand = function(name, qry) {
     return new Command(name).addParam("cacheName", this._cache._cacheName).
-        addParam("qry", qry.query()).addParam("psz", qry.pageSize());
+        addParam("qry", qry.query()).addParam("pageSize", qry.pageSize());
 }
 
 /**

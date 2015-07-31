@@ -20,7 +20,7 @@ package org.apache.ignite.internal.processors.rest.request;
 /**
  * Sql query request.
  */
-public class RestSqlQueryRequest extends GridRestRequest {
+public class RestQueryRequest extends GridRestRequest {
     /** Sql query. */
     private String sqlQry;
 
@@ -38,6 +38,12 @@ public class RestSqlQueryRequest extends GridRestRequest {
 
     /** Query type name. */
     private String typeName;
+
+    /** Predicate class name for scan query. */
+    private String className;
+
+    /** Query type. */
+    private QueryType type;
 
     /**
      * @param sqlQry Sql query.
@@ -121,5 +127,47 @@ public class RestSqlQueryRequest extends GridRestRequest {
      */
     public String typeName() {
         return typeName;
+    }
+
+    /**
+     * @return Predicate class name for scan query.
+     */
+    public String className() {
+        return className;
+    }
+
+    /**
+     * @param className Predicate class name for scan query.
+     */
+    public void className(String className) {
+        this.className = className;
+    }
+
+    /**
+     * @param type Query type.
+     */
+    public void queryType(QueryType type) {
+        this.type = type;
+    }
+
+    /**
+     * @return Query type.
+     */
+    public QueryType queryType() {
+        return type;
+    }
+
+    /**
+     * Supported query types.
+     */
+    public enum QueryType {
+        /** Sql query. */
+        SQL,
+
+        /** Sql fields query. */
+        SQL_FIELDS,
+
+        /** Scan query. */
+        SCAN
     }
 }

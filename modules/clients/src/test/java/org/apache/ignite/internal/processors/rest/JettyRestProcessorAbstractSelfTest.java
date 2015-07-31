@@ -27,6 +27,7 @@ import org.apache.ignite.configuration.*;
 import org.apache.ignite.internal.processors.json.*;
 import org.apache.ignite.internal.processors.rest.handlers.*;
 import org.apache.ignite.internal.util.typedef.*;
+import org.apache.ignite.lang.*;
 import org.apache.ignite.testframework.*;
 
 import java.io.*;
@@ -1296,7 +1297,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         Map<String, String> params = new HashMap<>();
         params.put("cmd", GridRestCommand.EXECUTE_SQL_QUERY.key());
         params.put("type", "Person");
-        params.put("psz", "10");
+        params.put("pageSize", "10");
         params.put("cacheName", "person");
         params.put("qry", URLEncoder.encode(qry));
         params.put("arg1", "1000");
@@ -1319,6 +1320,52 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
     /**
      * @throws Exception If failed.
      */
+    public void testQueryScan() throws Exception {
+        Map<String, String> params = new HashMap<>();
+        params.put("cmd", GridRestCommand.EXECUTE_SCAN_QUERY.key());
+        params.put("pageSize", "10");
+        params.put("cacheName", "person");
+        params.put("classname", ScanFilter.class.getName());
+
+        String ret = content(params);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        List items = (List)((Map)json.get("response")).get("items");
+
+        assertEquals(2, items.size());
+
+        assertFalse(queryCursorFound());
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testIncorrectQueryScan() throws Exception {
+        Map<String, String> params = new HashMap<>();
+        params.put("cmd", GridRestCommand.EXECUTE_SCAN_QUERY.key());
+        params.put("pageSize", "10");
+        params.put("cacheName", "person");
+        params.put("classname", ScanFilter.class.getName() + 1);
+
+        String ret = content(params);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        String err = (String)json.get("error");
+
+        assertTrue(err.contains("Failed to find target class"));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testQuery() throws Exception {
         grid(0).cache(null).put("1", "1");
         grid(0).cache(null).put("2", "2");
@@ -1327,7 +1374,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         Map<String, String> params = new HashMap<>();
         params.put("cmd", GridRestCommand.EXECUTE_SQL_QUERY.key());
         params.put("type", "String");
-        params.put("psz", "1");
+        params.put("pageSize", "1");
         params.put("qry", URLEncoder.encode("select * from String"));
 
         String ret = content(params);
@@ -1342,7 +1389,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertNotNull(qryId);
 
         ret = content(F.asMap("cmd", GridRestCommand.FETCH_SQL_QUERY.key(),
-            "psz", "1", "qryId", String.valueOf(qryId)));
+            "pageSize", "1", "qryId", String.valueOf(qryId)));
 
         json = JSONObject.fromObject(ret);
 
@@ -1354,7 +1401,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertFalse(last);
 
         ret = content(F.asMap("cmd", GridRestCommand.FETCH_SQL_QUERY.key(),
-            "psz", "1", "qryId", String.valueOf(qryId)));
+            "pageSize", "1", "qryId", String.valueOf(qryId)));
 
         json = JSONObject.fromObject(ret);
 
@@ -1376,7 +1423,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         Map<String, String> params = new HashMap<>();
         params.put("cmd", GridRestCommand.EXECUTE_SQL_FIELDS_QUERY.key());
-        params.put("psz", "10");
+        params.put("pageSize", "10");
         params.put("cacheName", "person");
         params.put("qry", URLEncoder.encode(qry));
 
@@ -1402,7 +1449,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         Map<String, String> params = new HashMap<>();
         params.put("cmd", GridRestCommand.EXECUTE_SQL_FIELDS_QUERY.key());
-        params.put("psz", "10");
+        params.put("pageSize", "10");
         params.put("cacheName", "person");
         params.put("qry", URLEncoder.encode(qry));
 
@@ -1440,7 +1487,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         Map<String, String> params = new HashMap<>();
         params.put("cmd", GridRestCommand.EXECUTE_SQL_QUERY.key());
         params.put("type", "Person");
-        params.put("psz", "1");
+        params.put("pageSize", "1");
         params.put("cacheName", "person");
         params.put("qry", URLEncoder.encode(qry));
         params.put("arg1", "1000");
@@ -1634,7 +1681,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         String qry = "salary > ? and salary <= ?";
 
         String ret = makePostRequest(F.asMap("cmd", GridRestCommand.EXECUTE_SQL_QUERY.key(),
-                "type", "Person", "psz", "10", "cacheName", "person",
+                "type", "Person", "pageSize", "10", "cacheName", "person",
                 "qry", URLEncoder.encode(qry)), "{\"arg\": [1000, 2000]}");
 
         assertNotNull(ret);
@@ -1759,6 +1806,16 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
          */
         public Integer getId() {
             return id;
+        }
+    }
+
+    /**
+     * Test filter for scan query.
+     */
+    public static class ScanFilter implements IgniteBiPredicate<Integer, Person> {
+        /** {@inheritDoc} */
+        @Override public boolean apply(Integer integer, Person person) {
+            return person.salary > 1000;
         }
     }
 }
