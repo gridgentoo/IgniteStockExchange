@@ -16,31 +16,22 @@
  */
 
 /**
- * Create instance of TestRunner
+ * Create instance of ScriptTestRunner
  *
  * @constructor
  */
-function TestRunner() {
+function ScriptTestRunner() {
 }
 
 /**
  * Test routine
  */
-TestRunner.runTest = function() {
+ScriptTestRunner.runTest = function() {
     var fileName = process.argv[2].toString().trim();
 
     console.log("FileName " + fileName);
 
     require(fileName);
-
-    var functionName = process.argv[3].toString().trim();
-
-    if (!global[functionName]) {
-        console.log("node js test failed: function with name " + functionName + " not found");
-        return;
-    }
-
-    global[functionName]();
 }
 
-TestRunner.runTest();
+ScriptTestRunner.runTest();

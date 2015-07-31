@@ -58,6 +58,13 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
         this.fileName = fileName;
     }
 
+    /**
+     * Empty constructor.
+     */
+    protected NodeJsAbstractTest() {
+        // No-op.
+    }
+
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
@@ -111,6 +118,16 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
      * @throws Exception If script failed.
      */
     protected void runJsScript(String functionName) throws Exception {
+        runJsScript(functionName, getNodeJsTestDir() + fileName, null);
+    }
+
+    /**
+     * @param functionName Function name.
+     * @param fileName File name.
+     * @param scriptFinished Script finished string.
+     * @throws Exception If script failed.
+     */
+    protected void runJsScript(String functionName, String fileName, String scriptFinished) throws Exception {
         final CountDownLatch readyLatch = new CountDownLatch(1);
 
         GridJavaProcess proc = null;
@@ -120,9 +137,18 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
         List<String> cmd = new ArrayList<>();
 
         cmd.add("node");
-        cmd.add(getNodeJsTestDir() + "test-runner.js");
-        cmd.add(fileName);
-        cmd.add(functionName);
+
+        if (functionName != null) {
+            cmd.add(getNodeJsTestDir() + "test-runner.js");
+            cmd.add(fileName);
+            cmd.add(functionName);
+        }
+        else {
+            cmd.add(getNodeJsTestDir() + "test-script-runner.js");
+            cmd.add(fileName);
+        }
+
+        final String finishedFlag = scriptFinished != null ? scriptFinished : SCRIPT_FINISHED;
 
         Map<String, String> env = new HashMap<>();
 
@@ -136,7 +162,7 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
 
                         s = s.toLowerCase();
 
-                        if (s.contains(SCRIPT_FINISHED))
+                        if (s.contains(finishedFlag))
                             readyLatch.countDown();
 
                         if (s.contains("assert") || s.contains(SCRIPT_FAILED)) {

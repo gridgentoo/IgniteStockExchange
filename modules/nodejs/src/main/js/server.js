@@ -86,8 +86,6 @@ Server.prototype.runCommand = function(cmd, callback) {
         });
 
         response.on('end', function () {
-            //console.log("Full response:" + fullResponseString);
-
             if (response.statusCode !== 200) {
                 if (response.statusCode === 401) {
                     callback.call(null, "Authentication failed. Status code 401.");
