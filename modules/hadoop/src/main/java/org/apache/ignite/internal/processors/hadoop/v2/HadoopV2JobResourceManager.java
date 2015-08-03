@@ -182,6 +182,9 @@ class HadoopV2JobResourceManager {
 
         Collection<String> res = new ArrayList<>();
 
+        // Fragment identifier of the URI:
+        String fragment = null;
+
         for (Object pathObj : files) {
             String locName = null;
             Path srcPath;
@@ -189,17 +192,27 @@ class HadoopV2JobResourceManager {
             if (pathObj instanceof URI) {
                 URI uri = (URI)pathObj;
 
-                locName = uri.getFragment();
+                //locName = uri.getPath();
+                fragment = uri.getFragment();
 
-                srcPath = new Path(uri);
+                try {
+                    URI uriWithoutFragment = new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), null, null);
+
+                    srcPath = new Path(uriWithoutFragment);
+                }
+                catch (URISyntaxException use) {
+                    throw new IOException(use);
+                }
             }
             else
                 srcPath = (Path)pathObj;
 
-            if (locName == null)
-                locName = srcPath.getName();
+            //if (locName == null)
+            locName = srcPath.getName();
 
-            File dstPath = new File(jobLocDir.getAbsolutePath(), locName);
+            String dstName = (fragment == null) ? locName : fragment;
+
+            final File dstPath = new File(jobLocDir.getAbsolutePath(), dstName);
 
             res.add(locName);
 
@@ -247,6 +260,9 @@ class HadoopV2JobResourceManager {
                 else
                 // ***** fail there:
                     throw new IOException("Cannot unpack archive [path=" + srcPath + ", jobId=" + jobId + ']');
+
+                // By contract, all the files should be executable:
+                FileUtil.chmod(dstPath.getAbsolutePath(), "a+x", true);
             }
             else
                 FileUtil.copy(srcFs, srcPath, dstFs, new Path(dstPath.toString()), false, cfg);
