@@ -45,8 +45,9 @@ class IgniteContext[K, V](
     private val igniteHome = IgniteUtils.getIgniteHome
 
     if (!client) {
-        // Minimum 1 executor is required for any Spark job.
-        val workers = sparkContext.getConf.getInt("spark.executor.instances", 1)
+        // Get required number of executors with default equals to number of available executors.
+        val workers = sparkContext.getConf.getInt("spark.executor.instances",
+            sparkContext.getExecutorStorageStatus.length)
 
         if (workers <= 0)
             throw new IllegalStateException("No Spark executors found to start Ignite nodes.")
