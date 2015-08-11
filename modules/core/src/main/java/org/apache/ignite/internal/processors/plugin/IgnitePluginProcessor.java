@@ -31,11 +31,14 @@ import java.lang.reflect.*;
 import java.util.*;
 
 /**
- *
+ * Plugin processor.
  */
 public class IgnitePluginProcessor extends GridProcessorAdapter {
     /** */
     private final Map<String, PluginProvider> plugins = new LinkedHashMap<>();
+
+    /** Started plugins. */
+    private List<PluginProvider> startedPlugins = new LinkedList<>();
 
     /** */
     private final Map<PluginProvider, GridPluginContext> pluginCtxMap = new IdentityHashMap<>();
@@ -132,29 +135,96 @@ public class IgnitePluginProcessor extends GridProcessorAdapter {
 
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
-        for (Map.Entry<PluginProvider, GridPluginContext> e : pluginCtxMap.entrySet())
-            e.getKey().onBeforeStart(e.getValue());
+        // Before start.
+        for (PluginProvider provider : plugins.values())
+            provider.onBeforeStart(pluginCtxMap.get(provider));
+
+        // Start plugins.
+        for (PluginProvider provider : plugins.values())
+            startPlugin(provider, pluginCtxMap.get(provider));
 
         ackPluginsInfo();
     }
 
+    /**
+     * @param plugin Plugin.
+     * @param pluginCtx Plugin context.
+     * @throws IgniteCheckedException If start plugin failed.
+     */
+    private void startPlugin(PluginProvider plugin, PluginContext pluginCtx) throws IgniteCheckedException {
+        try {
+            plugin.start(pluginCtx);
+
+            startedPlugins.add(plugin);
+
+            if (log.isDebugEnabled())
+                log.debug("Plugin started: " + plugin);
+        }
+        catch (IgniteCheckedException e) {
+            throw new IgniteCheckedException("Failed to start plugin: " + plugin, e);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override public void onKernalStart() throws IgniteCheckedException {
+        for (PluginProvider provider : startedPlugins)
+            provider.onAfterStart();
+    }
+
     /** {@inheritDoc} */
     @Override public void stop(boolean cancel) throws IgniteCheckedException {
-        boolean errOnStop = false;
+        for (ListIterator<PluginProvider> it = startedPlugins.listIterator(startedPlugins.size()); it.hasPrevious();) {
+            PluginProvider plugin = it.previous();
 
-        for (PluginProvider plugin : plugins.values()) {
+            try {
+                plugin.stop(cancel);
+
+                if (log.isDebugEnabled())
+                    log.debug("Plugin stopped: " + plugin);
+            }
+            catch (Throwable e) {
+                U.error(log, "Failed to stop plugin (ignoring):" + plugin, e);
+
+                if (e instanceof Error)
+                    throw e;
+            }
+        }
+    }
+
+    /**
+     * Notify plugin that processors was stopped.
+     */
+    public void onAfterStopNotify(boolean cancel) {
+        for (ListIterator<PluginProvider> it = startedPlugins.listIterator(startedPlugins.size()); it.hasPrevious();) {
+            PluginProvider plugin = it.previous();
+
             try {
                 plugin.onAfterStop(cancel);
             }
-            catch (Exception e) {
-                errOnStop = true;
+            catch (Throwable e) {
+                U.error(log, "Failed to after-stop plugin: " + plugin, e);
 
-                U.error(log, "Failed to invoke afterStop for plugin (ignoring): " + plugin, e);
+                if (e instanceof Error)
+                    throw (Error)e;
             }
         }
+    }
 
-        if (errOnStop)
-            throw new IgniteCheckedException("Failed to stop plugins.");
+    /** {@inheritDoc} */
+    @Override public void onKernalStop(boolean cancel) {
+        for (ListIterator<PluginProvider> it = startedPlugins.listIterator(startedPlugins.size()); it.hasPrevious();) {
+            PluginProvider plugin = it.previous();
+
+            try {
+                plugin.onBeforeStop(cancel);
+            }
+            catch (Throwable e) {
+                U.error(log, "Failed to pre-stop plugin: " + plugin, e);
+
+                if (e instanceof Error)
+                    throw (Error)e;
+            }
+        }
     }
 
     /** {@inheritDoc} */

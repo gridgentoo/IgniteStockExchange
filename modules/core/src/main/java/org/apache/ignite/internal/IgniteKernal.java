@@ -790,13 +790,6 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
             startProcessor(new GridServiceProcessor(ctx));
             startProcessor(new DataStructuresProcessor(ctx));
 
-            // Start plugins.
-            for (PluginProvider provider : ctx.plugins().allProviders()) {
-                ctx.add(new GridPluginComponent(provider));
-
-                provider.start(ctx.plugins().pluginContextForProvider(provider));
-            }
-
             gw.writeLock();
 
             try {
@@ -1814,6 +1807,8 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
                         throw (Error)e;
                 }
             }
+
+            ctx.plugins().onAfterStopNotify(cancel);
 
             // Stops lifecycle aware components.
             U.stopLifecycleAware(log, lifecycleAwares(cfg));
