@@ -32,6 +32,7 @@ import javax.cache.processor.EntryProcessor;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteInterruptedException;
 import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
@@ -788,6 +789,9 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
         onComplete(res);
     }
 
+    // TODO Remove
+    static boolean debug = IgniteSystemProperties.getBoolean("TX_DEBUG");
+
     /**
      * Initializes future.
      *
@@ -809,7 +813,7 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
         this.txNodes = txNodes;
 
         // TODO Remove (for debug only)
-        if (writes != null && writes.size() == 1) {
+        if (debug && txNodes.size() > 2 && writes != null && writes.size() == 1) {
             U.debug(
                 log,
                 "\n>>>\n>>> TX nodes [txNodes=" + txNodes + ", txFut=" + this + ']');

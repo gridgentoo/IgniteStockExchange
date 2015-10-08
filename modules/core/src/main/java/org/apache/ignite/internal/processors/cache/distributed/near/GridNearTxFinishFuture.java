@@ -247,7 +247,7 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
 
     /** {@inheritDoc} */
     @Override public boolean onDone(IgniteInternalTx tx0, Throwable err) {
-        if ((initialized() || err != null)) {
+        if ((initialized() || err != null) && !isDone()) {
             if (tx.needCheckBackup()) {
                 assert tx.onePhaseCommit();
 
@@ -352,7 +352,7 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
 
                 markInitialized();
 
-                if (!isSync()) {
+                if (!isSync() && !isDone()) {
                     boolean complete = true;
 
                     for (IgniteInternalFuture<?> f : pending())

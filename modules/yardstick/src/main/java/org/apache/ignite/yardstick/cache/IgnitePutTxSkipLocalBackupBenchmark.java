@@ -17,17 +17,31 @@
 
 package org.apache.ignite.yardstick.cache;
 
-import java.util.Map;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.affinity.Affinity;
+import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.yardstick.cache.model.SampleValue;
 
+import java.util.Map;
+
 /**
- * Ignite benchmark that performs transactional put operations.
+ * Ignite benchmark that performs transactional put operations skipping key if local node is backup.
  */
-public class IgnitePutTxBenchmark extends IgniteCacheAbstractBenchmark {
+public class IgnitePutTxSkipLocalBackupBenchmark extends IgniteCacheAbstractBenchmark {
     /** {@inheritDoc} */
     @Override public boolean test(Map<Object, Object> ctx) throws Exception {
-        int key = nextRandom(args.range());
+        int key;
+
+        Affinity<Object> aff = ignite().affinity("tx");
+        ClusterNode locNode = ignite().cluster().localNode();
+
+        for (;;) {
+            key = nextRandom(args.range());
+
+            // Skip key if local node is backup.
+            if (!aff.isBackup(locNode, key))
+                break;
+        }
 
         // Implicit transaction is used.
         cache.put(key, new SampleValue(key));

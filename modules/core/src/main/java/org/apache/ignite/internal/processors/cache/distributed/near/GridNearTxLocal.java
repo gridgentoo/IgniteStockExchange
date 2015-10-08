@@ -216,7 +216,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
 
     /** {@inheritDoc} */
     @Override protected IgniteInternalFuture<Boolean> addReader(
-        long msgId, 
+        long msgId,
         GridDhtCacheEntry cached,
         IgniteTxEntry entry,
         AffinityTopologyVersion topVer
@@ -1128,8 +1128,8 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
 
     /** {@inheritDoc} */
     @Override protected GridCacheEntryEx entryEx(
-        GridCacheContext cacheCtx, 
-        IgniteTxKey key, 
+        GridCacheContext cacheCtx,
+        IgniteTxKey key,
         AffinityTopologyVersion topVer
     ) {
         if (cacheCtx.isColocated()) {
