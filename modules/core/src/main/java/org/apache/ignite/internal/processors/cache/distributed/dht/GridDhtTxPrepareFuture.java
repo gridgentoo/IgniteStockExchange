@@ -808,6 +808,18 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
         this.writes = writes;
         this.txNodes = txNodes;
 
+        // TODO Remove (for debug only)
+        if (writes != null && writes.size() == 1) {
+            U.debug(
+                log,
+                "\n>>>\n>>> TX nodes [txNodes=" + txNodes + ", txFut=" + this + ']');
+
+            for (IgniteTxEntry entry : writes) {
+                U.debug(log, "\tEntry: " + entry);
+                U.debug(log, "\tPartitions: " + entry.context().topology().partitionMap(false).toFullString());
+            }
+        }
+
         if (!F.isEmpty(writes)) {
             Map<Integer, Collection<KeyCacheObject>> forceKeys = null;
 
