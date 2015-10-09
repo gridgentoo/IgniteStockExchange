@@ -18,9 +18,11 @@
 package org.apache.ignite.yardstick.cache;
 
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.cache.affinity.Affinity;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.yardstick.cache.model.SampleValue;
+import org.yardstickframework.BenchmarkConfiguration;
 
 import java.util.Map;
 
@@ -28,6 +30,14 @@ import java.util.Map;
  * Ignite benchmark that performs transactional put operations skipping key if local node is backup.
  */
 public class IgnitePutTxSkipLocalBackupBenchmark extends IgniteCacheAbstractBenchmark {
+    /** {@inheritDoc} */
+    @Override public void setUp(BenchmarkConfiguration cfg) throws Exception {
+        super.setUp(cfg);
+
+        if (!IgniteSystemProperties.getBoolean("SKIP_MAP_CHECK"))
+            ignite().compute().broadcast(new WaitMapExchangeFinishCallable());
+    }
+
     /** {@inheritDoc} */
     @Override public boolean test(Map<Object, Object> ctx) throws Exception {
         int key;
