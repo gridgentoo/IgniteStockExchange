@@ -813,14 +813,22 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
         this.txNodes = txNodes;
 
         // TODO Remove (for debug only)
-        if (debug && txNodes.size() > 2 && writes != null && writes.size() == 1) {
-            U.debug(
-                log,
-                "\n>>>\n>>> TX nodes [txNodes=" + txNodes + ", txFut=" + this + ']');
+        if (debug) {
+            Collection<UUID> backups = txNodes.get(cctx.localNodeId());
 
-            for (IgniteTxEntry entry : writes) {
-                U.debug(log, "\tEntry: " + entry);
-                U.debug(log, "\tPartitions: " + entry.context().topology().partitionMap(false).toFullString());
+            if (backups != null && backups.size() >= 2 && writes != null && writes.size() == 1){
+                U.debug(
+                    log,
+                    "\n>>>\n>>> TX nodes [txNodes=" + txNodes + ", txFut=" + this + ']');
+
+                for (IgniteTxEntry entry : writes) {
+                    U.debug(
+                        log,
+                        "\tEntry: " + entry);
+                    U.debug(
+                        log,
+                        "\tPartitions: " + entry.context().topology().partitionMap(false).toFullString());
+                }
             }
         }
 
