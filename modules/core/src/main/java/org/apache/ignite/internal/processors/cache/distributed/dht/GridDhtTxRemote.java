@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import javax.cache.processor.EntryProcessor;
@@ -39,11 +40,11 @@ import org.apache.ignite.internal.processors.cache.transactions.IgniteTxKey;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.tostring.GridToStringBuilder;
 import org.apache.ignite.internal.util.typedef.T2;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteUuid;
 import org.apache.ignite.transactions.TransactionConcurrency;
 import org.apache.ignite.transactions.TransactionIsolation;
 import org.jetbrains.annotations.Nullable;
-import org.jsr166.ConcurrentLinkedHashMap;
 
 import static org.apache.ignite.internal.processors.cache.GridCacheUtils.isNearEnabled;
 
@@ -112,19 +113,19 @@ public class GridDhtTxRemote extends GridDistributedTxRemoteAdapter {
         int taskNameHash
     ) {
         super(
-            ctx, 
-            nodeId, 
-            rmtThreadId, 
-            xidVer, 
-            commitVer, 
+            ctx,
+            nodeId,
+            rmtThreadId,
+            xidVer,
+            commitVer,
             sys,
             plc,
-            concurrency, 
-            isolation, 
-            invalidate, 
-            timeout, 
+            concurrency,
+            isolation,
+            invalidate,
+            timeout,
             txSize,
-            subjId, 
+            subjId,
             taskNameHash
         );
 
@@ -138,7 +139,7 @@ public class GridDhtTxRemote extends GridDistributedTxRemoteAdapter {
 
         readMap = Collections.emptyMap();
 
-        writeMap = new ConcurrentLinkedHashMap<>(txSize, 1.0f);
+        writeMap = new LinkedHashMap<>(U.capacity(txSize));
 
         topologyVersion(topVer);
     }
@@ -183,19 +184,19 @@ public class GridDhtTxRemote extends GridDistributedTxRemoteAdapter {
         int taskNameHash
     ) {
         super(
-            ctx, 
-            nodeId, 
-            rmtThreadId, 
-            xidVer, 
-            commitVer, 
+            ctx,
+            nodeId,
+            rmtThreadId,
+            xidVer,
+            commitVer,
             sys,
             plc,
-            concurrency, 
-            isolation, 
-            invalidate, 
-            timeout, 
+            concurrency,
+            isolation,
+            invalidate,
+            timeout,
             txSize,
-            subjId, 
+            subjId,
             taskNameHash
         );
 
@@ -207,7 +208,7 @@ public class GridDhtTxRemote extends GridDistributedTxRemoteAdapter {
         this.rmtFutId = rmtFutId;
 
         readMap = Collections.emptyMap();
-        writeMap = new ConcurrentLinkedHashMap<>(txSize, 1.0f);
+        writeMap = new LinkedHashMap<>(U.capacity(txSize));
 
         topologyVersion(topVer);
     }

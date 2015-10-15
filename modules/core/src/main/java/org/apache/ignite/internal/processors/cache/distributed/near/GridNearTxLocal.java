@@ -87,7 +87,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
     private static final long serialVersionUID = 0L;
 
     /** DHT mappings. */
-    private ConcurrentMap<UUID, GridDistributedTxMapping> mappings = new ConcurrentHashMap8<>();
+    private Map<UUID, GridDistributedTxMapping> mappings = new HashMap<>();
 
     /** Future. */
     @GridToStringExclude
@@ -424,7 +424,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
     /**
      * @return DHT map.
      */
-    ConcurrentMap<UUID, GridDistributedTxMapping> mappings() {
+    Map<UUID, GridDistributedTxMapping> mappings() {
         return mappings;
     }
 

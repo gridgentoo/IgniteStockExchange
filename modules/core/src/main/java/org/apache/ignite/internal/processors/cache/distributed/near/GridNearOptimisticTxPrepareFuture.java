@@ -17,9 +17,11 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.near;
 
+import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.ignite.IgniteCheckedException;
@@ -60,7 +62,6 @@ import org.apache.ignite.lang.IgniteUuid;
 import org.apache.ignite.transactions.TransactionOptimisticException;
 import org.apache.ignite.transactions.TransactionTimeoutException;
 import org.jetbrains.annotations.Nullable;
-import org.jsr166.ConcurrentLinkedDeque8;
 
 import static org.apache.ignite.internal.processors.cache.GridCacheOperation.TRANSFORM;
 import static org.apache.ignite.transactions.TransactionState.PREPARED;
@@ -478,7 +479,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
         txMapping = new GridDhtTxMapping();
 
-        ConcurrentLinkedDeque8<GridDistributedTxMapping> mappings = new ConcurrentLinkedDeque8<>();
+        Queue<GridDistributedTxMapping> mappings = new ArrayDeque<>();
 
         if (!F.isEmpty(reads) || !F.isEmpty(writes)) {
             for (int cacheId : tx.activeCacheIds()) {
@@ -555,7 +556,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
      *
      * @param mappings Queue of mappings.
      */
-    private void proceedPrepare(final ConcurrentLinkedDeque8<GridDistributedTxMapping> mappings) {
+    private void proceedPrepare(final Queue<GridDistributedTxMapping> mappings) {
         if (isDone())
             return;
 
@@ -757,7 +758,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         private AtomicBoolean rcvRes = new AtomicBoolean(false);
 
         /** Mappings to proceed prepare. */
-        private ConcurrentLinkedDeque8<GridDistributedTxMapping> mappings;
+        private Queue<GridDistributedTxMapping> mappings;
 
         /**
          * @param m Mapping.
@@ -765,7 +766,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
          */
         MiniFuture(
             GridDistributedTxMapping m,
-            ConcurrentLinkedDeque8<GridDistributedTxMapping> mappings
+            Queue<GridDistributedTxMapping> mappings
         ) {
             this.m = m;
             this.mappings = mappings;

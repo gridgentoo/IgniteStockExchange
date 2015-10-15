@@ -92,7 +92,7 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
     private AtomicReference<Throwable> err = new AtomicReference<>(null);
 
     /** Node mappings. */
-    private ConcurrentMap<UUID, GridDistributedTxMapping> mappings;
+    private Map<UUID, GridDistributedTxMapping> mappings;
 
     /** Trackable flag. */
     private boolean trackable = true;
