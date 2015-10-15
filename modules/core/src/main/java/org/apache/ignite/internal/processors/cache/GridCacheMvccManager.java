@@ -467,6 +467,8 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
                     }
                 });
 
+            assert old == null : fut;
+
             if (old != null) {
                 boolean empty, dup = false;
 
