@@ -52,6 +52,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 import org.jsr166.ConcurrentLinkedDeque8;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -144,17 +145,20 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
                 Collection<? extends GridCacheFuture> futCol = futs.get(owner.version());
 
                 if (futCol != null) {
-                    for (GridCacheFuture fut : futCol) {
-                        if (fut instanceof GridCacheMvccFuture && !fut.isDone()) {
-                            GridCacheMvccFuture<Boolean> mvccFut =
-                                (GridCacheMvccFuture<Boolean>)fut;
+                    synchronized (futCol) {
+                        for (GridCacheFuture fut : futCol) {
+                            if (fut instanceof GridCacheMvccFuture && !fut.isDone()) {
+                                GridCacheMvccFuture<Boolean> mvccFut = (GridCacheMvccFuture<Boolean>)fut;
 
-                            // Since this method is called outside of entry synchronization,
-                            // we can safely invoke any method on the future.
-                            // Also note that we don't remove future here if it is done.
-                            // The removal is initiated from within future itself.
-                            if (mvccFut.onOwnerChanged(entry, owner))
-                                return;
+                                // Since this method is called outside of entry synchronization,
+                                // we can safely invoke any method on the future.
+                                // Also note that we don't remove future here if it is done.
+                                // The removal is initiated from within future itself.
+                                if (mvccFut.onOwnerChanged(
+                                    entry,
+                                    owner))
+                                    return;
+                            }
                         }
                     }
                 }
@@ -444,7 +448,6 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
             return true;
 
         while (true) {
-            // TODO Properly optimize
             Collection<GridCacheFuture<?>> col = new HashSet<GridCacheFuture<?>>(U.capacity(4), 0.75f) {
                 {
                     // Make sure that we add future to queue before
@@ -461,8 +464,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
                 }
             };
 
-            Collection<GridCacheFuture<?>> old = futs.putIfAbsent(fut.version(),
-                col);
+            Collection<GridCacheFuture<?>> old = futs.putIfAbsent(fut.version(), col);
 
             if (old != null) {
                 boolean empty, dup = false;
@@ -471,13 +473,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
                     empty = old.isEmpty();
 
                     if (!empty)
-                        dup = old.contains(fut);
-
-                    if (!empty && !dup)
-                        old.add(fut);
-
-                    if (old.size() > 4)
-                        System.out.println("Old: " + old);
+                        dup = !old.add(fut);
                 }
 
                 // Future is being removed, so we force-remove here and try again.
@@ -586,13 +582,16 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
         Collection<? extends GridCacheFuture> futs = this.futs.get(ver);
 
         if (futs != null)
-            for (GridCacheFuture<?> fut : futs)
-                if (fut.futureId().equals(futId)) {
-                    if (log.isDebugEnabled())
-                        log.debug("Found future in futures map: " + fut);
+            synchronized (futs) {
+                for (GridCacheFuture<?> fut : futs) {
+                    if (fut.futureId().equals(futId)) {
+                        if (log.isDebugEnabled())
+                            log.debug("Found future in futures map: " + fut);
 
-                    return fut;
+                        return fut;
+                    }
                 }
+            }
 
         if (log.isDebugEnabled())
             log.debug("Failed to find future in futures map [ver=" + ver + ", futId=" + futId + ']');
@@ -610,7 +609,13 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
     public <T> Collection<? extends IgniteInternalFuture<T>> futures(GridCacheVersion ver) {
         Collection c = futs.get(ver);
 
-        return c == null ? Collections.<IgniteInternalFuture<T>>emptyList() : (Collection<IgniteInternalFuture<T>>)c;
+        if (c == null)
+            return Collections.<IgniteInternalFuture<T>>emptyList();
+        else {
+            synchronized (c) {
+                return new ArrayList<>((Collection<IgniteInternalFuture<T>>)c);
+            }
+        }
     }
 
     /**

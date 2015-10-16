@@ -35,6 +35,7 @@ public class Bench {
             false));
 
         final boolean client = false;
+        final boolean forceRnd = false;
 
         final Ignite ignite = Ignition.start(config("0",
             client));
@@ -59,7 +60,7 @@ public class Bench {
                         for (;;) {
                             int key;
 
-                            if (client)
+                            if (client || forceRnd)
                                 key = ThreadLocalRandom.current().nextInt(10000);
 
                             else
