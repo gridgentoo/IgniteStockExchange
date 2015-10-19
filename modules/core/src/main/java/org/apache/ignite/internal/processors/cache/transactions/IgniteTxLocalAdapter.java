@@ -116,6 +116,7 @@ import static org.apache.ignite.transactions.TransactionState.UNKNOWN;
 
 /**
  * Transaction adapter for cache transactions.
+ * TODO scytheout
  */
 public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
     implements IgniteTxLocalEx {
@@ -202,21 +203,21 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
         int taskNameHash
     ) {
         super(
-            cctx, 
-            xidVer, 
-            implicit, 
-            implicitSingle, 
-            /*local*/true, 
-            sys, 
+            cctx,
+            xidVer,
+            implicit,
+            implicitSingle,
+            /*local*/true,
+            sys,
             plc,
-            concurrency, 
-            isolation, 
+            concurrency,
+            isolation,
             timeout,
             invalidate,
-            storeEnabled, 
-            onePhaseCommit, 
-            txSize, 
-            subjId, 
+            storeEnabled,
+            onePhaseCommit,
+            txSize,
+            subjId,
             taskNameHash
         );
 
@@ -957,7 +958,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                                             eventNodeId(),
                                             txEntry.nodeId(),
                                             false,
-                                            false,
                                             evt,
                                             metrics,
                                             topVer,
@@ -972,7 +972,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                                                 null,
                                                 eventNodeId(),
                                                 nodeId,
-                                                false,
                                                 false,
                                                 false,
                                                 metrics,

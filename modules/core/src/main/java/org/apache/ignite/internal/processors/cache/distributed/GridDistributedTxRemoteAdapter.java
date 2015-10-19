@@ -572,7 +572,8 @@ public class GridDistributedTxRemoteAdapter extends IgniteTxAdapter
                                     if (op == CREATE || op == UPDATE) {
                                         // Invalidate only for near nodes (backups cannot be invalidated).
                                         if (isSystemInvalidate() || (isInvalidate() && cacheCtx.isNear()))
-                                            cached.innerRemove(this, eventNodeId(), nodeId, false, false, true, true,
+                                            cached.innerRemove(this, eventNodeId(), nodeId,
+                                                false, true, true,
                                                 topVer, null, replicate ? DR_BACKUP : DR_NONE,
                                                 near() ? null : explicitVer, CU.subjectId(this, cctx),
                                                 resolveTaskName());
@@ -597,7 +598,8 @@ public class GridDistributedTxRemoteAdapter extends IgniteTxAdapter
                                         }
                                     }
                                     else if (op == DELETE) {
-                                        cached.innerRemove(this, eventNodeId(), nodeId, false, false, true, true,
+                                        cached.innerRemove(this, eventNodeId(), nodeId,
+                                            false, true, true,
                                             topVer, null, replicate ? DR_BACKUP : DR_NONE,
                                             near() ? null : explicitVer, CU.subjectId(this, cctx), resolveTaskName());
 

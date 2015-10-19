@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
@@ -176,38 +175,6 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
     }
 
     /**
-     * @param e Error.
-     */
-    void onError(Throwable e) {
-        tx.commitError(e);
-
-        if (err.compareAndSet(null, e)) {
-            boolean marked = tx.setRollbackOnly();
-
-            if (e instanceof IgniteTxRollbackCheckedException) {
-                if (marked) {
-                    try {
-                        tx.rollback();
-                    }
-                    catch (IgniteCheckedException ex) {
-                        U.error(log, "Failed to automatically rollback transaction: " + tx, ex);
-                    }
-                }
-            }
-            else if (tx.implicit() && tx.isSystemInvalidate()) { // Finish implicit transaction on heuristic error.
-                try {
-                    tx.close();
-                }
-                catch (IgniteCheckedException ex) {
-                    U.error(log, "Failed to invalidate transaction: " + tx, ex);
-                }
-            }
-
-            onComplete();
-        }
-    }
-
-    /**
      * @param nodeId Sender.
      * @param res Result.
      */
@@ -247,6 +214,33 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
 
     /** {@inheritDoc} */
     @Override public boolean onDone(IgniteInternalTx tx0, Throwable err) {
+        if (err != null) {
+            tx.commitError(err);
+
+            if (this.err.compareAndSet(null, err)) {
+                boolean marked = tx.setRollbackOnly();
+
+                if (err instanceof IgniteTxRollbackCheckedException) {
+                    if (marked) {
+                        try {
+                            tx.rollback();
+                        }
+                        catch (IgniteCheckedException ex) {
+                            U.error(log, "Failed to automatically rollback transaction: " + tx, ex);
+                        }
+                    }
+                }
+                else if (tx.implicit() && tx.isSystemInvalidate()) { // Finish implicit transaction on heuristic error.
+                    try {
+                        tx.close();
+                    }
+                    catch (IgniteCheckedException ex) {
+                        U.error(log, "Failed to invalidate transaction: " + tx, ex);
+                    }
+                }
+            }
+        }
+
         if ((initialized() || err != null) && !isDone()) {
             if (tx.needCheckBackup()) {
                 assert tx.onePhaseCommit();
@@ -365,15 +359,15 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
                 }
             }
             else
-                onError(new IgniteCheckedException("Failed to commit transaction: " + CU.txString(tx)));
+                onDone(new IgniteCheckedException("Failed to commit transaction: " + CU.txString(tx)));
         }
         catch (Error | RuntimeException e) {
-            onError(e);
+            onDone(e);
 
             throw e;
         }
         catch (IgniteCheckedException e) {
-            onError(e);
+            onDone(e);
         }
     }
 
@@ -518,9 +512,9 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
             if (m.node().isLocal()) {
                 IgniteInternalFuture<IgniteInternalTx> fut = cctx.tm().txHandler().finishColocatedLocal(commit, tx);
 
-                // Add new future.
-                if (fut != null)
-                    add(fut);
+                // Add new future. TODO: revisit
+//                if (fut != null)
+//                    add(fut);
             }
         }
     }

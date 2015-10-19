@@ -4833,7 +4833,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         TransactionIsolation txIsolation)
         throws  Exception
     {
-        log.info("Test tx skip store [concurrency=" + txConcurrency + ", isolation=" + txIsolation + ']');
+        info("Test tx skip store [concurrency=" + txConcurrency + ", isolation=" + txIsolation + ']');
 
         cache.removeAll(data.keySet());
         checkEmpty(cache, cacheSkipStore);

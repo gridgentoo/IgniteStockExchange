@@ -100,6 +100,7 @@ import static org.apache.ignite.transactions.TransactionState.ROLLING_BACK;
 
 /**
  * Managed transaction adapter.
+ * TODO: scytheout
  */
 public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
     implements IgniteInternalTx, Externalizable {
