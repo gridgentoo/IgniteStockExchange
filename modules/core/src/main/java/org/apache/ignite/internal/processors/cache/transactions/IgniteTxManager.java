@@ -18,12 +18,12 @@
 package org.apache.ignite.internal.processors.cache.transactions;
 
 import java.io.Externalizable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -34,7 +34,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteClientDisconnectedException;
-import org.apache.ignite.IgniteException;
 import org.apache.ignite.events.DiscoveryEvent;
 import org.apache.ignite.events.Event;
 import org.apache.ignite.internal.IgniteInternalFuture;
@@ -1021,7 +1020,7 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
      * @return Copy of the collection.
      */
     private Collection<GridCacheVersion> copyOf(Map<GridCacheVersion, Boolean> map, boolean expVal) {
-        Collection<GridCacheVersion> l = new LinkedList<>();
+        Collection<GridCacheVersion> l = new ArrayList<>();
 
         for (Map.Entry<GridCacheVersion, Boolean> e : map.entrySet()) {
             if (e.getValue() == expVal)
@@ -1098,23 +1097,24 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
      * @return If transaction was not already present in completed set.
      */
     public boolean addCommittedTx(GridCacheVersion xidVer, @Nullable GridCacheVersion nearXidVer) {
-        if (nearXidVer != null)
-            xidVer = new CommittedVersion(xidVer, nearXidVer);
-
-        Boolean committed = completedVers.putIfAbsent(xidVer, true);
-
-        if (committed == null || committed) {
-            if (log.isDebugEnabled())
-                log.debug("Added transaction to committed version set: " + xidVer);
-
-            return true;
-        }
-        else {
-            if (log.isDebugEnabled())
-                log.debug("Transaction is already present in rolled back version set: " + xidVer);
-
-            return false;
-        }
+//        if (nearXidVer != null)
+//            xidVer = new CommittedVersion(xidVer, nearXidVer);
+//
+//        Boolean committed = completedVers.putIfAbsent(xidVer, true);
+//
+//        if (committed == null || committed) {
+//            if (log.isDebugEnabled())
+//                log.debug("Added transaction to committed version set: " + xidVer);
+//
+//            return true;
+//        }
+//        else {
+//            if (log.isDebugEnabled())
+//                log.debug("Transaction is already present in rolled back version set: " + xidVer);
+//
+//            return false;
+//        }
+        return true;
     }
 
     /**
@@ -1122,20 +1122,22 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
      * @return If transaction was not already present in completed set.
      */
     public boolean addRolledbackTx(GridCacheVersion xidVer) {
-        Boolean committed = completedVers.putIfAbsent(xidVer, false);
 
-        if (committed == null || !committed) {
-            if (log.isDebugEnabled())
-                log.debug("Added transaction to rolled back version set: " + xidVer);
-
-            return true;
-        }
-        else {
-            if (log.isDebugEnabled())
-                log.debug("Transaction is already present in committed version set: " + xidVer);
-
-            return false;
-        }
+        return true;
+//        Boolean committed = completedVers.putIfAbsent(xidVer, false);
+//
+//        if (committed == null || !committed) {
+//            if (log.isDebugEnabled())
+//                log.debug("Added transaction to rolled back version set: " + xidVer);
+//
+//            return true;
+//        }
+//        else {
+//            if (log.isDebugEnabled())
+//                log.debug("Transaction is already present in committed version set: " + xidVer);
+//
+//            return false;
+//        }
     }
 
     /**
@@ -1262,19 +1264,19 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
          * so we don't do it here.
          */
 
-        Boolean committed = completedVers.get(tx.xidVersion());
-
-        // 1. Make sure that committed version has been recorded.
-        if (!((committed != null && committed) || tx.writeSet().isEmpty() || tx.isSystemInvalidate())) {
-            uncommitTx(tx);
-
-            GridCacheVersion first = completedVers.isEmpty() ? null : completedVers.firstKey();
-            GridCacheVersion last = completedVers.isEmpty() ? null : completedVers.lastKey();
-
-            throw new IgniteException("Missing commit version (consider increasing " +
-                IGNITE_MAX_COMPLETED_TX_COUNT + " system property) [ver=" + tx.xidVersion() + ", firstVer=" +
-                first + ", lastVer=" + last + ", tx=" + tx.xid() + ']');
-        }
+//        Boolean committed = completedVers.get(tx.xidVersion());
+//
+//        // 1. Make sure that committed version has been recorded.
+//        if (!((committed != null && committed) || tx.writeSet().isEmpty() || tx.isSystemInvalidate())) {
+//            uncommitTx(tx);
+//
+//            GridCacheVersion first = completedVers.isEmpty() ? null : completedVers.firstKey();
+//            GridCacheVersion last = completedVers.isEmpty() ? null : completedVers.lastKey();
+//
+//            throw new IgniteException("Missing commit version (consider increasing " +
+//                IGNITE_MAX_COMPLETED_TX_COUNT + " system property) [ver=" + tx.xidVersion() + ", firstVer=" +
+//                first + ", lastVer=" + last + ", tx=" + tx.xid() + ']');
+//        }
 
         ConcurrentMap<GridCacheVersion, IgniteInternalTx> txIdMap = transactionMap(tx);
 

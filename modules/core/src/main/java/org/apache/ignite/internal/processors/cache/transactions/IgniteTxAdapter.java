@@ -17,25 +17,6 @@
 
 package org.apache.ignite.internal.processors.cache.transactions;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.ObjectStreamException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import javax.cache.expiry.ExpiryPolicy;
-import javax.cache.processor.EntryProcessor;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cluster.ClusterNode;
@@ -59,7 +40,6 @@ import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersionConflictContext;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersionedEntryEx;
 import org.apache.ignite.internal.transactions.IgniteTxTimeoutCheckedException;
-import org.apache.ignite.internal.util.GridLeanSet;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
 import org.apache.ignite.internal.util.lang.GridMetadataAwareAdapter;
 import org.apache.ignite.internal.util.lang.GridTuple;
@@ -77,6 +57,24 @@ import org.apache.ignite.transactions.TransactionConcurrency;
 import org.apache.ignite.transactions.TransactionIsolation;
 import org.apache.ignite.transactions.TransactionState;
 import org.jetbrains.annotations.Nullable;
+
+import javax.cache.expiry.ExpiryPolicy;
+import javax.cache.processor.EntryProcessor;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.ObjectStreamException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.ignite.events.EventType.EVT_CACHE_OBJECT_READ;
 import static org.apache.ignite.internal.processors.cache.GridCacheOperation.CREATE;
@@ -200,20 +198,20 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
     protected boolean transform;
 
     /** Commit version. */
-    private AtomicReference<GridCacheVersion> commitVer = new AtomicReference<>(null);
-
-    /** Done marker. */
-    protected final AtomicBoolean isDone = new AtomicBoolean(false);
+    private volatile GridCacheVersion commitVer;
 
     /** */
     private AtomicReference<FinalizationStatus> finalizing = new AtomicReference<>(FinalizationStatus.NONE);
 
-    /** Preparing flag. */
-    private AtomicBoolean preparing = new AtomicBoolean();
+    /** Done marker. */
+    protected volatile boolean isDone;
+
+    /** Preparing flag (no need for volatile modifier). */
+    private boolean preparing;
 
     /** */
     @GridToStringInclude
-    private Map<Integer, Set<Integer>> invalidParts = new HashMap<>(3);
+    private Map<Integer, Set<Integer>> invalidParts;
 
     /**
      * Transaction state. Note that state is not protected, as we want to
@@ -231,17 +229,11 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
     /** */
     @GridToStringExclude
-    private AtomicReference<GridFutureAdapter<IgniteInternalTx>> finFut = new AtomicReference<>();
+    private volatile GridFutureAdapter<IgniteInternalTx> finFut;
 
     /** Topology version. */
     @GridToStringInclude
-    protected AtomicReference<AffinityTopologyVersion> topVer = new AtomicReference<>(AffinityTopologyVersion.NONE);
-
-    /** Mutex. */
-    private final Lock lock = new ReentrantLock();
-
-    /** Lock condition. */
-    private final Condition cond = lock.newCondition();
+    protected volatile AffinityTopologyVersion topVer = AffinityTopologyVersion.NONE;
 
     /** */
     protected Map<UUID, Collection<UUID>> txNodes;
@@ -386,37 +378,6 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
     }
 
     /**
-     * Acquires lock.
-     */
-    @SuppressWarnings({"LockAcquiredButNotSafelyReleased"})
-    protected final void lock() {
-        lock.lock();
-    }
-
-    /**
-     * Releases lock.
-     */
-    protected final void unlock() {
-        lock.unlock();
-    }
-
-    /**
-     * Signals all waiters.
-     */
-    protected final void signalAll() {
-        cond.signalAll();
-    }
-
-    /**
-     * Waits for signal.
-     *
-     * @throws InterruptedException If interrupted.
-     */
-    protected final void awaitSignal() throws InterruptedException {
-        cond.await();
-    }
-
-    /**
      * Checks whether near cache should be updated.
      *
      * @return Flag indicating whether near cache should be updated.
@@ -544,7 +505,7 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
     /** {@inheritDoc} */
     @Override public AffinityTopologyVersion topologyVersion() {
-        AffinityTopologyVersion res = topVer.get();
+        AffinityTopologyVersion res = topVer;
 
         if (res.equals(AffinityTopologyVersion.NONE))
             return cctx.exchange().topologyVersion();
@@ -554,16 +515,29 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
     /** {@inheritDoc} */
     @Override public AffinityTopologyVersion topologyVersionSnapshot() {
-        AffinityTopologyVersion ret = topVer.get();
+        AffinityTopologyVersion ret = topVer;
 
         return AffinityTopologyVersion.NONE.equals(ret) ? null : ret;
     }
 
     /** {@inheritDoc} */
     @Override public AffinityTopologyVersion topologyVersion(AffinityTopologyVersion topVer) {
-        this.topVer.compareAndSet(AffinityTopologyVersion.NONE, topVer);
+        AffinityTopologyVersion topVer0 = this.topVer;
 
-        return this.topVer.get();
+        if (!AffinityTopologyVersion.NONE.equals(topVer0))
+            return topVer0;
+
+        synchronized (this) {
+            topVer0 = this.topVer;
+
+            if (AffinityTopologyVersion.NONE.equals(topVer0)) {
+                this.topVer = topVer;
+
+                return topVer;
+            }
+
+            return topVer0;
+        }
     }
 
     /** {@inheritDoc} */
@@ -578,7 +552,14 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
     /** {@inheritDoc} */
     @Override public boolean markPreparing() {
-        return preparing.compareAndSet(false, true);
+        synchronized (this) {
+            if (preparing)
+                return false;
+
+            preparing = true;
+
+            return true;
+        }
     }
 
     /**
@@ -726,15 +707,18 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
     /** {@inheritDoc} */
     @Override public Map<Integer, Set<Integer>> invalidPartitions() {
-        return invalidParts;
+        return invalidParts == null ? Collections.<Integer, Set<Integer>>emptyMap() : invalidParts;
     }
 
     /** {@inheritDoc} */
     @Override public void addInvalidPartition(GridCacheContext<?, ?> cacheCtx, int part) {
+        if (invalidParts == null)
+            invalidParts = new HashMap<>();
+
         Set<Integer> parts = invalidParts.get(cacheCtx.cacheId());
 
         if (parts == null) {
-            parts = new GridLeanSet<>();
+            parts = new HashSet<>();
 
             invalidParts.put(cacheCtx.cacheId(), parts);
         }
@@ -875,32 +859,71 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
     /** {@inheritDoc} */
     @Override public boolean done() {
-        return isDone.get();
+        return isDone;
+    }
+
+    /**
+     * @return {@code True} if done flag has been set by this call.
+     */
+    private boolean setDone() {
+        boolean isDone0 = isDone;
+
+        if (isDone0)
+            return false;
+
+        synchronized (this) {
+            isDone0 = isDone;
+
+            if (isDone0)
+                return false;
+
+            isDone = true;
+
+            return true;
+        }
     }
 
     /**
      * @return Commit version.
      */
     @Override public GridCacheVersion commitVersion() {
-        initCommitVersion();
+        GridCacheVersion commitVer0 = commitVer;
 
-        return commitVer.get();
+        if (commitVer0 != null)
+            return commitVer0;
+
+        synchronized (this) {
+            commitVer0 = commitVer;
+
+            if (commitVer0 != null)
+                return commitVer0;
+
+            commitVer = commitVer0 = xidVer;
+
+            return commitVer0;
+        }
     }
 
     /**
      * @param commitVer Commit version.
-     * @return {@code True} if set to not null value.
      */
-    @Override public boolean commitVersion(GridCacheVersion commitVer) {
-        return commitVer != null && this.commitVer.compareAndSet(null, commitVer);
-    }
+    @Override public void commitVersion(GridCacheVersion commitVer) {
+        if (commitVer == null)
+            return;
 
-    /**
-     *
-     */
-    public void initCommitVersion() {
-        if (commitVer.get() == null)
-            commitVer.compareAndSet(null, xidVer);
+        GridCacheVersion commitVer0 = this.commitVer;
+
+        if (commitVer0 != null)
+            return;
+
+        synchronized (this) {
+            commitVer0 = this.commitVer;
+
+            if (commitVer0 != null)
+                return;
+
+            this.commitVer = commitVer;
+        }
     }
 
     /**
@@ -912,7 +935,19 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
         if (state != ROLLING_BACK && state != ROLLED_BACK && state != COMMITTING && state != COMMITTED)
             rollback();
 
-        awaitCompletion();
+        synchronized (this) {
+            try {
+                while (!done())
+                    wait();
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+
+                if (!done())
+                    throw new IgniteCheckedException("Got interrupted while waiting for transaction to complete: " +
+                        this, e);
+            }
+        }
     }
 
     /** {@inheritDoc} */
@@ -924,29 +959,6 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
     @Override public void completedVersions(GridCacheVersion base, Collection<GridCacheVersion> committed,
         Collection<GridCacheVersion> txs) {
         /* No-op. */
-    }
-
-    /**
-     * Awaits transaction completion.
-     *
-     * @throws IgniteCheckedException If waiting failed.
-     */
-    protected void awaitCompletion() throws IgniteCheckedException {
-        lock();
-
-        try {
-            while (!done())
-                awaitSignal();
-        }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-
-            if (!done())
-                throw new IgniteCheckedException("Got interrupted while waiting for transaction to complete: " + this, e);
-        }
-        finally {
-            unlock();
-        }
     }
 
     /** {@inheritDoc} */
@@ -1015,22 +1027,27 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
     /** {@inheritDoc} */
     @SuppressWarnings("ExternalizableWithoutPublicNoArgConstructor")
     @Override public IgniteInternalFuture<IgniteInternalTx> finishFuture() {
-        GridFutureAdapter<IgniteInternalTx> fut = finFut.get();
+        GridFutureAdapter<IgniteInternalTx> fut = finFut;
 
         if (fut == null) {
-            fut = new GridFutureAdapter<IgniteInternalTx>() {
-                @Override public String toString() {
-                    return S.toString(GridFutureAdapter.class, this, "tx", IgniteTxAdapter.this);
-                }
-            };
+            synchronized (this) {
+                fut = finFut;
 
-            if (!finFut.compareAndSet(null, fut))
-                fut = finFut.get();
+                if (fut == null) {
+                    fut = new GridFutureAdapter<IgniteInternalTx>() {
+                        @Override public String toString() {
+                            return S.toString(GridFutureAdapter.class, this, "tx", IgniteTxAdapter.this);
+                        }
+                    };
+
+                    finFut = fut;
+                }
+            }
         }
 
         assert fut != null;
 
-        if (isDone.get())
+        if (isDone)
             fut.onDone(this);
 
         return fut;
@@ -1055,9 +1072,7 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
         boolean notify = false;
 
-        lock();
-
-        try {
+        synchronized (this) {
             prev = this.state;
 
             switch (state) {
@@ -1083,7 +1098,7 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
                 }
 
                 case UNKNOWN: {
-                    if (isDone.compareAndSet(false, true))
+                    if (setDone())
                         notify = true;
 
                     valid = prev == ROLLING_BACK || prev == COMMITTING;
@@ -1092,7 +1107,7 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
                 }
 
                 case COMMITTED: {
-                    if (isDone.compareAndSet(false, true))
+                    if (setDone())
                         notify = true;
 
                     valid = prev == COMMITTING;
@@ -1101,7 +1116,7 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
                 }
 
                 case ROLLED_BACK: {
-                    if (isDone.compareAndSet(false, true))
+                    if (setDone())
                         notify = true;
 
                     valid = prev == ROLLING_BACK;
@@ -1131,8 +1146,7 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
                 if (log.isDebugEnabled())
                     log.debug("Changed transaction state [prev=" + prev + ", new=" + this.state + ", tx=" + this + ']');
 
-                // Notify of state change.
-                signalAll();
+                notifyAll();
             }
             else {
                 if (log.isDebugEnabled())
@@ -1140,12 +1154,9 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
                         ", tx=" + this + ']');
             }
         }
-        finally {
-            unlock();
-        }
 
         if (notify) {
-            GridFutureAdapter<IgniteInternalTx> fut = finFut.get();
+            GridFutureAdapter<IgniteInternalTx> fut = finFut;
 
             if (fut != null)
                 fut.onDone(this);
@@ -2025,8 +2036,8 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
         }
 
         /** {@inheritDoc} */
-        @Override public boolean commitVersion(GridCacheVersion commitVer) {
-            return false;
+        @Override public void commitVersion(GridCacheVersion commitVer) {
+            // No-op.
         }
 
         /** {@inheritDoc} */
@@ -2036,7 +2047,7 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
         /** {@inheritDoc} */
         @Override public void prepare() throws IgniteCheckedException {
-
+            // No-op.
         }
 
         /** {@inheritDoc} */
@@ -2046,7 +2057,7 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
         /** {@inheritDoc} */
         @Override public void endVersion(GridCacheVersion endVer) {
-
+            // No-op.
         }
 
         /** {@inheritDoc} */
