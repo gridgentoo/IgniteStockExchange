@@ -143,7 +143,8 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
 
     /** Committed local transactions. */
     private final GridBoundedConcurrentOrderedMap<GridCacheVersion, Boolean> completedVers =
-        new GridBoundedConcurrentOrderedMap<>(Integer.getInteger(IGNITE_MAX_COMPLETED_TX_COUNT, DFLT_MAX_COMPLETED_TX_CNT));
+        new GridBoundedConcurrentOrderedMap<>(
+            Integer.getInteger(IGNITE_MAX_COMPLETED_TX_COUNT, DFLT_MAX_COMPLETED_TX_CNT));
 
     /** Transaction finish synchronizer. */
     private GridCacheTxFinishSync txFinishSync;
@@ -851,10 +852,8 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             GridCacheVersion finishTn = cctx.versions().last();
 
             // Add future to prepare queue only on first prepare call.
-//            if (tx.markPreparing())
-//                prepareQ.offer(tx);
-
-            tx.markPreparing();
+            if (tx.markPreparing())
+                prepareQ.offer(tx);
 
             // Check that our read set does not intersect with write set
             // of all transactions that completed their write phase
@@ -890,50 +889,50 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
 
             // Check that our read and write sets do not intersect with write
             // sets of all active transactions.
-//            for (Iterator<IgniteInternalTx> iter = prepareQ.iterator(); iter.hasNext();) {
-//                IgniteInternalTx prepareTx = iter.next();
-//
-//                if (prepareTx == tx)
-//                    // Skip yourself.
-//                    continue;
-//
-//                // Optimistically remove completed transactions.
-//                if (prepareTx.done()) {
-//                    iter.remove();
-//
-//                    if (log.isDebugEnabled())
-//                        log.debug("Removed finished transaction from active queue: " + prepareTx);
-//
-//                    continue;
-//                }
-//
-//                // Check if originating node left.
-//                if (cctx.discovery().node(prepareTx.nodeId()) == null) {
-//                    iter.remove();
-//
-//                    rollbackTx(prepareTx);
-//
-//                    if (log.isDebugEnabled())
-//                        log.debug("Removed and rolled back transaction because sender node left grid: " +
-//                            CU.txString(prepareTx));
-//
-//                    continue;
-//                }
-//
-//                if (tx.serializable() && !prepareTx.isRollbackOnly()) {
-//                    Set<IgniteTxKey> prepareWriteSet = prepareTx.writeSet();
-//
-//                    if (GridFunc.intersects(prepareWriteSet, readSet, writeSet)) {
-//                        // Remove from active set.
-//                        iter.remove();
-//
-//                        tx.setRollbackOnly();
-//
-//                        throw new IgniteTxOptimisticCheckedException(
-//                            "Failed to prepare transaction (read-set/write-set conflict): " + tx);
-//                    }
-//                }
-//            }
+            for (Iterator<IgniteInternalTx> iter = prepareQ.iterator(); iter.hasNext();) {
+                IgniteInternalTx prepareTx = iter.next();
+
+                if (prepareTx == tx)
+                    // Skip yourself.
+                    continue;
+
+                // Optimistically remove completed transactions.
+                if (prepareTx.done()) {
+                    iter.remove();
+
+                    if (log.isDebugEnabled())
+                        log.debug("Removed finished transaction from active queue: " + prepareTx);
+
+                    continue;
+                }
+
+                // Check if originating node left.
+                if (cctx.discovery().node(prepareTx.nodeId()) == null) {
+                    iter.remove();
+
+                    rollbackTx(prepareTx);
+
+                    if (log.isDebugEnabled())
+                        log.debug("Removed and rolled back transaction because sender node left grid: " +
+                            CU.txString(prepareTx));
+
+                    continue;
+                }
+
+                if (tx.serializable() && !prepareTx.isRollbackOnly()) {
+                    Set<IgniteTxKey> prepareWriteSet = prepareTx.writeSet();
+
+                    if (GridFunc.intersects(prepareWriteSet, readSet, writeSet)) {
+                        // Remove from active set.
+                        iter.remove();
+
+                        tx.setRollbackOnly();
+
+                        throw new IgniteTxOptimisticCheckedException(
+                            "Failed to prepare transaction (read-set/write-set conflict): " + tx);
+                    }
+                }
+            }
         }
 
         // Optimistic.
@@ -1099,24 +1098,23 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
      * @return If transaction was not already present in completed set.
      */
     public boolean addCommittedTx(GridCacheVersion xidVer, @Nullable GridCacheVersion nearXidVer) {
-//        if (nearXidVer != null)
-//            xidVer = new CommittedVersion(xidVer, nearXidVer);
-//
-//        Boolean committed = completedVers.putIfAbsent(xidVer, true);
-//
-//        if (committed == null || committed) {
-//            if (log.isDebugEnabled())
-//                log.debug("Added transaction to committed version set: " + xidVer);
-//
-//            return true;
-//        }
-//        else {
-//            if (log.isDebugEnabled())
-//                log.debug("Transaction is already present in rolled back version set: " + xidVer);
-//
-//            return false;
-//        }
-        return true;
+        if (nearXidVer != null)
+            xidVer = new CommittedVersion(xidVer, nearXidVer);
+
+        Boolean committed = completedVers.putIfAbsent(xidVer, true);
+
+        if (committed == null || committed) {
+            if (log.isDebugEnabled())
+                log.debug("Added transaction to committed version set: " + xidVer);
+
+            return true;
+        }
+        else {
+            if (log.isDebugEnabled())
+                log.debug("Transaction is already present in rolled back version set: " + xidVer);
+
+            return false;
+        }
     }
 
     /**
@@ -1124,22 +1122,20 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
      * @return If transaction was not already present in completed set.
      */
     public boolean addRolledbackTx(GridCacheVersion xidVer) {
+        Boolean committed = completedVers.putIfAbsent(xidVer, false);
 
-        return true;
-//        Boolean committed = completedVers.putIfAbsent(xidVer, false);
-//
-//        if (committed == null || !committed) {
-//            if (log.isDebugEnabled())
-//                log.debug("Added transaction to rolled back version set: " + xidVer);
-//
-//            return true;
-//        }
-//        else {
-//            if (log.isDebugEnabled())
-//                log.debug("Transaction is already present in committed version set: " + xidVer);
-//
-//            return false;
-//        }
+        if (committed == null || !committed) {
+            if (log.isDebugEnabled())
+                log.debug("Added transaction to rolled back version set: " + xidVer);
+
+            return true;
+        }
+        else {
+            if (log.isDebugEnabled())
+                log.debug("Transaction is already present in committed version set: " + xidVer);
+
+            return false;
+        }
     }
 
     /**
@@ -1266,19 +1262,19 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
          * so we don't do it here.
          */
 
-//        Boolean committed = completedVers.get(tx.xidVersion());
-//
-//        // 1. Make sure that committed version has been recorded.
-//        if (!((committed != null && committed) || tx.writeSet().isEmpty() || tx.isSystemInvalidate())) {
-//            uncommitTx(tx);
-//
-//            GridCacheVersion first = completedVers.isEmpty() ? null : completedVers.firstKey();
-//            GridCacheVersion last = completedVers.isEmpty() ? null : completedVers.lastKey();
-//
-//            throw new IgniteException("Missing commit version (consider increasing " +
-//                IGNITE_MAX_COMPLETED_TX_COUNT + " system property) [ver=" + tx.xidVersion() + ", firstVer=" +
-//                first + ", lastVer=" + last + ", tx=" + tx.xid() + ']');
-//        }
+        Boolean committed = completedVers.get(tx.xidVersion());
+
+        // 1. Make sure that committed version has been recorded.
+        if (!((committed != null && committed) || tx.writeSet().isEmpty() || tx.isSystemInvalidate())) {
+            uncommitTx(tx);
+
+            GridCacheVersion first = completedVers.isEmpty() ? null : completedVers.firstKey();
+            GridCacheVersion last = completedVers.isEmpty() ? null : completedVers.lastKey();
+
+            throw new IgniteException("Missing commit version (consider increasing " +
+                IGNITE_MAX_COMPLETED_TX_COUNT + " system property) [ver=" + tx.xidVersion() + ", firstVer=" +
+                first + ", lastVer=" + last + ", tx=" + tx.xid() + ']');
+        }
 
         ConcurrentMap<GridCacheVersion, IgniteInternalTx> txIdMap = transactionMap(tx);
 

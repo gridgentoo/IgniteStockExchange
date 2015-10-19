@@ -48,7 +48,6 @@ public class Bench {
 
         Thread.sleep(2000);
 
-
         final LongAdder8 cnt = new LongAdder8();
 
         final AtomicLong time = new AtomicLong(U.currentTimeMillis());
