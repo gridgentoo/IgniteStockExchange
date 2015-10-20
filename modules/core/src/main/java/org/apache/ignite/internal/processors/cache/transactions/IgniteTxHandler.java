@@ -871,7 +871,7 @@ public class IgniteTxHandler {
             log.debug("Processing dht tx finish request [nodeId=" + nodeId + ", req=" + req + ']');
 
         if (req.checkCommitted()) {
-            sendReply(nodeId, req, checkDhtRemoteTxCommitted(req.version()));
+            sendReply(nodeId, req, !ctx.tm().addRolledbackTx(null, req.version()));
 
             return;
         }
@@ -891,8 +891,13 @@ public class IgniteTxHandler {
         if (req.replyRequired()) {
             IgniteInternalFuture completeFut;
 
-            IgniteInternalFuture<IgniteInternalTx> dhtFin = dhtTx == null ? null : dhtTx.done() ? null : dhtTx.finishFuture();
-            IgniteInternalFuture<IgniteInternalTx> nearFin = nearTx == null ? null : nearTx.done() ? null : nearTx.finishFuture();
+            IgniteInternalFuture<IgniteInternalTx> dhtFin = dhtTx == null ?
+                null : dhtTx.done() ?
+                    null : dhtTx.finishFuture();
+
+            IgniteInternalFuture<IgniteInternalTx> nearFin = nearTx == null ?
+                null : nearTx.done() ?
+                    null : nearTx.finishFuture();
 
             if (dhtFin != null && nearFin != null) {
                 GridCompoundFuture fut = new GridCompoundFuture();
@@ -923,24 +928,6 @@ public class IgniteTxHandler {
     }
 
     /**
-     * Checks whether DHT remote transaction with given version has been committed. If not, will add version
-     * to rollback version set so that late response will not falsely commit this transaction.
-     *
-     * @param writeVer Write version to check.
-     * @return {@code True} if transaction has been committed, {@code false} otherwise.
-     */
-    public boolean checkDhtRemoteTxCommitted(GridCacheVersion writeVer) {
-        assert writeVer != null;
-
-        boolean committed = true;
-
-        if (ctx.tm().addRolledbackTx(writeVer))
-            committed = false;
-
-        return committed;
-    }
-
-    /**
      * @param nodeId Node ID.
      * @param tx Transaction.
      * @param req Request.
@@ -948,7 +935,8 @@ public class IgniteTxHandler {
     protected void finish(
         UUID nodeId,
         IgniteTxRemoteEx tx,
-        GridDhtTxFinishRequest req) {
+        GridDhtTxFinishRequest req
+    ) {
         // We don't allow explicit locks for transactions and
         // therefore immediately return if transaction is null.
         // However, we may decide to relax this restriction in
@@ -956,9 +944,9 @@ public class IgniteTxHandler {
         if (tx == null) {
             if (req.commit())
                 // Must be some long time duplicate, but we add it anyway.
-                ctx.tm().addCommittedTx(req.version(), null);
+                ctx.tm().addCommittedTx(tx, req.version(), null);
             else
-                ctx.tm().addRolledbackTx(req.version());
+                ctx.tm().addRolledbackTx(tx, req.version());
 
             if (log.isDebugEnabled())
                 log.debug("Received finish request for non-existing transaction (added to completed set) " +

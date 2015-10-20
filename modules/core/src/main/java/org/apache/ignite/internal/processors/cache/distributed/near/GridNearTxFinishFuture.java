@@ -407,7 +407,7 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
                         "(backup has left grid): " + tx.xidVersion(), cause));
                 }
                 else if (backup.isLocal()) {
-                    boolean committed = cctx.tm().txHandler().checkDhtRemoteTxCommitted(tx.xidVersion());
+                    boolean committed = !cctx.tm().addRolledbackTx(tx);
 
                     readyNearMappingFromBackup(mapping);
 

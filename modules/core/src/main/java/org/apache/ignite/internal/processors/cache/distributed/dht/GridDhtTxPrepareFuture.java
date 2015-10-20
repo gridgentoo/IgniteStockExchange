@@ -47,10 +47,10 @@ import org.apache.ignite.internal.processors.cache.transactions.IgniteTxKey;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.processors.dr.GridDrType;
 import org.apache.ignite.internal.util.F0;
-import org.apache.ignite.internal.util.GridConcurrentHashSet;
 import org.apache.ignite.internal.util.GridLeanSet;
 import org.apache.ignite.internal.util.future.GridCompoundFuture;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.lang.IgnitePair;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.C1;
@@ -677,7 +677,11 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
 
             GridCacheVersion min = tx.minVersion();
 
-            res.completedVersions(cctx.tm().committedVersions(min), cctx.tm().rolledbackVersions(min));
+            if (tx.needsCompletedVersions()) {
+                IgnitePair<Collection<GridCacheVersion>> versPair = cctx.tm().versions(min);
+
+                res.completedVersions(versPair.get1(), versPair.get2());
+            }
 
             res.pending(localDhtPendingVersions(tx.writeEntries(), min));
 
@@ -942,20 +946,16 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                 Map<UUID, GridDistributedTxMapping> futDhtMap = new HashMap<>();
                 Map<UUID, GridDistributedTxMapping> futNearMap = new HashMap<>();
 
-                boolean hasRemoteNodes = false;
-
                 // Assign keys to primary nodes.
                 if (!F.isEmpty(writes)) {
                     for (IgniteTxEntry write : writes)
-                        hasRemoteNodes |= map(tx.entry(write.txKey()), futDhtMap, futNearMap);
+                        map(tx.entry(write.txKey()), futDhtMap, futNearMap);
                 }
 
                 if (!F.isEmpty(reads)) {
                     for (IgniteTxEntry read : reads)
-                        hasRemoteNodes |= map(tx.entry(read.txKey()), futDhtMap, futNearMap);
+                        map(tx.entry(read.txKey()), futDhtMap, futNearMap);
                 }
-
-                tx.needsCompletedVersions(hasRemoteNodes);
             }
 
             if (isDone())
@@ -1146,15 +1146,14 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
      * @param entry Transaction entry.
      * @param futDhtMap DHT mapping.
      * @param futNearMap Near mapping.
-     * @return {@code True} if mapped.
      */
-    private boolean map(
+    private void map(
         IgniteTxEntry entry,
         Map<UUID, GridDistributedTxMapping> futDhtMap,
         Map<UUID, GridDistributedTxMapping> futNearMap
     ) {
         if (entry.cached().isLocal())
-            return false;
+            return;
 
         GridDhtCacheEntry cached = (GridDhtCacheEntry)entry.cached();
 
@@ -1169,8 +1168,6 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
 
             entry.ttl(CU.toTtl(expiry.getExpiryForAccess()));
         }
-
-        boolean ret;
 
         while (true) {
             try {
@@ -1195,10 +1192,10 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                     log.debug("Entry has no near readers: " + entry);
 
                 // Exclude local node.
-                ret = map(entry, F.view(dhtNodes, F.remoteNodes(cctx.localNodeId())), dhtMap, futDhtMap);
+                map(entry, F.view(dhtNodes, F.remoteNodes(cctx.localNodeId())), dhtMap, futDhtMap);
 
                 // Exclude DHT nodes.
-                ret |= map(entry, F.view(nearNodes, F0.notIn(dhtNodes)), nearMap, futNearMap);
+                map(entry, F.view(nearNodes, F0.notIn(dhtNodes)), nearMap, futNearMap);
 
                 break;
             }
@@ -1208,8 +1205,6 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                 entry.cached(cached);
             }
         }
-
-        return ret;
     }
 
     /**
@@ -1217,16 +1212,13 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
      * @param nodes Nodes.
      * @param globalMap Map.
      * @param locMap Exclude map.
-     * @return {@code True} if mapped.
      */
-    private boolean map(
+    private void map(
         IgniteTxEntry entry,
         Iterable<ClusterNode> nodes,
         Map<UUID, GridDistributedTxMapping> globalMap,
         Map<UUID, GridDistributedTxMapping> locMap
     ) {
-        boolean ret = false;
-
         if (nodes != null) {
             for (ClusterNode n : nodes) {
                 GridDistributedTxMapping global = globalMap.get(n.id());
@@ -1255,12 +1247,8 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                     locMap.put(n.id(), loc = new GridDistributedTxMapping(n));
 
                 loc.add(entry);
-
-                ret = true;
             }
         }
-
-        return ret;
     }
 
     /**
