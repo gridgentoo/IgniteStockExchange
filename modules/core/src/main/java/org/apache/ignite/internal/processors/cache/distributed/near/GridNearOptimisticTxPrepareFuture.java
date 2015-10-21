@@ -272,7 +272,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
             cctx.mvcc().addFuture(this);
 
-            prepare0(false);
+            prepare0(false, true);
 
             return;
         }
@@ -339,7 +339,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
                 return;
             }
 
-            prepare0(remap);
+            prepare0(remap, false);
 
             if (c != null)
                 c.run();
@@ -429,8 +429,9 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
      * Initializes future.
      *
      * @param remap Remap flag.
+     * @param topLocked {@code True} if thread already acquired lock preventing topology change.
      */
-    private void prepare0(boolean remap) {
+    private void prepare0(boolean remap, boolean topLocked) {
         try {
             boolean txStateCheck = remap ? tx.state() == PREPARING : tx.state(PREPARING);
 
@@ -452,7 +453,8 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
             prepare(
                 tx.optimistic() && tx.serializable() ? tx.readEntries() : Collections.<IgniteTxEntry>emptyList(),
-                tx.writeEntries());
+                tx.writeEntries(),
+                topLocked);
 
             markInitialized();
         }
@@ -467,11 +469,13 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
     /**
      * @param reads Read entries.
      * @param writes Write entries.
+     * @param topLocked {@code True} if thread already acquired lock preventing topology change.
      * @throws IgniteCheckedException If failed.
      */
     private void prepare(
         Iterable<IgniteTxEntry> reads,
-        Iterable<IgniteTxEntry> writes
+        Iterable<IgniteTxEntry> writes,
+        boolean topLocked
     ) throws IgniteCheckedException {
         AffinityTopologyVersion topVer = tx.topologyVersion();
 
@@ -498,7 +502,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         GridDistributedTxMapping cur = null;
 
         for (IgniteTxEntry read : reads) {
-            GridDistributedTxMapping updated = map(read, topVer, cur, false);
+            GridDistributedTxMapping updated = map(read, topVer, cur, false, topLocked);
 
             if (cur != updated) {
                 mappings.offer(updated);
@@ -515,7 +519,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         }
 
         for (IgniteTxEntry write : writes) {
-            GridDistributedTxMapping updated = map(write, topVer, cur, true);
+            GridDistributedTxMapping updated = map(write, topVer, cur, true, topLocked);
 
             if (cur != updated) {
                 mappings.offer(updated);
@@ -648,13 +652,15 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
      * @param topVer Topology version.
      * @param cur Current mapping.
      * @param waitLock Wait lock flag.
+     * @param topLocked {@code True} if thread already acquired lock preventing topology change.
      * @return Mapping.
      */
     private GridDistributedTxMapping map(
         IgniteTxEntry entry,
         AffinityTopologyVersion topVer,
         @Nullable GridDistributedTxMapping cur,
-        boolean waitLock
+        boolean waitLock,
+        boolean topLocked
     ) {
         GridCacheContext cacheCtx = entry.context();
 
@@ -686,7 +692,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         }
 
         if (cur == null || !cur.node().id().equals(primary.id()) || cur.near() != cacheCtx.isNear()) {
-            boolean clientFirst = cur == null && cctx.kernalContext().clientNode();
+            boolean clientFirst = cur == null && !topLocked && cctx.kernalContext().clientNode();
 
             cur = new GridDistributedTxMapping(primary);
 
