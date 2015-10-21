@@ -222,7 +222,7 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
 
             Throwable e = this.err.get();
 
-            if (e == null)
+            if (e == null && commit)
                 e = this.tx.commitError();
 
             if (super.onDone(tx, e != null ? e : err)) {
