@@ -225,9 +225,14 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
             if (e == null && commit)
                 e = this.tx.commitError();
 
-            if (super.onDone(tx, e != null ? e : err)) {
+            Throwable finishErr = e != null ? e : err;
+
+            if (super.onDone(tx, finishErr)) {
+                if (finishErr == null)
+                    finishErr = this.tx.commitError();
+
                 // Always send finish reply.
-                this.tx.sendFinishReply(commit, error());
+                this.tx.sendFinishReply(commit, finishErr);
 
                 // Don't forget to clean up.
                 cctx.mvcc().removeFuture(this);
