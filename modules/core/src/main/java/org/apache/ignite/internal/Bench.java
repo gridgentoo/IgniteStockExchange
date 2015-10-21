@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  */
 public class Bench {
+    public static volatile boolean shit;
+
     public static void main(String[] args) throws InterruptedException {
         Ignition.start(config("1",
             false));
@@ -42,11 +44,13 @@ public class Bench {
 
         final IgniteCache<Object, Object> cache =
             ignite.getOrCreateCache(new CacheConfiguration<>()
-                .setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL)
+                .setAtomicityMode(CacheAtomicityMode.ATOMIC)
                 .setBackups(1).setRebalanceMode(CacheRebalanceMode.SYNC)
                 .setWriteSynchronizationMode(CacheWriteSynchronizationMode.FULL_SYNC));
 
         Thread.sleep(2000);
+
+        shit = true;
 
         final LongAdder8 cnt = new LongAdder8();
 

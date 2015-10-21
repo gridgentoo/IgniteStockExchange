@@ -512,9 +512,9 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
             if (m.node().isLocal()) {
                 IgniteInternalFuture<IgniteInternalTx> fut = cctx.tm().txHandler().finishColocatedLocal(commit, tx);
 
-                // Add new future. TODO: revisit
-//                if (fut != null)
-//                    add(fut);
+                // Add new future.
+                if (fut != null)
+                    add(fut);
             }
         }
     }

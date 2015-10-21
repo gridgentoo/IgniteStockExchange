@@ -133,6 +133,7 @@ public class GridCompoundFuture<T, R> extends GridFutureAdapter<R> {
             return res;
         }
     }
+
     /**
      * Gets collection of futures.
      *

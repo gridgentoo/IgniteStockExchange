@@ -20,7 +20,6 @@ package org.apache.ignite.internal.processors.cache.distributed.dht;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteInterruptedException;
 import org.apache.ignite.IgniteLogger;
-import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
@@ -796,9 +795,6 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
         onComplete(res);
     }
 
-    // TODO Remove
-    static boolean debug = IgniteSystemProperties.getBoolean("TX_DEBUG");
-
     /**
      * Initializes future.
      *
@@ -818,26 +814,6 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
         this.reads = reads;
         this.writes = writes;
         this.txNodes = txNodes;
-
-        // TODO Remove (for debug only)
-        if (debug) {
-            Collection<UUID> backups = txNodes.get(cctx.localNodeId());
-
-            if (backups != null && backups.size() >= 2 && writes != null && writes.size() == 1){
-                U.debug(
-                    log,
-                    "\n>>>\n>>> TX nodes [txNodes=" + txNodes + ", txFut=" + this + ']');
-
-                for (IgniteTxEntry entry : writes) {
-                    U.debug(
-                        log,
-                        "\tEntry: " + entry);
-                    U.debug(
-                        log,
-                        "\tPartitions: " + entry.context().topology().partitionMap(false).toFullString());
-                }
-            }
-        }
 
         if (!F.isEmpty(writes)) {
             Map<Integer, Collection<KeyCacheObject>> forceKeys = null;
