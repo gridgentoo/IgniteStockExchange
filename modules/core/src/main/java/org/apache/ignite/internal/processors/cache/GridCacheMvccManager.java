@@ -154,9 +154,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
                                 // we can safely invoke any method on the future.
                                 // Also note that we don't remove future here if it is done.
                                 // The removal is initiated from within future itself.
-                                if (mvccFut.onOwnerChanged(
-                                    entry,
-                                    owner))
+                                if (mvccFut.onOwnerChanged(entry, owner))
                                     return;
                             }
                         }
@@ -210,21 +208,8 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
             if (log.isDebugEnabled())
                 log.debug("Processing node left [nodeId=" + discoEvt.eventNode().id() + "]");
 
-            for (Collection<GridCacheFuture<?>> futsCol : futs.values()) {
-                for (GridCacheFuture<?> fut : futsCol) {
-                    if (!fut.trackable()) {
-                        if (log.isDebugEnabled())
-                            log.debug("Skipping non-trackable future: " + fut);
-
-                        continue;
-                    }
-
-                    fut.onNodeLeft(discoEvt.eventNode().id());
-
-                    if (fut.isCancelled() || fut.isDone())
-                        removeFuture(fut);
-                }
-            }
+            for (GridCacheFuture<?> fut : activeFutures())
+                fut.onNodeLeft(discoEvt.eventNode().id());
 
             for (IgniteInternalFuture<?> fut : atomicFuts.values()) {
                 if (fut instanceof GridCacheFuture) {
@@ -361,8 +346,10 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
      */
     private void cancelClientFutures(IgniteCheckedException err) {
         for (Collection<GridCacheFuture<?>> futures : futs.values()) {
-            for (GridCacheFuture<?> future : futures)
-                ((GridFutureAdapter)future).onDone(err);
+            synchronized (futures) {
+                for (GridCacheFuture<?> future : futures)
+                    ((GridFutureAdapter)future).onDone(err);
+            }
         }
 
         for (GridCacheAtomicFuture<?> future : atomicFuts.values())
@@ -605,7 +592,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
     @Nullable public GridCacheFuture future(GridCacheVersion ver, IgniteUuid futId) {
         Collection<? extends GridCacheFuture> futs = this.futs.get(ver);
 
-        if (futs != null)
+        if (futs != null) {
             synchronized (futs) {
                 for (GridCacheFuture<?> fut : futs) {
                     if (fut.futureId().equals(futId)) {
@@ -616,6 +603,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
                     }
                 }
             }
+        }
 
         if (log.isDebugEnabled())
             log.debug("Failed to find future in futures map [ver=" + ver + ", futId=" + futId + ']');
@@ -1077,7 +1065,7 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
      * @return Future that signals when all locks for given partitions will be released.
      */
     private IgniteInternalFuture<?> finishLocks(
-        @Nullable final IgnitePredicate<KeyCacheObject> keyFilter,
+        @Nullable final IgnitePredicate<GridDistributedCacheEntry> filter,
         AffinityTopologyVersion topVer
     ) {
         assert topVer.topologyVersion() != 0;

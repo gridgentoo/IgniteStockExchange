@@ -155,8 +155,7 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             Integer.getInteger(IGNITE_MAX_COMPLETED_TX_COUNT, DFLT_MAX_COMPLETED_TX_CNT),
             Integer.getInteger(IGNITE_MAX_COMPLETED_TX_COUNT, DFLT_MAX_COMPLETED_TX_CNT),
             0.75f,
-            Math.max(Runtime.getRuntime().availableProcessors(), 64),
-            ConcurrentLinkedHashMap.QueuePolicy.PER_SEGMENT_Q);
+            Math.max(Runtime.getRuntime().availableProcessors(), 64));
 
     /** Transaction finish synchronizer. */
     private GridCacheTxFinishSync txFinishSync;
