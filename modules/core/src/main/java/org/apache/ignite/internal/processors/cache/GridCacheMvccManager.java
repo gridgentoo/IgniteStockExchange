@@ -345,12 +345,8 @@ public class GridCacheMvccManager extends GridCacheSharedManagerAdapter {
      * @param err Error.
      */
     private void cancelClientFutures(IgniteCheckedException err) {
-        for (Collection<GridCacheFuture<?>> futures : futs.values()) {
-            synchronized (futures) {
-                for (GridCacheFuture<?> future : futures)
-                    ((GridFutureAdapter)future).onDone(err);
-            }
-        }
+        for (GridCacheFuture<?> fut : activeFutures())
+            ((GridFutureAdapter)fut).onDone(err);
 
         for (GridCacheAtomicFuture<?> future : atomicFuts.values())
             ((GridFutureAdapter)future).onDone(err);

@@ -87,14 +87,14 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
     /** Commit flag. */
     private boolean commit;
 
-    /** Error. */
-    private AtomicReference<Throwable> err = new AtomicReference<>(null);
-
     /** Node mappings. */
     private Map<UUID, GridDistributedTxMapping> mappings;
 
     /** Trackable flag. */
     private boolean trackable = true;
+
+    /** */
+    private boolean finishOnePhaseCalled;
 
     /**
      * @param cctx Context.
@@ -214,10 +214,16 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
 
     /** {@inheritDoc} */
     @Override public boolean onDone(IgniteInternalTx tx0, Throwable err) {
-        if (err != null) {
-            tx.commitError(err);
+        if (isDone())
+            return false;
 
-            if (this.err.compareAndSet(null, err)) {
+        synchronized (this) {
+            if (isDone())
+                return false;
+
+            if (err != null) {
+                tx.commitError(err);
+
                 boolean marked = tx.setRollbackOnly();
 
                 if (err instanceof IgniteTxRollbackCheckedException) {
@@ -239,62 +245,60 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
                     }
                 }
             }
-        }
 
-        if ((initialized() || err != null) && !isDone()) {
-            if (tx.needCheckBackup()) {
-                assert tx.onePhaseCommit();
+            if (initialized() || err != null) {
+                if (tx.needCheckBackup()) {
+                    assert tx.onePhaseCommit();
 
-                if (err != null)
-                    err = new TransactionRollbackException("Failed to commit transaction.", err);
-
-                try {
-                    tx.finish(err == null);
-                }
-                catch (IgniteCheckedException e) {
                     if (err != null)
-                        err.addSuppressed(e);
-                    else
-                        err = e;
-                }
-            }
+                        err = new TransactionRollbackException("Failed to commit transaction.", err);
 
-            if (tx.onePhaseCommit()) {
-                finishOnePhase();
-
-                tx.tmFinish(commit && err == null);
-            }
-
-            Throwable th = this.err.get();
-
-            if (super.onDone(tx0, th != null ? th : err)) {
-                if (error() instanceof IgniteTxHeuristicCheckedException) {
-                    AffinityTopologyVersion topVer = tx.topologyVersion();
-
-                    for (IgniteTxEntry e : tx.writeMap().values()) {
-                        GridCacheContext cacheCtx = e.context();
-
-                        try {
-                            if (e.op() != NOOP && !cacheCtx.affinity().localNode(e.key(), topVer)) {
-                                GridCacheEntryEx entry = cacheCtx.cache().peekEx(e.key());
-
-                                if (entry != null)
-                                    entry.invalidate(null, tx.xidVersion());
-                            }
-                        }
-                        catch (Throwable t) {
-                            U.error(log, "Failed to invalidate entry.", t);
-
-                            if (t instanceof Error)
-                                throw (Error)t;
-                        }
+                    try {
+                        tx.finish(err == null);
+                    }
+                    catch (IgniteCheckedException e) {
+                        if (err != null)
+                            err.addSuppressed(e);
+                        else
+                            err = e;
                     }
                 }
 
-                // Don't forget to clean up.
-                cctx.mvcc().removeFuture(this);
+                if (tx.onePhaseCommit()) {
+                    finishOnePhase();
 
-                return true;
+                    tx.tmFinish(commit && err == null);
+                }
+
+                if (super.onDone(tx0, err)) {
+                    if (error() instanceof IgniteTxHeuristicCheckedException) {
+                        AffinityTopologyVersion topVer = tx.topologyVersion();
+
+                        for (IgniteTxEntry e : tx.writeMap().values()) {
+                            GridCacheContext cacheCtx = e.context();
+
+                            try {
+                                if (e.op() != NOOP && !cacheCtx.affinity().localNode(e.key(), topVer)) {
+                                    GridCacheEntryEx entry = cacheCtx.cache().peekEx(e.key());
+
+                                    if (entry != null)
+                                        entry.invalidate(null, tx.xidVersion());
+                                }
+                            }
+                            catch (Throwable t) {
+                                U.error(log, "Failed to invalidate entry.", t);
+
+                                if (t instanceof Error)
+                                    throw (Error)t;
+                            }
+                        }
+                    }
+
+                    // Don't forget to clean up.
+                    cctx.mvcc().removeFuture(this);
+
+                    return true;
+                }
             }
         }
 
@@ -313,7 +317,7 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
      * Completeness callback.
      */
     private void onComplete() {
-        onDone(tx, err.get());
+        onDone(tx);
     }
 
     /**
@@ -506,6 +510,13 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
      *
      */
     private void finishOnePhase() {
+        assert Thread.holdsLock(this);
+
+        if (finishOnePhaseCalled)
+            return;
+
+        finishOnePhaseCalled = true;
+
         // No need to send messages as transaction was already committed on remote node.
         // Finish local mapping only as we need send commit message to backups.
         for (GridDistributedTxMapping m : mappings.values()) {

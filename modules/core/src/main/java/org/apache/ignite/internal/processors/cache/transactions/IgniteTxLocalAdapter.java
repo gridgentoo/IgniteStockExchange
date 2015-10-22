@@ -116,7 +116,6 @@ import static org.apache.ignite.transactions.TransactionState.UNKNOWN;
 
 /**
  * Transaction adapter for cache transactions.
- * TODO scytheout
  */
 public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
     implements IgniteTxLocalEx {
