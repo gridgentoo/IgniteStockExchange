@@ -153,33 +153,34 @@ public class GridConcurrentLinkedHashMapMultiThreadedSelfTest extends GridCommon
 
         int keyCnt = 1000000;
 
-        putMultiThreaded(linkedMap, 10, keyCnt, maxSize);
+        Map<String, LinkedList<Integer>> map = putMultiThreaded(
+            linkedMap,
+            10,
+            keyCnt,
+            maxSize * 10); // Intentionally memorize more than maxSize since in this mode LRU is not fair.
 
         int diff = 10; // 1% of 1000.
 
         assertTrue("Invalid map size: " + linkedMap.size(), U.safeAbs(maxSize - linkedMap.size()) <= diff);
         assertTrue("Invalid map sizex: " + linkedMap.sizex(), U.safeAbs(maxSize - linkedMap.sizex()) <= diff);
 
-//      TODO IGNITE-606 - Need to fix iterators for ConcurrentLinkedHashMap in perSegment mode
-//        LinkedList<Integer> keys = new LinkedList<Integer>(linkedMap.keySet());
-//
-//        while (!keys.isEmpty()) {
-//            boolean found = false;
-//
-//            int key = keys.removeLast();
-//
-//            for (LinkedList<Integer> threadKeys : map.values()) {
-//                if (threadKeys.getLast() == key) {
-//                    threadKeys.removeLast();
-//
-//                    found = true;
-//
-//                    break;
-//                }
-//            }
-//
-//            assertTrue("Key was not found on the top of any thread: " + key, found);
-//        }
+        LinkedList<Integer> keys = new LinkedList<>(linkedMap.keySet());
+
+        while (!keys.isEmpty()) {
+            boolean found = false;
+
+            int key = keys.removeLast();
+
+            for (LinkedList<Integer> threadKeys : map.values()) {
+                if (threadKeys.contains(key)) {
+                    found = true;
+
+                    break;
+                }
+            }
+
+            assertTrue("Key was not found in any thread: " + key, found);
+        }
 
         int min = Integer.MAX_VALUE;
         int max = 0;
@@ -214,33 +215,34 @@ public class GridConcurrentLinkedHashMapMultiThreadedSelfTest extends GridCommon
 
         int keyCnt = 1000000;
 
-        putMultiThreaded(linkedMap, 10, keyCnt, maxSize);
+        Map<String, LinkedList<Integer>> map = putMultiThreaded(
+            linkedMap,
+            10,
+            keyCnt,
+            maxSize * 10); // Intentionally memorize more than maxSize since in this mode LRU is not fair.
 
         int diff = 10; // 1% of 1000.
 
         assertTrue("Invalid map size: " + linkedMap.size(), U.safeAbs(maxSize - linkedMap.size()) <= diff);
         assertTrue("Invalid map sizex: " + linkedMap.sizex(), U.safeAbs(maxSize - linkedMap.sizex()) <= diff);
 
-//      TODO IGNITE-606 - Need to fix iterators for ConcurrentLinkedHashMap in perSegment mode
-//        LinkedList<Integer> keys = new LinkedList<Integer>(linkedMap.keySet());
-//
-//        while (!keys.isEmpty()) {
-//            boolean found = false;
-//
-//            int key = keys.removeLast();
-//
-//            for (LinkedList<Integer> threadKeys : map.values()) {
-//                if (threadKeys.getLast() == key) {
-//                    threadKeys.removeLast();
-//
-//                    found = true;
-//
-//                    break;
-//                }
-//            }
-//
-//            assertTrue("Key was not found on the top of any thread: " + key, found);
-//        }
+        LinkedList<Integer> keys = new LinkedList<>(linkedMap.keySet());
+
+        while (!keys.isEmpty()) {
+            boolean found = false;
+
+            int key = keys.removeLast();
+
+            for (LinkedList<Integer> threadKeys : map.values()) {
+                if (threadKeys.contains(key)) {
+                    found = true;
+
+                    break;
+                }
+            }
+
+            assertTrue("Key was not found in any thread: " + key, found);
+        }
 
         int min = Integer.MAX_VALUE;
         int max = 0;

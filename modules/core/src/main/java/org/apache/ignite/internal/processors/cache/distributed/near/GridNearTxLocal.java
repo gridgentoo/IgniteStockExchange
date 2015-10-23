@@ -1239,7 +1239,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
     @Override public void onRemap(AffinityTopologyVersion topVer) {
         assert cctx.kernalContext().clientNode();
 
-        mapped.set(false);
+        mapped = false;
         nearLocallyMapped = false;
         colocatedLocallyMapped = false;
         txNodes = null;

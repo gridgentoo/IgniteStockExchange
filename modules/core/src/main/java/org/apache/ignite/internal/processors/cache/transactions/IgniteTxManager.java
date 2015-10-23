@@ -102,6 +102,7 @@ import static org.apache.ignite.transactions.TransactionState.PREPARED;
 import static org.apache.ignite.transactions.TransactionState.PREPARING;
 import static org.apache.ignite.transactions.TransactionState.ROLLED_BACK;
 import static org.apache.ignite.transactions.TransactionState.UNKNOWN;
+import static org.jsr166.ConcurrentLinkedHashMap.QueuePolicy.PER_SEGMENT_Q;
 
 /**
  * Cache transaction manager.
@@ -150,12 +151,13 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             Integer.getInteger(IGNITE_MAX_COMPLETED_TX_COUNT, DFLT_MAX_COMPLETED_TX_CNT));
 
     /** Committed local transactions. */
-    private final GridBoundedConcurrentLinkedHashMap<GridCacheVersion, Boolean> completedVersHashMap =
-        new GridBoundedConcurrentLinkedHashMap<>(
-            Integer.getInteger(IGNITE_MAX_COMPLETED_TX_COUNT, DFLT_MAX_COMPLETED_TX_CNT),
+    private final ConcurrentLinkedHashMap<GridCacheVersion, Boolean> completedVersHashMap =
+        new ConcurrentLinkedHashMap<>(
             Integer.getInteger(IGNITE_MAX_COMPLETED_TX_COUNT, DFLT_MAX_COMPLETED_TX_CNT),
             0.75f,
-            Math.max(Runtime.getRuntime().availableProcessors(), 64));
+            Runtime.getRuntime().availableProcessors() * 2,
+            Integer.getInteger(IGNITE_MAX_COMPLETED_TX_COUNT, DFLT_MAX_COMPLETED_TX_CNT),
+            PER_SEGMENT_Q);
 
     /** Transaction finish synchronizer. */
     private GridCacheTxFinishSync txFinishSync;

@@ -52,7 +52,7 @@ public class Bench {
 
         final IgniteCache<Object, Object> cache =
             ignite.getOrCreateCache(new CacheConfiguration<>()
-                .setAtomicityMode(CacheAtomicityMode.ATOMIC)
+                .setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL)
                 .setBackups(1).setRebalanceMode(CacheRebalanceMode.SYNC)
                 .setWriteSynchronizationMode(CacheWriteSynchronizationMode.FULL_SYNC));
 
