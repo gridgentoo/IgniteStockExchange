@@ -758,7 +758,7 @@ public class ConcurrentLinkedHashMap<K, V> extends AbstractMap<K, V> implements 
                             recordInsert(e, (ConcurrentLinkedDeque8)segEntryQ);
 
                             if (maxCap > 0)
-                                checkRemoveEldestEntrySegment();
+                                checkRemoveEldestEntrySegment(c);
 
                             break;
 
@@ -766,7 +766,7 @@ public class ConcurrentLinkedHashMap<K, V> extends AbstractMap<K, V> implements 
                             segEntryQ.add(e);
 
                             if (maxCap > 0)
-                                checkRemoveEldestEntrySegment();
+                                checkRemoveEldestEntrySegment(c);
 
                             break;
 
@@ -788,23 +788,21 @@ public class ConcurrentLinkedHashMap<K, V> extends AbstractMap<K, V> implements 
         }
 
         /**
-         *
+         * @param cnt Segment entries count.
          */
-        private void checkRemoveEldestEntrySegment() {
+        private void checkRemoveEldestEntrySegment(int cnt) {
             assert maxCap > 0;
 
-            int rmvCnt = sizex() - maxCap;
-
-            for (int i = 0; i < rmvCnt; i++) {
+            if (cnt - ((maxCap / segments.length) + 1) > 0) {
                 HashEntry<K, V> e0 = segEntryQ.poll();
 
-                if (e0 == null)
-                    break;
+                assert e0 != null;
 
-                removeLocked(e0.key, e0.hash, null /*no need to compare*/, false);
-
-                if (sizex() <= maxCap)
-                    break;
+                removeLocked(
+                    e0.key,
+                    e0.hash,
+                    null /*no need to compare*/,
+                    false);
             }
         }
 
