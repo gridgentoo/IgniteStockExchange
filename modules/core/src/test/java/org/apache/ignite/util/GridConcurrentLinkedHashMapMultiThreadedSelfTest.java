@@ -146,10 +146,12 @@ public class GridConcurrentLinkedHashMapMultiThreadedSelfTest extends GridCommon
     public void testEvictPerSegment() throws Exception {
         info(">>> Test grid concurrent linked hash map...");
 
-        final int maxSize = 1000;
+        int concurLvl = 64;
+        final int maxSize = concurLvl * 30;
+        int diff = (int)(maxSize * 0.1);
 
         ConcurrentLinkedHashMap<Integer, String> linkedMap = new ConcurrentLinkedHashMap<>(
-            32, 0.75f, 64, maxSize, PER_SEGMENT_Q);
+            32, 0.75f, concurLvl, maxSize, PER_SEGMENT_Q);
 
         int keyCnt = 1000000;
 
@@ -158,8 +160,6 @@ public class GridConcurrentLinkedHashMapMultiThreadedSelfTest extends GridCommon
             10,
             keyCnt,
             maxSize * 10); // Intentionally memorize more than maxSize since in this mode LRU is not fair.
-
-        int diff = 10; // 1% of 1000.
 
         assertTrue("Invalid map size: " + linkedMap.size(), U.safeAbs(maxSize - linkedMap.size()) <= diff);
         assertTrue("Invalid map sizex: " + linkedMap.sizex(), U.safeAbs(maxSize - linkedMap.sizex()) <= diff);
@@ -208,10 +208,12 @@ public class GridConcurrentLinkedHashMapMultiThreadedSelfTest extends GridCommon
     public void testEvictPerSegmentOptimizedRemoves() throws Exception {
         info(">>> Test grid concurrent linked hash map...");
 
-        final int maxSize = 1000;
+        int concurLvl = 64;
+        final int maxSize = concurLvl * 30;
+        int diff = (int)(maxSize * 0.1);
 
         ConcurrentLinkedHashMap<Integer, String> linkedMap = new ConcurrentLinkedHashMap<>(
-            32, 0.75f, 64, maxSize, PER_SEGMENT_Q_OPTIMIZED_RMV);
+            32, 0.75f, concurLvl, maxSize, PER_SEGMENT_Q_OPTIMIZED_RMV);
 
         int keyCnt = 1000000;
 
@@ -220,8 +222,6 @@ public class GridConcurrentLinkedHashMapMultiThreadedSelfTest extends GridCommon
             10,
             keyCnt,
             maxSize * 10); // Intentionally memorize more than maxSize since in this mode LRU is not fair.
-
-        int diff = 10; // 1% of 1000.
 
         assertTrue("Invalid map size: " + linkedMap.size(), U.safeAbs(maxSize - linkedMap.size()) <= diff);
         assertTrue("Invalid map sizex: " + linkedMap.sizex(), U.safeAbs(maxSize - linkedMap.sizex()) <= diff);
