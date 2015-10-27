@@ -15,24 +15,22 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.cache.datastructures.partitioned;
+package org.apache.ignite.internal.processors.cache.distributed.replicated;
 
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.internal.processors.cache.datastructures.IgniteCountDownLatchAbstractSelfTest;
-
-import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
+import org.apache.ignite.configuration.CacheConfiguration;
 
 /**
- *
+ * Multi-node tests for partitioned cache with {@link RendezvousAffinityFunction}.
  */
-public class IgnitePartitionedCountDownLatchSelfTest extends IgniteCountDownLatchAbstractSelfTest {
+public class CacheReplicatedRendezvousAffinityExcludeNeighborsMultiNodeFullApiSelfTest
+    extends GridCacheReplicatedMultiNodeFullApiSelfTest {
     /** {@inheritDoc} */
-    @Override protected CacheMode atomicsCacheMode() {
-        return PARTITIONED;
-    }
+    @Override protected CacheConfiguration cacheConfiguration(String gridName) throws Exception {
+        CacheConfiguration cfg = super.cacheConfiguration(gridName);
 
-    /** {@inheritDoc} */
-    @Override public void testLatch() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-1793");
+        cfg.setAffinity(new RendezvousAffinityFunction(true));
+
+        return cfg;
     }
 }

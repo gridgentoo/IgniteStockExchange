@@ -15,24 +15,18 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.cache.datastructures.partitioned;
+package org.apache.ignite.cache.affinity.rendezvous;
 
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.internal.processors.cache.datastructures.IgniteCountDownLatchAbstractSelfTest;
-
-import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import org.apache.ignite.cache.affinity.AffinityFunction;
+import org.apache.ignite.cache.affinity.AffinityFunctionExcludeNeighborsAbstractSelfTest;
 
 /**
- *
+ * Tests exclude neighbors flag for rendezvous affinity function.
  */
-public class IgnitePartitionedCountDownLatchSelfTest extends IgniteCountDownLatchAbstractSelfTest {
+public class RendezvousAffinityFunctionExcludeNeighborsSelfTest extends
+    AffinityFunctionExcludeNeighborsAbstractSelfTest {
     /** {@inheritDoc} */
-    @Override protected CacheMode atomicsCacheMode() {
-        return PARTITIONED;
-    }
-
-    /** {@inheritDoc} */
-    @Override public void testLatch() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-1793");
+    @Override protected AffinityFunction affinityFunction() {
+        return new RendezvousAffinityFunction(true);
     }
 }

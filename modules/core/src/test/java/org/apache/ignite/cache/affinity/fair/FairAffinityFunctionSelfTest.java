@@ -15,24 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.cache.datastructures.partitioned;
+package org.apache.ignite.cache.affinity.fair;
 
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.internal.processors.cache.datastructures.IgniteCountDownLatchAbstractSelfTest;
-
-import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import org.apache.ignite.cache.affinity.AbstractAffinityFunctionSelfTest;
+import org.apache.ignite.cache.affinity.AffinityFunction;
 
 /**
- *
+ * Tests for {@link FairAffinityFunction}.
  */
-public class IgnitePartitionedCountDownLatchSelfTest extends IgniteCountDownLatchAbstractSelfTest {
+public class FairAffinityFunctionSelfTest extends AbstractAffinityFunctionSelfTest {
     /** {@inheritDoc} */
-    @Override protected CacheMode atomicsCacheMode() {
-        return PARTITIONED;
-    }
-
-    /** {@inheritDoc} */
-    @Override public void testLatch() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-1793");
+    @Override protected AffinityFunction affinityFunction() {
+        return new FairAffinityFunction();
     }
 }
