@@ -17,6 +17,9 @@
 
 package org.apache.ignite.yardstick.cache;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.internal.IgniteKernal;
 import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
@@ -26,10 +29,6 @@ import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.Gri
 import org.apache.ignite.lang.IgniteCallable;
 import org.apache.ignite.resources.IgniteInstanceResource;
 import org.yardstickframework.BenchmarkUtils;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  *

@@ -17,14 +17,13 @@
 
 package org.apache.ignite.yardstick.cache;
 
+import java.util.Map;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.cache.affinity.Affinity;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.yardstick.cache.model.SampleValue;
 import org.yardstickframework.BenchmarkConfiguration;
-
-import java.util.Map;
 
 /**
  * Ignite benchmark that performs transactional put operations skipping key if local node is backup.
