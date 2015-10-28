@@ -264,11 +264,13 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
                     }
                 }
 
-                if (tx.onePhaseCommit()) {
-                    finishOnePhase();
+            if (tx.onePhaseCommit()) {
+                boolean commit = this.commit && err == null;
 
-                    tx.tmFinish(commit && err == null);
-                }
+                finishOnePhase(commit);
+
+                tx.tmFinish(commit);
+            }
 
                 if (super.onDone(tx0, err)) {
                     if (error() instanceof IgniteTxHeuristicCheckedException) {
@@ -508,9 +510,9 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
     }
 
     /**
-     *
+     * @param commit Commit flag.
      */
-    private void finishOnePhase() {
+    private void finishOnePhase(boolean commit) {
         assert Thread.holdsLock(this);
 
         if (finishOnePhaseCalled)
@@ -527,6 +529,8 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
                 // Add new future.
                 if (fut != null)
                     add(fut);
+
+                break;
             }
         }
     }
