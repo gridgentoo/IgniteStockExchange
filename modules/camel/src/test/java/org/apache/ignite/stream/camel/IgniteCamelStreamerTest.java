@@ -33,6 +33,7 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
+import org.apache.camel.component.properties.PropertiesComponent;
 import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.support.LifecycleStrategySupport;
 import org.apache.ignite.Ignite;
@@ -86,6 +87,7 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
     /** The OkHttpClient. */
     private OkHttpClient httpClient = new OkHttpClient();
 
+    // Initialize the test data.
     static {
         for (int i = 0; i < 100; i++)
             TEST_DATA.put(i, "v" + i);
@@ -103,6 +105,7 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
         // find an available local port
         try (ServerSocket ss = new ServerSocket(0)) {
             int port = ss.getLocalPort();
+
             url = "http://localhost:" + port + "/ignite";
         }
 
@@ -227,12 +230,49 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
     }
 
     /**
-     * Creates a Camel streamer.
-     *
      * @throws Exception
+     */
+    public void testUserSpecifiedCamelContextWithPropertyPlaceholders() throws Exception {
+        // Create a CamelContext with a custom property placeholder.
+        CamelContext context = new DefaultCamelContext();
+
+        PropertiesComponent pc = new PropertiesComponent("camel.test.properties");
+
+        context.addComponent("properties", pc);
+
+        // Replace the context path in the test URL with the property placeholder.
+        url = url.replaceAll("/ignite", "{{test.contextPath}}");
+
+        // Recreate the Camel streamer with the new URL.
+        streamer = createCamelStreamer(dataStreamer);
+
+        streamer.setSingleTupleExtractor(singleTupleExtractor());
+        streamer.setCamelContext(context);
+
+        // Subscribe to cache PUT events.
+        CountDownLatch latch = subscribeToPutEvents(50);
+
+        // Action time.
+        streamer.start();
+
+        // Before sending the messages, get the actual URL after the property placeholder was resolved,
+        // stripping the jetty: prefix from it.
+        url = streamer.getCamelContext().getEndpoints().iterator().next().getEndpointUri().replaceAll("jetty:", "");
+
+        // Send messages.
+        sendMessages(0, 50, false);
+
+        // Assertions.
+        assertTrue(latch.await(10, TimeUnit.SECONDS));
+        assertCacheEntriesLoaded(50);
+    }
+
+    /**
+     * Creates a Camel streamer.
      */
     private CamelStreamer<Integer, String> createCamelStreamer(IgniteDataStreamer<Integer, String> dataStreamer) {
         CamelStreamer<Integer, String> streamer = new CamelStreamer<>();
+
         streamer.setIgnite(grid());
         streamer.setStreamer(dataStreamer);
         streamer.setEndpointUri("jetty:" + url);
@@ -244,21 +284,7 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
     }
 
     /**
-     * Returns a {@link StreamSingleTupleExtractor} for testing.
-     *
-     * @throws Exception
-     */
-    public static StreamSingleTupleExtractor<Exchange, Integer, String> singleTupleExtractor() {
-        return new StreamSingleTupleExtractor<Exchange, Integer, String>() {
-            @Override public Map.Entry<Integer, String> extract(Exchange exchange) {
-                List<String> s = Splitter.on(",").splitToList(exchange.getIn().getBody(String.class));
-                return new GridMapEntry<>(Integer.parseInt(s.get(0)), s.get(1));
-            }
-        };
-    }
-
-    /**
-     * @throws Exception
+     * @throws IOException
      * @return HTTP response payloads.
      */
     private List<String> sendMessages(int fromIdx, int cnt, boolean singleMessage) throws IOException {
@@ -298,60 +324,78 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
     }
 
     /**
-     * Returns a {@link StreamMultipleTupleExtractor} for testing.
-     *
-     * @throws Exception
+     * Returns a {@link StreamSingleTupleExtractor} for testing.
      */
-    public static StreamMultipleTupleExtractor<Exchange, Integer, String> multipleTupleExtractor() {
+    private static StreamSingleTupleExtractor<Exchange, Integer, String> singleTupleExtractor() {
+        return new StreamSingleTupleExtractor<Exchange, Integer, String>() {
+            @Override public Map.Entry<Integer, String> extract(Exchange exchange) {
+                List<String> s = Splitter.on(",").splitToList(exchange.getIn().getBody(String.class));
+
+                return new GridMapEntry<>(Integer.parseInt(s.get(0)), s.get(1));
+            }
+        };
+    }
+
+    /**
+     * Returns a {@link StreamMultipleTupleExtractor} for testing.
+     */
+    private static StreamMultipleTupleExtractor<Exchange, Integer, String> multipleTupleExtractor() {
         return new StreamMultipleTupleExtractor<Exchange, Integer, String>() {
             @Override public Map<Integer, String> extract(Exchange exchange) {
                 final Map<String, String> map = Splitter.on("\n")
                     .omitEmptyStrings()
                     .withKeyValueSeparator(",")
-                    .split(new String(exchange.getIn().getBody(String.class)));
+                    .split(exchange.getIn().getBody(String.class));
+
                 final Map<Integer, String> answer = new HashMap<>();
+
                 F.forEach(map.keySet(), new IgniteInClosure<String>() {
                     @Override public void apply(String s) {
                         answer.put(Integer.parseInt(s), map.get(s));
                     }
                 });
+
                 return answer;
             }
         };
     }
 
     /**
-     * @throws Exception
+     * Subscribe to cache put events.
      */
     private CountDownLatch subscribeToPutEvents(int expect) {
         Ignite ignite = grid();
 
         // Listen to cache PUT events and expect as many as messages as test data items
         final CountDownLatch latch = new CountDownLatch(expect);
-        @SuppressWarnings("serial") IgniteBiPredicate<UUID, CacheEvent> callback = new IgniteBiPredicate<UUID, CacheEvent>() {
+        @SuppressWarnings("serial") IgniteBiPredicate<UUID, CacheEvent> callback =
+            new IgniteBiPredicate<UUID, CacheEvent>() {
             @Override public boolean apply(UUID uuid, CacheEvent evt) {
                 latch.countDown();
+
                 return true;
             }
         };
 
-        remoteListener = ignite.events(ignite.cluster().forCacheNodes(null)).remoteListen(callback, null, EVT_CACHE_OBJECT_PUT);
+        remoteListener = ignite.events(ignite.cluster().forCacheNodes(null))
+            .remoteListen(callback, null, EVT_CACHE_OBJECT_PUT);
+
         return latch;
     }
 
     /**
-     * @throws Exception
+     * Assert a given number of cache entries have been loaded.
      */
-    private void assertCacheEntriesLoaded(int count) {
+    private void assertCacheEntriesLoaded(int cnt) {
         // get the cache and check that the entries are present
         IgniteCache<Integer, String> cache = grid().cache(null);
 
         // for each key from 0 to count from the TEST_DATA (ordered by key), check that the entry is present in cache
-        for (Integer key : new ArrayList<>(new TreeSet<>(TEST_DATA.keySet())).subList(0, count))
+        for (Integer key : new ArrayList<>(new TreeSet<>(TEST_DATA.keySet())).subList(0, cnt))
             assertEquals(TEST_DATA.get(key), cache.get(key));
 
         // assert that the cache exactly the specified amount of elements
-        assertEquals(count, cache.size(CachePeekMode.ALL));
+        assertEquals(cnt, cache.size(CachePeekMode.ALL));
 
         // remove the event listener
         grid().events(grid().cluster().forCacheNodes(null)).stopRemoteListen(remoteListener);
