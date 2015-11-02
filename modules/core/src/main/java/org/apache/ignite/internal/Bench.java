@@ -17,20 +17,28 @@
 
 package org.apache.ignite.internal;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteException;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.cache.CacheWriteSynchronizationMode;
+import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.managers.communication.GridIoMessage;
 import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.plugin.extensions.communication.Message;
+import org.apache.ignite.spi.IgniteSpiException;
 import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
 import org.jsr166.LongAdder8;
-
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  *
@@ -45,7 +53,7 @@ public class Bench {
             false));
 
         final boolean client = false;
-        final boolean forceRnd = false;
+        final boolean forceRnd = true;
 
         final Ignite ignite = Ignition.start(config("0",
             client));
@@ -106,6 +114,89 @@ public class Bench {
 
         commSpi.setSharedMemoryPort(-1);
 
-        return new IgniteConfiguration().setGridName(name).setLocalHost("127.0.0.1").setClientMode(client).setCommunicationSpi(commSpi);
+        return new IgniteConfiguration()
+            .setGridName(name)
+            .setLocalHost("127.0.0.1")
+            .setClientMode(client)
+            .setCommunicationSpi(new CommunicationSpi());
+    }
+
+    /**
+     *
+     */
+    private static class CommunicationSpi extends TcpCommunicationSpi {
+        /** */
+        private final Map<Byte, AtomicInteger> msgMap = new ConcurrentHashMap<>();
+
+        /** */
+        @Override public void spiStart(final String gridName) throws IgniteSpiException {
+            super.spiStart(gridName);
+
+            Thread thread = new Thread(new Runnable() {
+                @Override public void run() {
+                    for (;;) {
+                        try {
+                            Thread.sleep(1000);
+                        }
+                        catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
+                        synchronized (Bench.class) {
+                            U.debug("\nGrid: " + gridName);
+
+                            for (Map.Entry<Byte, AtomicInteger> e : msgMap.entrySet())
+                                U.debug("\t" + e.getKey() + " : " + e.getValue().get());
+                        }
+
+                        msgMap.clear();
+                    }
+                }
+            });
+
+            thread.setDaemon(true);
+
+            thread.start();
+        }
+
+        /** {@inheritDoc} */
+        @Override public void sendMessage(
+            ClusterNode node,
+            Message msg
+        ) throws IgniteSpiException {
+            sendMessage(
+                node,
+                msg,
+                null);
+        }
+
+        /** {@inheritDoc} */
+        @Override public void sendMessage(
+            ClusterNode node,
+            Message msg,
+            IgniteInClosure<IgniteException> ackClosure
+        ) throws IgniteSpiException {
+            GridIoMessage gridIoMsg = (GridIoMessage)msg;
+
+            Message unwrappedMsg = gridIoMsg.message();
+
+            AtomicInteger cnt = msgMap.get(unwrappedMsg.directType());
+
+            if (cnt == null)
+                msgMap.put(unwrappedMsg.directType(), cnt = new AtomicInteger());
+
+            if (shit && unwrappedMsg.directType() == 56) {
+                cnt.decrementAndGet();
+
+                return;
+            }
+
+            cnt.incrementAndGet();
+
+            super.sendMessage(
+                node,
+                msg,
+                ackClosure);
+        }
     }
 }
