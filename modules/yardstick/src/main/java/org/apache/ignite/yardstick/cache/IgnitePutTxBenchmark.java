@@ -26,7 +26,7 @@ import org.yardstickframework.BenchmarkConfiguration;
 /**
  * Ignite benchmark that performs transactional put operations.
  */
-public class IgnitePutTxBenchmark extends IgniteCacheAbstractBenchmark {
+public class IgnitePutTxBenchmark extends IgniteCacheAbstractBenchmark<Integer, Object> {
     /** {@inheritDoc} */
     @Override public void setUp(BenchmarkConfiguration cfg) throws Exception {
         super.setUp(cfg);
