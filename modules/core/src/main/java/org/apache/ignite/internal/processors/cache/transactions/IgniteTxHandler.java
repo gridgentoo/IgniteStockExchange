@@ -897,12 +897,10 @@ public class IgniteTxHandler {
             IgniteInternalFuture completeFut;
 
             IgniteInternalFuture<IgniteInternalTx> dhtFin = dhtTx == null ?
-                null : dhtTx.done() ?
-                    null : dhtTx.finishFuture();
+                null : dhtTx.done() ? null : dhtTx.finishFuture();
 
             IgniteInternalFuture<IgniteInternalTx> nearFin = nearTx == null ?
-                null : nearTx.done() ?
-                    null : nearTx.finishFuture();
+                null : nearTx.done() ? null : nearTx.finishFuture();
 
             if (dhtFin != null && nearFin != null) {
                 GridCompoundFuture fut = new GridCompoundFuture();
@@ -919,8 +917,7 @@ public class IgniteTxHandler {
 
             if (completeFut != null) {
                 completeFut.listen(new CI1<IgniteInternalFuture<IgniteInternalTx>>() {
-                    @Override
-                    public void apply(IgniteInternalFuture<IgniteInternalTx> igniteTxIgniteFuture) {
+                    @Override public void apply(IgniteInternalFuture<IgniteInternalTx> igniteTxIgniteFuture) {
                         sendReply(nodeId, req, true);
                     }
                 });

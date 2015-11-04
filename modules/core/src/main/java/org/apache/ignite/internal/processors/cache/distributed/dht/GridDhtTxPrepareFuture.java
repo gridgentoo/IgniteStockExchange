@@ -179,7 +179,7 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
 
     /** Keys that should be locked. */
     @GridToStringInclude
-    private Set<IgniteTxKey> lockKeys = new HashSet<>();
+    private final Set<IgniteTxKey> lockKeys = new HashSet<>();
 
     /** Force keys future for correct transforms. */
     private IgniteInternalFuture<?> forceKeysFut;
@@ -269,7 +269,11 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
         if (log.isDebugEnabled())
             log.debug("Transaction future received owner changed callback: " + entry);
 
-        boolean rmv = lockKeys.remove(entry.txKey());
+        boolean rmv;
+
+        synchronized (lockKeys) {
+            rmv = lockKeys.remove(entry.txKey());
+        }
 
         return rmv && mapIfLocked();
     }
@@ -295,7 +299,12 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
      * @return {@code True} if all locks are owned.
      */
     private boolean checkLocks() {
-        return locksReady && lockKeys.isEmpty();
+        if (!locksReady)
+            return false;
+
+        synchronized (lockKeys) {
+            return lockKeys.isEmpty();
+        }
     }
 
     /** {@inheritDoc} */
@@ -497,8 +506,11 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                 txEntry.cached(entry);
             }
 
-            if (tx.optimistic() && txEntry.explicitVersion() == null)
-                lockKeys.add(txEntry.txKey());
+            if (tx.optimistic() && txEntry.explicitVersion() == null) {
+                synchronized (lockKeys) {
+                    lockKeys.add(txEntry.txKey());
+                }
+            }
 
             while (true) {
                 try {
@@ -993,21 +1005,11 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                 if (err0 != null) {
                     err.compareAndSet(null, err0);
 
+                    tx.rollbackAsync();
+
                     final GridNearTxPrepareResponse res = createPrepareResponse(err.get());
 
-                    tx.rollbackAsync().listen(new CI1<IgniteInternalFuture<IgniteInternalTx>>() {
-                        @Override public void apply(IgniteInternalFuture<IgniteInternalTx> fut) {
-                            if (GridDhtTxPrepareFuture.super.onDone(res, res.error())) {
-                                try {
-                                    if (replied.compareAndSet(false, true))
-                                        sendPrepareResponse(res);
-                                }
-                                catch (IgniteCheckedException e) {
-                                    U.error(log, "Failed to send prepare response for transaction: " + tx, e);
-                                }
-                            }
-                        }
-                    });
+                    onDone(res, res.error());
 
                     return;
                 }
