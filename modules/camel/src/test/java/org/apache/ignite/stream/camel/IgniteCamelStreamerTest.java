@@ -65,7 +65,6 @@ import static org.apache.ignite.events.EventType.EVT_CACHE_OBJECT_PUT;
  * Test class for {@link CamelStreamer}.
  */
 public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
-
     /** text/plain media type. */
     private static final MediaType TEXT_PLAIN = MediaType.parse("text/plain;charset=utf-8");
 
@@ -82,7 +81,7 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
     private String url;
 
     /** The UUID of the currently active remote listener. */
-    private UUID remoteListener;
+    private UUID remoteLsnr;
 
     /** The OkHttpClient. */
     private OkHttpClient httpClient = new OkHttpClient();
@@ -99,7 +98,7 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
     }
 
     @Before @SuppressWarnings("unchecked")
-    public void beforeTest() throws Exception {
+    @Override public void beforeTest() throws Exception {
         grid().<Integer, String>getOrCreateCache(defaultCacheConfiguration());
 
         // find an available local port
@@ -115,7 +114,7 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
     }
 
     @After
-    public void afterTest() throws Exception {
+    @Override public void afterTest() throws Exception {
         try {
             streamer.stop();
         }
@@ -377,7 +376,7 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
             }
         };
 
-        remoteListener = ignite.events(ignite.cluster().forCacheNodes(null))
+        remoteLsnr = ignite.events(ignite.cluster().forCacheNodes(null))
             .remoteListen(callback, null, EVT_CACHE_OBJECT_PUT);
 
         return latch;
@@ -398,7 +397,7 @@ public class IgniteCamelStreamerTest extends GridCommonAbstractTest {
         assertEquals(cnt, cache.size(CachePeekMode.ALL));
 
         // remove the event listener
-        grid().events(grid().cluster().forCacheNodes(null)).stopRemoteListen(remoteListener);
+        grid().events(grid().cluster().forCacheNodes(null)).stopRemoteListen(remoteLsnr);
     }
 
 }
