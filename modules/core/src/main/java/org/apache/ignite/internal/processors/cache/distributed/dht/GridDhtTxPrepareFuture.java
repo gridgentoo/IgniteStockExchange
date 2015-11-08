@@ -585,13 +585,8 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                 if (tx.markFinalizing(IgniteInternalTx.FinalizationStatus.USER_FINISH)) {
                     IgniteInternalFuture<IgniteInternalTx> fut = null;
 
-                    if (prepErr == null)
-                        fut = tx.commitAsync();
-                    else if (!cctx.kernalContext().isStopping())
-                        fut = tx.rollbackAsync();
-
-                    if (fut != null) {
-                        fut.listen(new CIX1<IgniteInternalFuture<IgniteInternalTx>>() {
+                    CIX1<IgniteInternalFuture<IgniteInternalTx>> responseClo =
+                        new CIX1<IgniteInternalFuture<IgniteInternalTx>>() {
                             @Override public void applyx(IgniteInternalFuture<IgniteInternalTx> fut) {
                                 try {
                                     if (replied.compareAndSet(false, true))
@@ -601,8 +596,33 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                                     U.error(log, "Failed to send prepare response for transaction: " + tx, e);
                                 }
                             }
-                        });
+                        };
+
+                    if (prepErr == null) {
+                        try {
+                            fut = tx.commitAsync();
+                        }
+                        catch (RuntimeException | Error e) {
+                            Exception hEx = new IgniteTxHeuristicCheckedException("Commit produced a runtime " +
+                                "exception: " + CU.txString(tx), e);
+
+                            res.error(hEx);
+
+                            tx.systemInvalidate(true);
+
+                            fut = tx.rollbackAsync();
+
+                            fut.listen(responseClo);
+
+                            throw e;
+                        }
+
                     }
+                    else if (!cctx.kernalContext().isStopping())
+                        fut = tx.rollbackAsync();
+
+                    if (fut != null)
+                        fut.listen(responseClo);
                 }
             }
             else {
