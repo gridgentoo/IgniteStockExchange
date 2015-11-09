@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -1113,14 +1112,18 @@ class GridTaskWorker<T, R> extends GridWorker implements GridTimeoutObject {
      * Interrupts child jobs on remote nodes.
      */
     private void cancelChildren() {
-        Collection<GridJobResultImpl> doomed = new LinkedList<>();
+        Collection<GridJobResultImpl> doomed = null;
 
         synchronized (mux) {
             // Only interrupt unfinished jobs.
             if (jobRes != null)
                 for (GridJobResultImpl res : jobRes.values())
-                    if (!res.hasResponse())
+                    if (!res.hasResponse()) {
+                        if (doomed == null)
+                            doomed = new ArrayList<>();
+
                         doomed.add(res);
+                    }
         }
 
         // Send cancellation request to all unfinished children.

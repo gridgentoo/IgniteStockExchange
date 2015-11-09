@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.cache.distributed.near;
 
 import java.io.Externalizable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -364,7 +365,7 @@ public class GridNearTransactionalCache<K, V> extends GridNearCacheAdapter<K, V>
                         }
                         else {
                             if (evicted == null)
-                                evicted = new LinkedList<>();
+                                evicted = new ArrayList<>();
 
                             evicted.add(txKey);
                         }
@@ -508,7 +509,7 @@ public class GridNearTransactionalCache<K, V> extends GridNearCacheAdapter<K, V>
 
             Map<ClusterNode, GridNearUnlockRequest> map = null;
 
-            Collection<KeyCacheObject> locKeys = new LinkedList<>();
+            Collection<KeyCacheObject> locKeys = new ArrayList<>();
 
             for (K key : keys) {
                 while (true) {

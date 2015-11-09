@@ -2840,6 +2840,12 @@ public class GridFunc {
         if (c == null)
             return null;
 
+        if (c instanceof List) {
+            List<? extends T> l = (List)c;
+
+            return !l.isEmpty() ? l.get(0) : null;
+        }
+
         Iterator<? extends T> it = c.iterator();
 
         return it.hasNext() ? it.next() : null;

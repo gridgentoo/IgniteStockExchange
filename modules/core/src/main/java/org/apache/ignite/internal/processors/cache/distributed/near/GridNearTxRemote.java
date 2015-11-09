@@ -18,11 +18,11 @@
 package org.apache.ignite.internal.processors.cache.distributed.near;
 
 import java.io.Externalizable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
@@ -50,7 +50,7 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
     private static final long serialVersionUID = 0L;
 
     /** Evicted keys. */
-    private Collection<IgniteTxKey> evicted = new LinkedList<>();
+    private Collection<IgniteTxKey> evicted;
 
     /** Near node ID. */
     private UUID nearNodeId;
@@ -107,19 +107,19 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
         int taskNameHash
     ) throws IgniteCheckedException {
         super(
-            ctx, 
-            nodeId, 
-            rmtThreadId, 
-            xidVer, 
-            commitVer, 
-            sys, 
-            plc, 
-            concurrency, 
-            isolation, 
-            invalidate, 
-            timeout, 
+            ctx,
+            nodeId,
+            rmtThreadId,
+            xidVer,
+            commitVer,
+            sys,
+            plc,
+            concurrency,
+            isolation,
+            invalidate,
+            timeout,
             txSize,
-            subjId, 
+            subjId,
             taskNameHash
         );
 
@@ -177,19 +177,19 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
         int taskNameHash
     ) {
         super(
-            ctx, 
-            nodeId, 
-            rmtThreadId, 
-            xidVer, 
+            ctx,
+            nodeId,
+            rmtThreadId,
+            xidVer,
             commitVer,
             sys,
             plc,
-            concurrency, 
-            isolation, 
-            invalidate, 
-            timeout, 
+            concurrency,
+            isolation,
+            invalidate,
+            timeout,
             txSize,
-            subjId, 
+            subjId,
             taskNameHash
         );
 
@@ -260,7 +260,7 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
      * @return Evicted keys.
      */
     public Collection<IgniteTxKey> evicted() {
-        return evicted;
+        return evicted != null ? evicted : Collections.<IgniteTxKey>emptyList();
     }
 
     /**
@@ -269,6 +269,9 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
      * @param key Evicted key.
      */
     public void addEvicted(IgniteTxKey key) {
+        if (evicted == null)
+            evicted = new ArrayList<>();
+
         evicted.add(key);
     }
 
@@ -303,7 +306,7 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
         GridNearCacheEntry cached = cacheCtx.near().peekExx(entry.key());
 
         if (cached == null) {
-            evicted.add(entry.txKey());
+            addEvicted(entry.txKey());
 
             return false;
         }
@@ -314,7 +317,7 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
                 CacheObject val = cached.peek(true, false, false, null);
 
                 if (val == null && cached.evictInternal(false, xidVer, null)) {
-                    evicted.add(entry.txKey());
+                    addEvicted(entry.txKey());
 
                     return false;
                 }
@@ -330,7 +333,7 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
                 }
             }
             catch (GridCacheEntryRemovedException ignore) {
-                evicted.add(entry.txKey());
+                addEvicted(entry.txKey());
 
                 if (log.isDebugEnabled())
                     log.debug("Got removed entry when adding to remote transaction (will ignore): " + cached);
@@ -364,7 +367,7 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
 
         try {
             if (cached == null) {
-                evicted.add(key);
+                addEvicted(key);
 
                 return false;
             }
@@ -376,7 +379,7 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
                 if (peek == null && cached.evictInternal(false, xidVer, null)) {
                     cached.context().cache().removeIfObsolete(key.key());
 
-                    evicted.add(key);
+                    addEvicted(key);
 
                     return false;
                 }
@@ -398,7 +401,7 @@ public class GridNearTxRemote extends GridDistributedTxRemoteAdapter {
             }
         }
         catch (GridCacheEntryRemovedException ignore) {
-            evicted.add(key);
+            addEvicted(key);
 
             if (log.isDebugEnabled())
                 log.debug("Got removed entry when adding reads to remote transaction (will ignore): " + cached);

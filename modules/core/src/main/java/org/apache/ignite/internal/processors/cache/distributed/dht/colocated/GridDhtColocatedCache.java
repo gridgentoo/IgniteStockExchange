@@ -21,7 +21,6 @@ import java.io.Externalizable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
@@ -634,7 +633,7 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
 
             Map<ClusterNode, GridNearUnlockRequest> map = null;
 
-            Collection<KeyCacheObject> locKeys = new LinkedList<>();
+            Collection<KeyCacheObject> locKeys = new ArrayList<>();
 
             for (KeyCacheObject key : keys) {
                 IgniteTxKey txKey = ctx.txKey(key);

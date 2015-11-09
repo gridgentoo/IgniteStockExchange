@@ -17,13 +17,13 @@
 
 package org.apache.ignite.internal.processors.cache;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.UUID;
@@ -86,11 +86,11 @@ public final class GridCacheMvcc {
 
     /** Local queue. */
     @GridToStringInclude
-    private LinkedList<GridCacheMvccCandidate> locs;
+    private List<GridCacheMvccCandidate> locs;
 
     /** Remote queue. */
     @GridToStringInclude
-    private LinkedList<GridCacheMvccCandidate> rmts;
+    private List<GridCacheMvccCandidate> rmts;
 
     /**
      * @param cctx Cache context.
@@ -124,7 +124,7 @@ public final class GridCacheMvcc {
         if (rmts != null) {
             assert !rmts.isEmpty();
 
-            GridCacheMvccCandidate first = rmts.getFirst();
+            GridCacheMvccCandidate first = rmts.get(0);
 
             return first.used() && first.owner() ? first : null;
         }
@@ -140,7 +140,7 @@ public final class GridCacheMvcc {
         if (locs != null) {
             assert !locs.isEmpty();
 
-            GridCacheMvccCandidate first = locs.getFirst();
+            GridCacheMvccCandidate first = locs.get(0);
 
             return first.owner() ? first : null;
         }
@@ -195,12 +195,12 @@ public final class GridCacheMvcc {
         // Local.
         if (cand.local()) {
             if (locs == null)
-                locs = new LinkedList<>();
+                locs = new ArrayList<>();
 
             if (!cand.nearLocal()) {
                 if (!locs.isEmpty()) {
                     if (cand.serializable()) {
-                        GridCacheMvccCandidate last = locs.getLast();
+                        GridCacheMvccCandidate last = locs.get(locs.size() - 1);
 
                         if (!last.serializable())
                             return false;
@@ -220,12 +220,12 @@ public final class GridCacheMvcc {
                         if (cmp > 0)
                             return false;
 
-                        locs.addLast(cand);
+                        locs.add(cand);
 
                         return true;
                     }
 
-                    GridCacheMvccCandidate first = locs.getFirst();
+                    GridCacheMvccCandidate first = locs.get(0);
 
                     if (first.owner()) {
                         // If reentry, add at the beginning. Note that
@@ -237,7 +237,13 @@ public final class GridCacheMvcc {
                             cand.setReady();
                             cand.setReentry();
 
-                            locs.addFirst(cand);
+                            List<GridCacheMvccCandidate> locs0 = new ArrayList<>();
+
+                            locs0.add(cand);
+
+                            locs0.addAll(locs);
+
+                            locs = locs0;
 
                             return true;
                         }
@@ -275,8 +281,13 @@ public final class GridCacheMvcc {
                     }
                 }
 
-                // Either list is empty or candidate is first.
-                locs.addFirst(cand);
+                List<GridCacheMvccCandidate> locs0 = new ArrayList<>();
+
+                locs0.add(cand);
+
+                locs0.addAll(locs);
+
+                locs = locs0;
             }
             else
                 // For near local candidates just add it to the end of list.
@@ -287,7 +298,7 @@ public final class GridCacheMvcc {
             assert !cand.serializable() : cand;
 
             if (rmts == null)
-                rmts = new LinkedList<>();
+                rmts = new ArrayList<>();
 
             assert !cand.owner() || localOwner() == null : "Cannot have local and remote owners " +
                 "at the same time [cand=" + cand + ", locs=" + locs + ", rmts=" + rmts + ']';
@@ -429,7 +440,7 @@ public final class GridCacheMvcc {
                 else if (maxIdx >= 0 && cur.version().isGreaterEqual(baseVer)) {
                     if (--maxIdx >= 0) {
                         if (mvAfter == null)
-                            mvAfter = new LinkedList<>();
+                            mvAfter = new ArrayDeque<>();
 
                         it.remove();
 
@@ -799,7 +810,7 @@ public final class GridCacheMvcc {
                     it.remove();
 
                     if (mvAfter == null)
-                        mvAfter = new LinkedList<>();
+                        mvAfter = new ArrayList<>();
 
                     mvAfter.add(c);
                 }
@@ -879,7 +890,7 @@ public final class GridCacheMvcc {
                     it.remove();
 
                     if (mvAfter == null)
-                        mvAfter = new LinkedList<>();
+                        mvAfter = new ArrayList<>();
 
                     mvAfter.add(c);
                 }
@@ -1045,8 +1056,13 @@ public final class GridCacheMvcc {
                     if (assigned) {
                         it.remove();
 
-                        // Owner must be first in the list.
-                        locs.addFirst(cand);
+                        List<GridCacheMvccCandidate> locs0 = new ArrayList<>();
+
+                        locs0.add(cand);
+
+                        locs0.addAll(locs);
+
+                        locs = locs0;
                     }
 
                     return;
@@ -1353,14 +1369,14 @@ public final class GridCacheMvcc {
      * @return First remote entry or <tt>null</tt>.
      */
     @Nullable public GridCacheMvccCandidate firstRemote() {
-        return rmts == null ? null : rmts.getFirst();
+        return rmts == null ? null : rmts.get(0);
     }
 
     /**
      * @return First local entry or <tt>null</tt>.
      */
     @Nullable public GridCacheMvccCandidate firstLocal() {
-        return locs == null ? null : locs.getFirst();
+        return locs == null ? null : locs.get(0);
     }
 
     /**

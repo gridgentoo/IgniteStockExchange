@@ -39,11 +39,6 @@ public interface GridCacheFuture<R> extends IgniteInternalFuture<R> {
     public GridCacheVersion version();
 
     /**
-     * @return Involved nodes.
-     */
-    public Collection<? extends ClusterNode> nodes();
-
-    /**
      * Callback for when node left.
      *
      * @param nodeId Left node ID.

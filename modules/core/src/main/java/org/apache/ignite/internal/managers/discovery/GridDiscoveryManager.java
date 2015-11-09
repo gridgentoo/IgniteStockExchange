@@ -43,7 +43,6 @@ import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -80,6 +79,7 @@ import org.apache.ignite.internal.processors.security.SecurityContext;
 import org.apache.ignite.internal.processors.timeout.GridTimeoutProcessor;
 import org.apache.ignite.internal.util.F0;
 import org.apache.ignite.internal.util.GridBoundedConcurrentOrderedMap;
+import org.apache.ignite.internal.util.GridConcurrentHashSet;
 import org.apache.ignite.internal.util.GridSpinBusyLock;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
@@ -2461,17 +2461,17 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
 
             allNodes = Collections.unmodifiableList(all);
 
-            Map<String, Collection<ClusterNode>> cacheMap = new HashMap<>(allNodes.size(), 1.0f);
-            Map<String, Collection<ClusterNode>> rmtCacheMap = new HashMap<>(allNodes.size(), 1.0f);
-            Map<String, Collection<ClusterNode>> dhtNodesMap = new HashMap<>(allNodes.size(), 1.0f);
-            Collection<ClusterNode> nodesWithCaches = new HashSet<>(allNodes.size());
-            Collection<ClusterNode> rmtNodesWithCaches = new HashSet<>(allNodes.size());
+            Map<String, Collection<ClusterNode>> cacheMap = U.newHashMap(allNodes.size());
+            Map<String, Collection<ClusterNode>> rmtCacheMap = U.newHashMap(allNodes.size());
+            Map<String, Collection<ClusterNode>> dhtNodesMap = U.newHashMap(allNodes.size());
+            Collection<ClusterNode> nodesWithCaches = U.newHashSet(allNodes.size());
+            Collection<ClusterNode> rmtNodesWithCaches = U.newHashSet(allNodes.size());
 
-            aliveCacheNodes = new ConcurrentHashMap8<>(allNodes.size(), 1.0f);
-            aliveRmtCacheNodes = new ConcurrentHashMap8<>(allNodes.size(), 1.0f);
-            aliveNodesWithCaches = new ConcurrentSkipListSet<>();
-            aliveSrvNodesWithCaches = new ConcurrentSkipListSet<>();
-            aliveRmtSrvNodesWithCaches = new ConcurrentSkipListSet<>();
+            aliveCacheNodes = new ConcurrentHashMap8<>(U.capacity(allNodes.size()));
+            aliveRmtCacheNodes = new ConcurrentHashMap8<>(U.capacity(allNodes.size()));
+            aliveNodesWithCaches = new GridConcurrentHashSet<>(U.capacity(allNodes.size()));
+            aliveSrvNodesWithCaches = new GridConcurrentHashSet<>(U.capacity(allNodes.size()));
+            aliveRmtSrvNodesWithCaches = new GridConcurrentHashSet<>(U.capacity(allNodes.size()));
             nodesByVer = new TreeMap<>();
 
             long maxOrder0 = 0;

@@ -18,9 +18,9 @@
 package org.apache.ignite.internal.processors.cache.distributed;
 
 import java.io.Externalizable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -821,7 +821,7 @@ public class GridDistributedTxRemoteAdapter extends IgniteTxAdapter
     protected void addExplicit(IgniteTxEntry e) {
         if (e.explicitVersion() != null) {
             if (explicitVers == null)
-                explicitVers = new LinkedList<>();
+                explicitVers = new ArrayList<>();
 
             if (!explicitVers.contains(e.explicitVersion())) {
                 explicitVers.add(e.explicitVersion());

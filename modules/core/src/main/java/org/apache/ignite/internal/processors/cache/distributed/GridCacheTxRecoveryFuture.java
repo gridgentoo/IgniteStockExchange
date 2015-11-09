@@ -46,9 +46,9 @@ import org.jetbrains.annotations.Nullable;
  * Future verifying that all remote transactions related to transaction were prepared or committed.
  */
 public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolean> implements GridCacheFuture<Boolean> {
-    /** */         
+    /** */
     private static final long serialVersionUID = 0L;
-    
+
     /** Logger reference. */
     private static final AtomicReference<IgniteLogger> logRef = new AtomicReference<>();
 
@@ -366,11 +366,6 @@ public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolea
     /** {@inheritDoc} */
     @Override public GridCacheVersion version() {
         return tx.xidVersion();
-    }
-
-    /** {@inheritDoc} */
-    @Override public Collection<? extends ClusterNode> nodes() {
-        return nodes.values();
     }
 
     /** {@inheritDoc} */

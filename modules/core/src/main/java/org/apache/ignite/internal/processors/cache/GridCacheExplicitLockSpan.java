@@ -17,9 +17,9 @@
 
 package org.apache.ignite.internal.processors.cache;
 
+import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.ignite.internal.IgniteInternalFuture;
@@ -262,7 +262,7 @@ public class GridCacheExplicitLockSpan extends ReentrantLock {
         Deque<GridCacheMvccCandidate> deque = cands.get(key);
 
         if (deque == null) {
-            deque = new LinkedList<>();
+            deque = new ArrayDeque<>();
 
             cands.put(key, deque);
         }

@@ -1586,7 +1586,7 @@ public class GridCacheContext<K, V> implements Externalizable {
                 List<GridDhtCacheEntry> entries = map.get(n);
 
                 if (entries == null)
-                    map.put(n, entries = new LinkedList<>());
+                    map.put(n, entries = new ArrayList<>());
 
                 entries.add(entry);
             }
@@ -1891,7 +1891,7 @@ public class GridCacheContext<K, V> implements Externalizable {
 
         cache().printMemoryStats();
 
-        Collection<GridCacheManager> printed = new LinkedList<>();
+        Collection<GridCacheManager> printed = new ArrayList<>();
 
         for (GridCacheManager mgr : managers()) {
             mgr.printMemoryStats();

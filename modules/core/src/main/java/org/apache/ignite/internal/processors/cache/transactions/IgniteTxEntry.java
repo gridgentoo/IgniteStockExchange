@@ -19,6 +19,7 @@ package org.apache.ignite.internal.processors.cache.transactions;
 
 import java.io.Externalizable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.UUID;
@@ -576,7 +577,7 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
      */
     public void addEntryProcessor(EntryProcessor<Object, Object, Object> entryProcessor, Object[] invokeArgs) {
         if (entryProcessorsCol == null)
-            entryProcessorsCol = new LinkedList<>();
+            entryProcessorsCol = new ArrayList<>();
 
         entryProcessorsCol.add(new T2<>(entryProcessor, invokeArgs));
 
