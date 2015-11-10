@@ -159,7 +159,7 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
      * @return {@code True} if request found.
      */
     private boolean registerResponse(UUID nodeId) {
-        int resCnt0 = -1;
+        int resCnt0;
 
         GridDhtAtomicUpdateRequest req = mappings.get(nodeId);
 
@@ -370,6 +370,8 @@ public class GridDhtAtomicUpdateFuture extends GridFutureAdapter<Void>
                 }
             }
         }
+        else
+            onDone();
 
         // Send response right away if no ACKs from backup is required.
         // Backups will send ACKs anyway, future will be completed after all backups have replied.

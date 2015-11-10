@@ -1126,6 +1126,9 @@ class GridTaskWorker<T, R> extends GridWorker implements GridTimeoutObject {
                     }
         }
 
+        if (doomed == null)
+            return;
+
         // Send cancellation request to all unfinished children.
         for (GridJobResultImpl res : doomed) {
             UUID nodeId = res.getNode().id();
