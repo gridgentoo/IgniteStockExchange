@@ -17,10 +17,7 @@
 
 package org.apache.ignite.yardstick.cache;
 
-import java.util.concurrent.Callable;
 import org.apache.ignite.*;
-import org.apache.ignite.internal.IgniteKernal;
-import org.apache.ignite.lang.IgniteFuture;
 import org.apache.ignite.yardstick.cache.model.*;
 
 import java.util.*;
@@ -29,21 +26,12 @@ import java.util.*;
  * Ignite benchmark that performs transactional put operations.
  */
 public class IgnitePutTxBenchmark extends IgniteCacheAbstractBenchmark {
-    private Callable<IgniteFuture> testCallable = new Callable<IgniteFuture>() {
-        @Override public IgniteFuture call() throws Exception {
-            int key = nextRandom(args.range());
-
-            // Implicit transaction is used.
-            IgniteCache<Integer, Object> cache0 = cache.withAsync();
-            cache0.put(key, new SampleValue(key));
-
-            return cache0.future();
-        }
-    };
-
     /** {@inheritDoc} */
     @Override public boolean test(Map<Object, Object> ctx) throws Exception {
-        ((IgniteKernal)ignite()).context().closure().callLocalSafe(testCallable, true).get().get();
+        int key = nextRandom(args.range());
+
+        // Implicit transaction is used.
+        cache.put(key, new SampleValue(key));
 
         return true;
     }
