@@ -1311,7 +1311,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                         res.returnValue(retVal);
 
-                        if (dhtFut != null)
+                        if (dhtFut != null && ctx.config().getWriteSynchronizationMode() == FULL_SYNC)
                             ctx.mvcc().addAtomicFuture(dhtFut.version(), dhtFut);
                     }
                     else
@@ -2701,7 +2701,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                 ctx.io().send(nodeId, res, ctx.ioPolicy());
             else {
                 // No failed keys and sync mode is not FULL_SYNC, thus sending deferred response.
-                sendDeferredUpdateResponse(nodeId, req.futureVersion());
+                //sendDeferredUpdateResponse(nodeId, req.futureVersion());
             }
         }
         catch (ClusterTopologyCheckedException ignored) {
