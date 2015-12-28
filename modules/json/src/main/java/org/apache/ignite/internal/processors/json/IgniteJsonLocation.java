@@ -17,7 +17,7 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import javax.json.stream.*;
+import javax.json.stream.JsonLocation;
 
 /**
  * Json location implementation.

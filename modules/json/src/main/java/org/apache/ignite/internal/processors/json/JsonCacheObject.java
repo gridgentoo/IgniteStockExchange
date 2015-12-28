@@ -17,11 +17,13 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.jetbrains.annotations.*;
-
-import javax.json.*;
+import javax.json.JsonObject;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.processors.cache.CacheObject;
+import org.apache.ignite.internal.processors.cache.CacheObjectAdapter;
+import org.apache.ignite.internal.processors.cache.CacheObjectContext;
+import org.apache.ignite.internal.processors.cache.KeyCacheObject;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * TODO IGNITE-961

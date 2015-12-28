@@ -17,10 +17,12 @@
 
 package org.apache.ignite.internal.processors.scripting;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.internal.util.typedef.internal.U;
 
 /**
  * Scripting cache.
@@ -36,7 +38,7 @@ public class ScriptingJsCache {
      * @param cache Ignite cache.
      * @param proc Ignite scripting processor.
      */
-    public ScriptingJsCache(IgniteCache cache, IgniteScriptingProcessor proc) {
+    public ScriptingJsCache(IgniteCache<Object, Object> cache, IgniteScriptingProcessor proc) {
         this.cache = cache;
         this.proc = proc;
     }
@@ -54,6 +56,7 @@ public class ScriptingJsCache {
 
     /**
      * @param key Key.
+     * @return Value.
      */
     public Object get(Object key) {
         Object cacheKey = proc.toJavaObject(key);

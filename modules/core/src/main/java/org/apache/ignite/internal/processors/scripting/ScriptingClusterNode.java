@@ -17,7 +17,7 @@
 
 package org.apache.ignite.internal.processors.scripting;
 
-import org.apache.ignite.cluster.*;
+import org.apache.ignite.cluster.ClusterNode;
 
 /**
  * Node js cluster node.

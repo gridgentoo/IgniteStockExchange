@@ -17,11 +17,20 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import javax.json.*;
-import javax.json.stream.*;
-import java.io.*;
-import java.math.*;
-import java.util.*;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.LinkedList;
+import java.util.Map;
+import javax.json.JsonArray;
+import javax.json.JsonException;
+import javax.json.JsonNumber;
+import javax.json.JsonString;
+import javax.json.JsonValue;
+import javax.json.stream.JsonGenerationException;
+import javax.json.stream.JsonGenerator;
 
 /**
  * Json generator implementation.

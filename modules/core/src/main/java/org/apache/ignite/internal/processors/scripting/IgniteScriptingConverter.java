@@ -38,6 +38,7 @@ public class IgniteScriptingConverter {
     }
 
     /**
+     * @param key Field name.
      * @param o Object from script.
      * @return Object to store in cache.
      */

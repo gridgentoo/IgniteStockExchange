@@ -17,8 +17,13 @@
 
 package org.apache.ignite.testsuites;
 
-import junit.framework.*;
-import org.apache.ignite.internal.*;
+import junit.framework.TestSuite;
+import org.apache.ignite.internal.NodeJsCacheApiSelfTest;
+import org.apache.ignite.internal.NodeJsComputeSelfTest;
+import org.apache.ignite.internal.NodeJsIgniteSelfTest;
+import org.apache.ignite.internal.NodeJsIgnitionSelfTest;
+import org.apache.ignite.internal.NodeJsSecretKeySelfTest;
+import org.apache.ignite.internal.NodeJsSqlQuerySelfTest;
 
 /**
  * Node JS test suite.

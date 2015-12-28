@@ -17,9 +17,14 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import javax.json.*;
-import java.io.*;
-import java.util.*;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import javax.json.JsonArray;
+import javax.json.JsonNumber;
+import javax.json.JsonString;
+import javax.json.JsonValue;
 
 /**
  * Implementation of JsonArray

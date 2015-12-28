@@ -17,9 +17,9 @@
 
 package org.apache.ignite.internal.processors.rest.handlers.scripting;
 
-import org.apache.ignite.internal.util.typedef.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.ignite.internal.util.typedef.T3;
 
 /**
  * Emit result binding.

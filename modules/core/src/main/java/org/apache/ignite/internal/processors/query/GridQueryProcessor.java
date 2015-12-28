@@ -1490,7 +1490,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * Builds portable object property.
+     * TODO IGNITE-961.
      *
      * @param pathStr String representing path to the property. May contains dots '.' to identify
      *      nested fields.

@@ -17,8 +17,8 @@
 
 package org.apache.ignite.internal.processors.scripting;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.internal.IgniteKernal;
 
 /**
  * Node js ignite.

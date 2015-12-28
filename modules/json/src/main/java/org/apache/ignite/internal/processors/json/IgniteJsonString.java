@@ -17,8 +17,8 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import javax.json.*;
-import java.io.*;
+import java.io.Serializable;
+import javax.json.JsonString;
 
 /**
  * Json string implementation.

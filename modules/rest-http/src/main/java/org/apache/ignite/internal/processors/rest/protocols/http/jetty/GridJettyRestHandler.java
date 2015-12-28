@@ -110,7 +110,7 @@ public class GridJettyRestHandler extends AbstractHandler {
     /**
      * Creates new HTTP requests handler.
      *
-     * @param ctx Grid context.
+     * @param ctx Context.
      * @param hnd Handler.
      * @param authChecker Authentication checking closure.
      * @param log Logger.
@@ -438,9 +438,10 @@ public class GridJettyRestHandler extends AbstractHandler {
 
             List<Object> res = new ArrayList<>();
 
-            for (Object k : o.keySet())
+            for (Object k : o.keySet()) {
                 res.add(ctx.scripting().createScriptingEntry(ctx.scripting().toScriptObject(k),
                     ctx.scripting().toScriptObject(o.get(k))));
+            }
 
             cmdRes.setResponse(res);
 

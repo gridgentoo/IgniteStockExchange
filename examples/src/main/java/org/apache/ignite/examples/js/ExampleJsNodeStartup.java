@@ -17,8 +17,8 @@
 
 package org.apache.ignite.examples.js;
 
-import org.apache.ignite.*;
-import org.apache.ignite.spi.discovery.tcp.internal.*;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.Ignition;
 
 /**
  * Starts up an empty node with example node js configuration.

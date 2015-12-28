@@ -17,11 +17,14 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import org.apache.ignite.internal.util.typedef.internal.*;
-
-import javax.json.*;
-import java.math.*;
-import java.util.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObjectBuilder;
+import javax.json.JsonValue;
+import org.apache.ignite.internal.util.typedef.internal.A;
 
 /**
  * Json object builder implementation.

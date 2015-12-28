@@ -17,15 +17,18 @@
 
 package org.apache.ignite.internal.processors.scripting;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import javax.script.Bindings;
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.processors.GridProcessorAdapter;
 
-import javax.script.*;
-
-import java.lang.reflect.*;
-
-import static javax.script.ScriptContext.*;
+import static javax.script.ScriptContext.ENGINE_SCOPE;
 
 /**
  * Ignite scripting processor.
@@ -173,6 +176,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
     }
 
     /**
+     * @param key Field name.
      * @param o Object from script.
      * @return Object to store in cache.
      */

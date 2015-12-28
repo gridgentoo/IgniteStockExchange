@@ -17,10 +17,9 @@
 
 package org.apache.ignite.json;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.processors.json.*;
-
-import javax.json.spi.*;
+import javax.json.spi.JsonProvider;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.internal.processors.json.IgniteJsonProvider;
 
 /**
  *

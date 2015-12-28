@@ -17,9 +17,10 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import javax.json.*;
-import java.io.*;
-import java.math.*;
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import javax.json.JsonNumber;
 
 /**
  * Json number implementation.

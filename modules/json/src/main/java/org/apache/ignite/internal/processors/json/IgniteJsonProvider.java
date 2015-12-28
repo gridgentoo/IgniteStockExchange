@@ -17,11 +17,23 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import javax.json.*;
-import javax.json.spi.*;
-import javax.json.stream.*;
-import java.io.*;
-import java.util.*;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.Map;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonBuilderFactory;
+import javax.json.JsonObjectBuilder;
+import javax.json.JsonReader;
+import javax.json.JsonReaderFactory;
+import javax.json.JsonWriter;
+import javax.json.JsonWriterFactory;
+import javax.json.spi.JsonProvider;
+import javax.json.stream.JsonGenerator;
+import javax.json.stream.JsonGeneratorFactory;
+import javax.json.stream.JsonParser;
+import javax.json.stream.JsonParserFactory;
 
 /**
  * Json provider implementation.
