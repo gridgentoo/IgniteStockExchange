@@ -17,15 +17,18 @@
 
 package org.apache.ignite.cache.store.jdbc.dialect;
 
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-
-import java.util.*;
+import java.util.Collection;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.SB;
 
 /**
  * Basic implementation of dialect based on JDBC specification.
  */
 public class BasicJdbcDialect implements JdbcDialect {
+    /** */
+    private static final long serialVersionUID = 0L;
+
     /** Default max query parameters count. */
     protected static final int DFLT_MAX_PARAMS_CNT = 2000;
 

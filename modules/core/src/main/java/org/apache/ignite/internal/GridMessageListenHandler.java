@@ -17,16 +17,24 @@
 
 package org.apache.ignite.internal;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.managers.deployment.*;
-import org.apache.ignite.internal.processors.continuous.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-
-import java.io.*;
-import java.util.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.managers.deployment.GridDeployment;
+import org.apache.ignite.internal.managers.deployment.GridDeploymentInfoBean;
+import org.apache.ignite.internal.processors.continuous.GridContinuousBatch;
+import org.apache.ignite.internal.processors.continuous.GridContinuousBatchAdapter;
+import org.apache.ignite.internal.processors.continuous.GridContinuousHandler;
+import org.apache.ignite.internal.util.lang.GridPeerDeployAware;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiPredicate;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Continuous handler for message subscription.
@@ -75,23 +83,33 @@ public class GridMessageListenHandler implements GridContinuousHandler {
     }
 
     /** {@inheritDoc} */
-    @Override public boolean isForEvents() {
+    @Override public boolean isEvents() {
         return false;
     }
 
     /** {@inheritDoc} */
-    @Override public boolean isForMessaging() {
+    @Override public boolean isMessaging() {
         return true;
     }
 
     /** {@inheritDoc} */
-    @Override public boolean isForQuery() {
+    @Override public boolean isQuery() {
+        return false;
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean keepBinary() {
         return false;
     }
 
     /** {@inheritDoc} */
     @Override public String cacheName() {
         throw new IllegalStateException();
+    }
+
+    /** {@inheritDoc} */
+    @Override public void updateCounters(Map<Integer, Long> cntrs) {
+        // No-op.
     }
 
     /** {@inheritDoc} */
@@ -159,6 +177,16 @@ public class GridMessageListenHandler implements GridContinuousHandler {
             topic = ctx.config().getMarshaller().unmarshal(topicBytes, ldr);
 
         pred = ctx.config().getMarshaller().unmarshal(predBytes, ldr);
+    }
+
+    /** {@inheritDoc} */
+    @Override public GridContinuousBatch createBatch() {
+        return new GridContinuousBatchAdapter();
+    }
+
+    /** {@inheritDoc} */
+    @Override public void onBatchAcknowledged(UUID routineId, GridContinuousBatch batch, GridKernalContext ctx) {
+        // No-op.
     }
 
     /** {@inheritDoc} */

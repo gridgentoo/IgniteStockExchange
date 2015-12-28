@@ -17,48 +17,98 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.affinity.*;
-import org.apache.ignite.cache.store.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.cluster.*;
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.processors.cache.distributed.*;
-import org.apache.ignite.internal.processors.cache.distributed.dht.*;
-import org.apache.ignite.internal.processors.cache.transactions.*;
-import org.apache.ignite.internal.processors.cache.version.*;
-import org.apache.ignite.internal.transactions.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.typedef.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.cache.Cache;
+import javax.cache.CacheException;
+import javax.cache.configuration.Factory;
+import javax.cache.expiry.Duration;
+import javax.cache.expiry.ExpiryPolicy;
+import javax.cache.integration.CacheWriterException;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cache.CacheAtomicUpdateTimeoutException;
+import org.apache.ignite.cache.CachePartialUpdateException;
+import org.apache.ignite.cache.CacheServerNotFoundException;
+import org.apache.ignite.cache.affinity.Affinity;
+import org.apache.ignite.cache.store.CacheStoreSessionListener;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.FileSystemConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.IgniteClientDisconnectedCheckedException;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.IgniteNodeAttributes;
+import org.apache.ignite.internal.cluster.ClusterGroupEmptyCheckedException;
+import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
+import org.apache.ignite.internal.cluster.ClusterTopologyServerNotFoundException;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.distributed.GridDistributedLockCancelledException;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtLocalPartition;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteTxEntry;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersionEx;
+import org.apache.ignite.internal.transactions.IgniteTxRollbackCheckedException;
+import org.apache.ignite.internal.util.lang.IgniteInClosureX;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.CI1;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.P1;
+import org.apache.ignite.internal.util.typedef.P2;
 import org.apache.ignite.internal.util.typedef.T2;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.lifecycle.*;
-import org.apache.ignite.plugin.*;
-import org.apache.ignite.transactions.*;
-import org.jetbrains.annotations.*;
-import org.jsr166.*;
+import org.apache.ignite.internal.util.typedef.X;
+import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.LT;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiPredicate;
+import org.apache.ignite.lang.IgniteClosure;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.lang.IgniteReducer;
+import org.apache.ignite.lifecycle.LifecycleAware;
+import org.apache.ignite.plugin.CachePluginConfiguration;
+import org.apache.ignite.transactions.Transaction;
+import org.apache.ignite.transactions.TransactionConcurrency;
+import org.apache.ignite.transactions.TransactionIsolation;
+import org.apache.ignite.transactions.TransactionRollbackException;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jsr166.ConcurrentHashMap8;
+import org.jsr166.ConcurrentLinkedDeque8;
 
-import javax.cache.*;
-import javax.cache.configuration.*;
-import javax.cache.expiry.*;
-import javax.cache.integration.*;
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-
-import static org.apache.ignite.IgniteSystemProperties.*;
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMode.*;
-import static org.apache.ignite.cache.CacheRebalanceMode.*;
-import static org.apache.ignite.cache.CacheWriteSynchronizationMode.*;
-import static org.apache.ignite.internal.GridTopic.*;
-import static org.apache.ignite.internal.IgniteNodeAttributes.*;
-import static org.apache.ignite.internal.processors.cache.GridCacheOperation.*;
+import static org.apache.ignite.IgniteSystemProperties.IGNITE_SKIP_CONFIGURATION_CONSISTENCY_CHECK;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMode.LOCAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheMode.REPLICATED;
+import static org.apache.ignite.cache.CacheRebalanceMode.SYNC;
+import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
+import static org.apache.ignite.internal.GridTopic.TOPIC_REPLICATION;
+import static org.apache.ignite.internal.processors.cache.GridCacheOperation.READ;
 
 /**
  * Cache utility methods.
@@ -99,6 +149,9 @@ public class GridCacheUtils {
 
     /** Skip store flag bit mask. */
     public static final int SKIP_STORE_FLAG_MASK = 0x1;
+
+    /** Keep serialized flag. */
+    public static final int KEEP_BINARY_FLAG_MASK = 0x2;
 
     /** Empty predicate array. */
     private static final IgnitePredicate[] EMPTY = new IgnitePredicate[0];
@@ -236,14 +289,6 @@ public class GridCacheUtils {
      */
     protected GridCacheUtils() {
         // No-op.
-    }
-
-    /**
-     * @param msg Message to check.
-     * @return {@code True} if preloader message.
-     */
-    public static boolean allowForStartup(Object msg) {
-        return ((GridCacheMessage)msg).allowForStartup();
     }
 
     /**
@@ -886,11 +931,25 @@ public class GridCacheUtils {
      * @throws IgniteCheckedException If marshalling failed.
      */
     @SuppressWarnings("unchecked")
-    public static byte[] marshal(GridCacheSharedContext ctx, Object obj)
+    public static byte[] marshal(GridCacheContext ctx, Object obj)
         throws IgniteCheckedException {
         assert ctx != null;
 
-        if (ctx.gridDeploy().enabled()) {
+        return marshal(ctx.shared(), ctx.deploymentEnabled(), obj);
+    }
+
+    /**
+     * @param ctx Cache context.
+     * @param depEnabled deployment enabled flag.
+     * @param obj Object to marshal.
+     * @return Buffer that contains obtained byte array.
+     * @throws IgniteCheckedException If marshalling failed.
+     */
+    public static byte[] marshal(GridCacheSharedContext ctx, boolean depEnabled, Object obj)
+        throws IgniteCheckedException {
+        assert ctx != null;
+
+        if (depEnabled) {
             if (obj != null) {
                 if (obj instanceof Iterable)
                     ctx.deploy().registerClasses((Iterable<?>)obj);
@@ -982,8 +1041,15 @@ public class GridCacheUtils {
 
         ctx.evicts().unwind();
 
-        if (ctx.isNear())
-            ctx.near().dht().context().evicts().unwind();
+        ctx.swap().unwindOffheapEvicts();
+
+        if (ctx.isNear()) {
+            GridCacheContext dhtCtx = ctx.near().dht().context();
+
+            dhtCtx.evicts().unwind();
+
+            dhtCtx.swap().unwindOffheapEvicts();
+        }
 
         ctx.ttl().expire();
     }
@@ -994,14 +1060,8 @@ public class GridCacheUtils {
     public static <K, V> void unwindEvicts(GridCacheSharedContext<K, V> ctx) {
         assert ctx != null;
 
-        for (GridCacheContext<K, V> cacheCtx : ctx.cacheContexts()) {
-            cacheCtx.evicts().unwind();
-
-            if (cacheCtx.isNear())
-                cacheCtx.near().dht().context().evicts().unwind();
-
-            cacheCtx.ttl().expire();
-        }
+        for (GridCacheContext<K, V> cacheCtx : ctx.cacheContexts())
+            unwindEvicts(cacheCtx);
     }
 
     /**
@@ -1518,23 +1578,7 @@ public class GridCacheUtils {
     ) {
         return new CacheEntryPredicateAdapter() {
             @Override public boolean apply(GridCacheEntryEx e) {
-                return aff.isPrimary(n, e.key().value(e.context().cacheObjectContext(), false));
-            }
-        };
-    }
-
-    /**
-     * @param aff Affinity.
-     * @param n Node.
-     * @return Predicate that evaulates to {@code true} if entry is primary for node.
-     */
-    public static <K, V> IgnitePredicate<Cache.Entry<K, V>> cachePrimary0(
-        final Affinity<K> aff,
-        final ClusterNode n
-    ) {
-        return new IgnitePredicate<Cache.Entry<K, V>>() {
-            @Override public boolean apply(Cache.Entry<K, V> e) {
-                return aff.isPrimary(n, e.getKey());
+                return aff.isPrimary(n, e.key());
             }
         };
     }
@@ -1675,6 +1719,29 @@ public class GridCacheUtils {
     }
 
     /**
+     * @param partsMap Cache ID to partition IDs collection map.
+     * @return Cache ID to partition ID array map.
+     */
+    public static Map<Integer, int[]> convertInvalidPartitions(Map<Integer, Set<Integer>> partsMap) {
+        Map<Integer, int[]> res = new HashMap<>(partsMap.size());
+
+        for (Map.Entry<Integer, Set<Integer>> entry : partsMap.entrySet()) {
+            Set<Integer> parts = entry.getValue();
+
+            int[] partsArray = new int[parts.size()];
+
+            int idx = 0;
+
+            for (Integer part : parts)
+                partsArray[idx++] = part;
+
+            res.put(entry.getKey(), partsArray);
+        }
+
+        return res;
+    }
+
+    /**
      * Stops store session listeners.
      *
      * @param ctx Kernal context.
@@ -1702,28 +1769,41 @@ public class GridCacheUtils {
     public static <S> Callable<S> retryTopologySafe(final Callable<S> c ) {
         return new Callable<S>() {
             @Override public S call() throws Exception {
-                int retries = GridCacheAdapter.MAX_RETRIES;
-
                 IgniteCheckedException err = null;
 
-                for (int i = 0; i < retries; i++) {
+                for (int i = 0; i < GridCacheAdapter.MAX_RETRIES; i++) {
                     try {
                         return c.call();
                     }
-                    catch (IgniteCheckedException e) {
-                        if (X.hasCause(e, ClusterTopologyCheckedException.class) ||
-                            X.hasCause(e, IgniteTxRollbackCheckedException.class) ||
-                            X.hasCause(e, CachePartialUpdateCheckedException.class)) {
-                            if (i < retries - 1) {
-                                err = e;
-
-                                U.sleep(1);
-
-                                continue;
-                            }
-
+                    catch (ClusterGroupEmptyCheckedException | ClusterTopologyServerNotFoundException e) {
+                        throw e;
+                    }
+                    catch (TransactionRollbackException e) {
+                        if (i + 1 == GridCacheAdapter.MAX_RETRIES)
                             throw e;
+
+                        U.sleep(1);
+                    }
+                    catch (IgniteCheckedException e) {
+                        if (i + 1 == GridCacheAdapter.MAX_RETRIES)
+                            throw e;
+
+                        if (X.hasCause(e, ClusterTopologyCheckedException.class)) {
+                            ClusterTopologyCheckedException topErr = e.getCause(ClusterTopologyCheckedException.class);
+
+                            if (topErr instanceof ClusterGroupEmptyCheckedException || topErr instanceof
+                                ClusterTopologyServerNotFoundException)
+                                throw e;
+
+                            // IGNITE-1948: remove this check when the issue is fixed
+                            if (topErr.retryReadyFuture() != null)
+                                topErr.retryReadyFuture().get();
+                            else
+                                U.sleep(1);
                         }
+                        else if (X.hasCause(e, IgniteTxRollbackCheckedException.class,
+                            CachePartialUpdateCheckedException.class))
+                            U.sleep(1);
                         else
                             throw e;
                     }
@@ -1733,5 +1813,54 @@ public class GridCacheUtils {
                 throw err;
             }
         };
+    }
+
+    /**
+     * Builds neighborhood map for all nodes in snapshot.
+     *
+     * @param topSnapshot Topology snapshot.
+     * @return Neighbors map.
+     */
+    public static Map<UUID, Collection<ClusterNode>> neighbors(Collection<ClusterNode> topSnapshot) {
+        Map<String, Collection<ClusterNode>> macMap = new HashMap<>(topSnapshot.size(), 1.0f);
+
+        // Group by mac addresses.
+        for (ClusterNode node : topSnapshot) {
+            String macs = node.attribute(IgniteNodeAttributes.ATTR_MACS);
+
+            Collection<ClusterNode> nodes = macMap.get(macs);
+
+            if (nodes == null)
+                macMap.put(macs, nodes = new HashSet<>());
+
+            nodes.add(node);
+        }
+
+        Map<UUID, Collection<ClusterNode>> neighbors = new HashMap<>(topSnapshot.size(), 1.0f);
+
+        for (Collection<ClusterNode> group : macMap.values())
+            for (ClusterNode node : group)
+                neighbors.put(node.id(), group);
+
+        return neighbors;
+    }
+
+    /**
+     * Returns neighbors for all {@code nodes}.
+     *
+     * @param neighborhood Neighborhood cache.
+     * @param nodes Nodes.
+     * @return All neighbors for given nodes.
+     */
+    public static Collection<ClusterNode> neighborsForNodes(Map<UUID, Collection<ClusterNode>> neighborhood,
+        Iterable<ClusterNode> nodes) {
+        Collection<ClusterNode> res = new HashSet<>();
+
+        for (ClusterNode node : nodes) {
+            if (!res.contains(node))
+                res.addAll(neighborhood.get(node.id()));
+        }
+
+        return res;
     }
 }

@@ -17,14 +17,16 @@
 
 package org.apache.ignite.cache.store.jdbc.dialect;
 
-import org.apache.ignite.internal.util.typedef.*;
-
-import java.util.*;
+import java.util.Collection;
+import org.apache.ignite.internal.util.typedef.F;
 
 /**
  * A dialect compatible with the H2 database.
  */
 public class H2Dialect extends BasicJdbcDialect {
+    /** */
+    private static final long serialVersionUID = 0L;
+
     /** {@inheritDoc} */
     @Override public boolean hasMerge() {
         return true;

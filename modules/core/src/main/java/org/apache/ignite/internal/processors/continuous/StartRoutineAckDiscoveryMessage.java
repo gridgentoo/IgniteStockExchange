@@ -17,12 +17,13 @@
 
 package org.apache.ignite.internal.processors.continuous;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.managers.discovery.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.jetbrains.annotations.*;
-
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.jetbrains.annotations.Nullable;
 
 /**
  *
@@ -34,19 +35,31 @@ public class StartRoutineAckDiscoveryMessage extends AbstractContinuousMessage {
     /** */
     private final Map<UUID, IgniteCheckedException> errs;
 
+    /** */
+    private final Map<Integer, Long> updateCntrs;
+
     /**
      * @param routineId Routine id.
      * @param errs Errs.
      */
-    public StartRoutineAckDiscoveryMessage(UUID routineId, Map<UUID, IgniteCheckedException> errs) {
+    public StartRoutineAckDiscoveryMessage(UUID routineId, Map<UUID, IgniteCheckedException> errs,
+        Map<Integer, Long> cntrs) {
         super(routineId);
 
         this.errs = new HashMap<>(errs);
+        this.updateCntrs = cntrs;
     }
 
     /** {@inheritDoc} */
     @Nullable @Override public DiscoveryCustomMessage ackMessage() {
         return null;
+    }
+
+    /**
+     * @return Update counters for partitions.
+     */
+    public Map<Integer, Long> updateCounters() {
+        return updateCntrs;
     }
 
     /**

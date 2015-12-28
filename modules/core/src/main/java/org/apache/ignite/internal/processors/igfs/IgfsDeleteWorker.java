@@ -17,25 +17,29 @@
 
 package org.apache.ignite.internal.processors.igfs;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.events.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.cluster.*;
-import org.apache.ignite.internal.managers.communication.*;
-import org.apache.ignite.internal.managers.eventstorage.*;
-import org.apache.ignite.internal.util.future.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.IgniteFutureCancelledCheckedException;
+import org.apache.ignite.internal.IgniteInterruptedCheckedException;
+import org.apache.ignite.internal.cluster.ClusterTopologyServerNotFoundException;
+import org.apache.ignite.internal.managers.communication.GridIoPolicy;
+import org.apache.ignite.internal.util.future.GridCompoundFuture;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.LT;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteUuid;
 
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.locks.*;
-
-import static org.apache.ignite.events.EventType.*;
-import static org.apache.ignite.internal.GridTopic.*;
-import static org.apache.ignite.internal.processors.igfs.IgfsFileInfo.*;
+import static org.apache.ignite.events.EventType.EVT_IGFS_FILE_PURGED;
+import static org.apache.ignite.internal.GridTopic.TOPIC_IGFS;
+import static org.apache.ignite.internal.processors.igfs.IgfsFileInfo.TRASH_ID;
 
 /**
  * IGFS worker for removal from the trash directory.
@@ -55,9 +59,6 @@ public class IgfsDeleteWorker extends IgfsThread {
 
     /** Data manager. */
     private final IgfsDataManager data;
-
-    /** Event manager. */
-    private final GridEventStorageManager evts;
 
     /** Logger. */
     private final IgniteLogger log;
@@ -89,8 +90,6 @@ public class IgfsDeleteWorker extends IgfsThread {
 
         meta = igfsCtx.meta();
         data = igfsCtx.data();
-
-        evts = igfsCtx.kernalContext().event();
 
         String igfsName = igfsCtx.igfs().name();
 
@@ -141,6 +140,9 @@ public class IgfsDeleteWorker extends IgfsThread {
         }
     }
 
+    /**
+     * Cancels the worker.
+     */
     void cancel() {
         cancelled = true;
 
@@ -212,7 +214,8 @@ public class IgfsDeleteWorker extends IgfsThread {
 
             if (info != null) {
                 if (info.isDirectory()) {
-                    deleteDirectory(TRASH_ID, id);
+                    if (!deleteDirectoryContents(TRASH_ID, id))
+                        return false;
 
                     if (meta.delete(TRASH_ID, name, id))
                         return true;
@@ -220,19 +223,22 @@ public class IgfsDeleteWorker extends IgfsThread {
                 else {
                     assert info.isFile();
 
+                    // Lock the file with special lock Id to prevent concurrent writing:
+                    IgfsFileInfo lockedInfo = meta.lock(id, true);
+
+                    if (lockedInfo == null)
+                        return false; // File is locked, we cannot delete it.
+
+                    assert id.equals(lockedInfo.id());
+
                     // Delete file content first.
                     // In case this node crashes, other node will re-delete the file.
-                    data.delete(info).get();
+                    data.delete(lockedInfo).get();
 
                     boolean ret = meta.delete(TRASH_ID, name, id);
 
-                    if (evts.isRecordable(EVT_IGFS_FILE_PURGED)) {
-                        if (info.path() != null)
-                            evts.record(new IgfsEvent(info.path(),
-                                igfsCtx.kernalContext().discovery().localNode(), EVT_IGFS_FILE_PURGED));
-                        else
-                            LT.warn(log, null, "Removing file without path info: " + info);
-                    }
+                    if (info.path() != null)
+                        IgfsUtils.sendEvents(igfsCtx.kernalContext(), info.path(), EVT_IGFS_FILE_PURGED);
 
                     return ret;
                 }
@@ -247,9 +253,10 @@ public class IgfsDeleteWorker extends IgfsThread {
      *
      * @param parentId Parent ID.
      * @param id Entry id.
+     * @return true iff all the items in the directory were deleted (directory is seen to be empty).
      * @throws IgniteCheckedException If delete failed for some reason.
      */
-    private void deleteDirectory(IgniteUuid parentId, IgniteUuid id) throws IgniteCheckedException {
+    private boolean deleteDirectoryContents(IgniteUuid parentId, final IgniteUuid id) throws IgniteCheckedException {
         assert parentId != null;
         assert id != null;
 
@@ -259,47 +266,50 @@ public class IgfsDeleteWorker extends IgfsThread {
             if (info != null) {
                 assert info.isDirectory();
 
-                Map<String, IgfsListingEntry> listing = info.listing();
+                final Map<String, IgfsListingEntry> listing = info.listing();
 
                 if (listing.isEmpty())
-                    return; // Directory is empty.
+                    return true; // Directory is empty.
 
-                Map<String, IgfsListingEntry> delListing;
+                final Map<String, IgfsListingEntry> delListing = new HashMap<>(MAX_DELETE_BATCH, 1.0f);
 
-                if (listing.size() <= MAX_DELETE_BATCH)
-                    delListing = listing;
-                else {
-                    delListing = new HashMap<>(MAX_DELETE_BATCH, 1.0f);
+                final GridCompoundFuture<Object, ?> fut = new GridCompoundFuture<>();
 
-                    int i = 0;
+                int failedFiles = 0;
 
-                    for (Map.Entry<String, IgfsListingEntry> entry : listing.entrySet()) {
-                        delListing.put(entry.getKey(), entry.getValue());
+                for (final Map.Entry<String, IgfsListingEntry> entry : listing.entrySet()) {
+                    if (cancelled)
+                        return false;
 
-                        if (++i == MAX_DELETE_BATCH)
-                            break;
+                    if (entry.getValue().isDirectory()) {
+                        if (deleteDirectoryContents(id, entry.getValue().fileId())) // *** Recursive call.
+                            delListing.put(entry.getKey(), entry.getValue());
+                        else
+                            failedFiles++;
                     }
-                }
+                    else {
+                        IgfsFileInfo fileInfo = meta.info(entry.getValue().fileId());
 
-                GridCompoundFuture<Object, ?> fut = new GridCompoundFuture<>();
+                        if (fileInfo != null) {
+                            assert fileInfo.isFile();
 
-                // Delegate to child folders.
-                for (IgfsListingEntry entry : delListing.values()) {
-                    if (!cancelled) {
-                        if (entry.isDirectory())
-                            deleteDirectory(id, entry.fileId());
-                        else {
-                            IgfsFileInfo fileInfo = meta.info(entry.fileId());
+                            IgfsFileInfo lockedInfo = meta.lock(fileInfo.id(), true);
 
-                            if (fileInfo != null) {
-                                assert fileInfo.isFile();
+                            if (lockedInfo == null)
+                                // File is already locked:
+                                failedFiles++;
+                            else {
+                                assert IgfsMetaManager.DELETE_LOCK_ID.equals(lockedInfo.lockId());
 
-                                fut.add(data.delete(fileInfo));
+                                fut.add(data.delete(lockedInfo));
+
+                                delListing.put(entry.getKey(), entry.getValue());
                             }
                         }
                     }
-                    else
-                        return;
+
+                    if (delListing.size() == MAX_DELETE_BATCH)
+                        break;
                 }
 
                 fut.markInitialized();
@@ -312,17 +322,21 @@ public class IgfsDeleteWorker extends IgfsThread {
                     // This future can be cancelled only due to IGFS shutdown.
                     cancelled = true;
 
-                    return;
+                    return false;
                 }
 
                 // Actual delete of folder content.
                 Collection<IgniteUuid> delIds = meta.delete(id, delListing);
 
-                if (delListing == listing && delListing.size() == delIds.size())
-                    break; // All entries were deleted.
+                if (listing.size() == delIds.size())
+                    return true; // All entries were deleted.
+
+                if (listing.size() == delListing.size() + failedFiles)
+                    // All the files were tried, no reason to continue the loop:
+                    return false;
             }
             else
-                break; // Entry was deleted concurrently.
+                return true; // Directory entry was deleted concurrently.
         }
     }
 

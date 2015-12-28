@@ -16,9 +16,9 @@
  */
 package org.apache.ignite.internal.processors.cache.datastructures.partitioned;
 
-import org.apache.ignite.cache.*;
+import org.apache.ignite.cache.CacheMemoryMode;
 
-import static org.apache.ignite.cache.CacheMemoryMode.*;
+import static org.apache.ignite.cache.CacheMemoryMode.OFFHEAP_VALUES;
 
 /**
  * Queue tests with partitioned cache.
@@ -27,5 +27,9 @@ public class GridCachePartitionedOffHeapValuesQueueApiSelfTest extends GridCache
     /** {@inheritDoc} */
     @Override protected CacheMemoryMode collectionMemoryMode() {
         return OFFHEAP_VALUES;
+    }
+
+    @Override public void testQueueRemoveMultithreadBounded(){
+        fail("https://issues.apache.org/jira/browse/IGNITE-1592");
     }
 }

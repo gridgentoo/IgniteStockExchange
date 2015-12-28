@@ -17,7 +17,9 @@
 
 package org.apache.ignite.schema.parser.dialect;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * DB2 specific metadata dialect.
@@ -25,6 +27,7 @@ import java.util.*;
 public class DB2MetadataDialect extends JdbcMetadataDialect {
     /** {@inheritDoc} */
     @Override public Set<String> systemSchemas() {
-        return new HashSet<>(Arrays.asList("SYSIBM", "SYSCAT", "SYSSTAT", "SYSTOOLS"));
+        return new HashSet<>(Arrays.asList("SYSIBM", "SYSCAT", "SYSSTAT", "SYSTOOLS", "SYSFUN", "SYSIBMADM",
+            "SYSIBMINTERNAL", "SYSIBMTS", "SYSPROC", "SYSPUBLIC"));
     }
 }

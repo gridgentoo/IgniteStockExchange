@@ -17,11 +17,12 @@
 
 package org.apache.ignite.internal.processors.continuous;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.managers.discovery.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
+import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
  *
@@ -36,14 +37,21 @@ public class StartRoutineDiscoveryMessage extends AbstractContinuousMessage {
     /** */
     private final Map<UUID, IgniteCheckedException> errs = new HashMap<>();
 
+    /** */
+    private Map<Integer, Long> updateCntrs;
+
+    /** Keep binary flag. */
+    private boolean keepBinary;
+
     /**
      * @param routineId Routine id.
      * @param startReqData Start request data.
      */
-    public StartRoutineDiscoveryMessage(UUID routineId, StartRequestData startReqData) {
+    public StartRoutineDiscoveryMessage(UUID routineId, StartRequestData startReqData, boolean keepBinary) {
         super(routineId);
 
         this.startReqData = startReqData;
+        this.keepBinary = keepBinary;
     }
 
     /**
@@ -62,10 +70,33 @@ public class StartRoutineDiscoveryMessage extends AbstractContinuousMessage {
     }
 
     /**
+     * @param cntrs Update counters.
+     */
+    public void addUpdateCounters(Map<Integer, Long> cntrs) {
+        if (updateCntrs == null)
+            updateCntrs = new HashMap<>();
+
+        for (Map.Entry<Integer, Long> e : cntrs.entrySet()) {
+            Long cntr0 = updateCntrs.get(e.getKey());
+            Long cntr1 = e.getValue();
+
+            if (cntr0 == null || cntr1 > cntr0)
+                updateCntrs.put(e.getKey(), cntr1);
+        }
+    }
+
+    /**
      * @return Errs.
      */
     public Map<UUID, IgniteCheckedException> errs() {
         return errs;
+    }
+
+    /**
+     * @return {@code True} if keep binary flag was set on continuous handler.
+     */
+    public boolean keepBinary() {
+        return keepBinary;
     }
 
     /** {@inheritDoc} */
@@ -75,7 +106,7 @@ public class StartRoutineDiscoveryMessage extends AbstractContinuousMessage {
 
     /** {@inheritDoc} */
     @Override public DiscoveryCustomMessage ackMessage() {
-        return new StartRoutineAckDiscoveryMessage(routineId, errs);
+        return new StartRoutineAckDiscoveryMessage(routineId, errs, updateCntrs);
     }
 
     /** {@inheritDoc} */

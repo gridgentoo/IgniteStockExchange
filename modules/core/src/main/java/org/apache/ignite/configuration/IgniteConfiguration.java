@@ -17,55 +17,62 @@
 
 package org.apache.ignite.configuration;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.store.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.compute.*;
-import org.apache.ignite.events.*;
+import java.io.Serializable;
+import java.lang.management.ManagementFactory;
+import java.util.Map;
+import java.util.UUID;
+import javax.cache.configuration.Factory;
+import javax.cache.event.CacheEntryListener;
+import javax.cache.expiry.ExpiryPolicy;
+import javax.cache.integration.CacheLoader;
+import javax.cache.processor.EntryProcessor;
+import javax.management.MBeanServer;
+import javax.net.ssl.SSLContext;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.IgniteSystemProperties;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.CacheKeyConfiguration;
+import org.apache.ignite.cache.store.CacheStoreSessionListener;
+import org.apache.ignite.cluster.ClusterGroup;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.compute.ComputeJob;
+import org.apache.ignite.compute.ComputeTask;
+import org.apache.ignite.events.Event;
 import org.apache.ignite.events.EventType;
-import org.apache.ignite.internal.managers.eventstorage.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.lifecycle.*;
-import org.apache.ignite.marshaller.*;
-import org.apache.ignite.marshaller.jdk.*;
-import org.apache.ignite.marshaller.optimized.*;
-import org.apache.ignite.plugin.*;
-import org.apache.ignite.plugin.segmentation.*;
-import org.apache.ignite.services.*;
-import org.apache.ignite.spi.checkpoint.*;
-import org.apache.ignite.spi.checkpoint.noop.*;
-import org.apache.ignite.spi.collision.*;
-import org.apache.ignite.spi.collision.noop.*;
-import org.apache.ignite.spi.communication.*;
-import org.apache.ignite.spi.communication.tcp.*;
-import org.apache.ignite.spi.deployment.*;
-import org.apache.ignite.spi.deployment.local.*;
-import org.apache.ignite.spi.discovery.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.eventstorage.*;
-import org.apache.ignite.spi.eventstorage.memory.*;
-import org.apache.ignite.spi.failover.*;
-import org.apache.ignite.spi.failover.always.*;
-import org.apache.ignite.spi.indexing.*;
-import org.apache.ignite.spi.loadbalancing.*;
-import org.apache.ignite.spi.loadbalancing.roundrobin.*;
-import org.apache.ignite.spi.swapspace.*;
-import org.apache.ignite.spi.swapspace.file.*;
-import org.apache.ignite.ssl.*;
+import org.apache.ignite.internal.managers.eventstorage.GridEventStorageManager;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.lifecycle.LifecycleBean;
+import org.apache.ignite.lifecycle.LifecycleEventType;
+import org.apache.ignite.marshaller.Marshaller;
+import org.apache.ignite.plugin.PluginConfiguration;
+import org.apache.ignite.plugin.PluginProvider;
+import org.apache.ignite.plugin.segmentation.SegmentationPolicy;
+import org.apache.ignite.plugin.segmentation.SegmentationResolver;
+import org.apache.ignite.services.ServiceConfiguration;
+import org.apache.ignite.spi.checkpoint.CheckpointSpi;
+import org.apache.ignite.spi.checkpoint.noop.NoopCheckpointSpi;
+import org.apache.ignite.spi.collision.CollisionSpi;
+import org.apache.ignite.spi.collision.noop.NoopCollisionSpi;
+import org.apache.ignite.spi.communication.CommunicationSpi;
+import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
+import org.apache.ignite.spi.deployment.DeploymentSpi;
+import org.apache.ignite.spi.deployment.local.LocalDeploymentSpi;
+import org.apache.ignite.spi.discovery.DiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.eventstorage.EventStorageSpi;
+import org.apache.ignite.spi.eventstorage.memory.MemoryEventStorageSpi;
+import org.apache.ignite.spi.failover.FailoverSpi;
+import org.apache.ignite.spi.failover.always.AlwaysFailoverSpi;
+import org.apache.ignite.spi.indexing.IndexingSpi;
+import org.apache.ignite.spi.loadbalancing.LoadBalancingSpi;
+import org.apache.ignite.spi.loadbalancing.roundrobin.RoundRobinLoadBalancingSpi;
+import org.apache.ignite.spi.swapspace.SwapSpaceSpi;
+import org.apache.ignite.spi.swapspace.file.FileSwapSpaceSpi;
+import org.apache.ignite.ssl.SslContextFactory;
 
-import javax.cache.configuration.*;
-import javax.cache.event.*;
-import javax.cache.expiry.*;
-import javax.cache.integration.*;
-import javax.cache.processor.*;
-import javax.management.*;
-import java.io.*;
-import javax.net.ssl.*;
-import java.lang.management.*;
-import java.util.*;
-
-import static org.apache.ignite.plugin.segmentation.SegmentationPolicy.*;
+import static org.apache.ignite.plugin.segmentation.SegmentationPolicy.STOP;
 
 /**
  * This class defines grid runtime configuration. This configuration is passed to
@@ -141,6 +148,9 @@ public class IgniteConfiguration {
     /** Default keep alive time for public thread pool. */
     public static final long DFLT_PUBLIC_KEEP_ALIVE_TIME = 0;
 
+    /** Default limit of threads used for rebalance. */
+    public static final int DFLT_REBALANCE_THREAD_POOL_SIZE = 1;
+
     /** Default max queue capacity of public thread pool. */
     public static final int DFLT_PUBLIC_THREADPOOL_QUEUE_CAP = Integer.MAX_VALUE;
 
@@ -194,7 +204,6 @@ public class IgniteConfiguration {
 
     /** Default failure detection timeout in millis. */
     @SuppressWarnings("UnnecessaryBoxing")
-//    public static final Long DFLT_FAILURE_DETECTION_TIMEOUT = new Long(10_000);
     public static final Long DFLT_FAILURE_DETECTION_TIMEOUT = new Long(10_000);
 
     /** Optional grid name. */
@@ -347,6 +356,9 @@ public class IgniteConfiguration {
     /** Client mode flag. */
     private Boolean clientMode;
 
+    /** Rebalance thread pool size. */
+    private int rebalanceThreadPoolSize = DFLT_REBALANCE_THREAD_POOL_SIZE;
+
     /** Transactions configuration. */
     private TransactionConfiguration txCfg = new TransactionConfiguration();
 
@@ -417,6 +429,15 @@ public class IgniteConfiguration {
     /** SSL connection factory. */
     private Factory<SSLContext> sslCtxFactory;
 
+    /** Platform configuration. */
+    private PlatformConfiguration platformCfg;
+
+    /** Cache key configuration. */
+    private CacheKeyConfiguration[] cacheKeyCfg;
+
+    /** */
+    private BinaryConfiguration binaryCfg;
+
     /**
      * Creates valid grid configuration with all default values.
      */
@@ -451,8 +472,10 @@ public class IgniteConfiguration {
         addrRslvr = cfg.getAddressResolver();
         allResolversPassReq = cfg.isAllSegmentationResolversPassRequired();
         atomicCfg = cfg.getAtomicConfiguration();
+        binaryCfg = cfg.getBinaryConfiguration();
         daemon = cfg.isDaemon();
         cacheCfg = cfg.getCacheConfiguration();
+        cacheKeyCfg = cfg.getCacheKeyConfiguration();
         cacheSanityCheckEnabled = cfg.isCacheSanityCheckEnabled();
         connectorCfg = cfg.getConnectorConfiguration();
         classLdr = cfg.getClassLoader();
@@ -491,8 +514,10 @@ public class IgniteConfiguration {
         p2pLocClsPathExcl = cfg.getPeerClassLoadingLocalClassPathExclude();
         p2pMissedCacheSize = cfg.getPeerClassLoadingMissedResourcesCacheSize();
         p2pPoolSize = cfg.getPeerClassLoadingThreadPoolSize();
+        platformCfg = cfg.getPlatformConfiguration();
         pluginCfgs = cfg.getPluginConfigurations();
         pubPoolSize = cfg.getPublicThreadPoolSize();
+        rebalanceThreadPoolSize = cfg.getRebalanceThreadPoolSize();
         segChkFreq = cfg.getSegmentCheckFrequency();
         segPlc = cfg.getSegmentationPolicy();
         segResolveAttempts = cfg.getSegmentationResolveAttempts();
@@ -971,6 +996,7 @@ public class IgniteConfiguration {
      *
      * @return Unique identifier for this node within grid.
      */
+    @Deprecated
     public UUID getNodeId() {
         return nodeId;
     }
@@ -981,7 +1007,9 @@ public class IgniteConfiguration {
      * @param nodeId Unique identifier for local node.
      * @see IgniteConfiguration#getNodeId()
      * @return {@code this} for chaining.
+     * @deprecated Use {@link #setConsistentId(Serializable)} instead.
      */
+    @Deprecated
     public IgniteConfiguration setNodeId(UUID nodeId) {
         this.nodeId = nodeId;
 
@@ -990,8 +1018,8 @@ public class IgniteConfiguration {
 
     /**
      * Should return an instance of marshaller to use in grid. If not provided,
-     * {@link OptimizedMarshaller} will be used on Java HotSpot VM, and
-     * {@link JdkMarshaller} will be used on other VMs.
+     * default marshaller implementation that allows to read object field values
+     * without deserialization will be used.
      *
      * @return Marshaller to use in grid.
      */
@@ -1316,6 +1344,30 @@ public class IgniteConfiguration {
      */
     public IgniteConfiguration setClockSyncFrequency(long clockSyncFreq) {
         this.clockSyncFreq = clockSyncFreq;
+
+        return this;
+    }
+
+    /**
+     * Gets Max count of threads can be used at rebalancing.
+     * Minimum is 1.
+     * @return count.
+     */
+    public int getRebalanceThreadPoolSize() {
+        return rebalanceThreadPoolSize;
+    }
+
+    /**
+     * Sets Max count of threads can be used at rebalancing.
+     *
+     * Default is {@code 1} which has minimal impact on the operation of the grid.
+     *
+     * @param rebalanceThreadPoolSize Number of system threads that will be assigned for partition transfer during
+     *      rebalancing.
+     * @return {@code this} for chaining.
+     */
+    public IgniteConfiguration setRebalanceThreadPoolSize(int rebalanceThreadPoolSize) {
+        this.rebalanceThreadPoolSize = rebalanceThreadPoolSize;
 
         return this;
     }
@@ -1936,6 +1988,43 @@ public class IgniteConfiguration {
     }
 
     /**
+     * Gets cache key configuration.
+     *
+     * @return Cache key configuration.
+     */
+    public CacheKeyConfiguration[] getCacheKeyConfiguration() {
+        return cacheKeyCfg;
+    }
+
+    /**
+     * Sets cache key configuration.
+     * Cache key configuration defines
+     *
+     * @param cacheKeyCfg Cache key configuration.
+     */
+    public void setCacheKeyConfiguration(CacheKeyConfiguration... cacheKeyCfg) {
+        this.cacheKeyCfg = cacheKeyCfg;
+    }
+
+    /**
+     * Gets configuration for Ignite Binary objects.
+     *
+     * @return Binary configuration object.
+     */
+    public BinaryConfiguration getBinaryConfiguration() {
+        return binaryCfg;
+    }
+
+    /**
+     * Sets configuration for Ignite Binary objects.
+     *
+     * @param binaryCfg Binary configuration object.
+     */
+    public void setBinaryConfiguration(BinaryConfiguration binaryCfg) {
+        this.binaryCfg = binaryCfg;
+    }
+
+    /**
      * Gets flag indicating whether cache sanity check is enabled. If enabled, then Ignite
      * will perform the following checks and throw an exception if check fails:
      * <ul>
@@ -2367,6 +2456,24 @@ public class IgniteConfiguration {
         this.storeSesLsnrs = storeSesLsnrs;
 
         return this;
+    }
+
+    /**
+     * Gets platform configuration.
+     *
+     * @return Platform configuration.
+     */
+    public PlatformConfiguration getPlatformConfiguration() {
+        return platformCfg;
+    }
+
+    /**
+     * Sets platform configuration.
+     *
+     * @param platformCfg Platform configuration.
+     */
+    public void setPlatformConfiguration(PlatformConfiguration platformCfg) {
+        this.platformCfg = platformCfg;
     }
 
     /** {@inheritDoc} */

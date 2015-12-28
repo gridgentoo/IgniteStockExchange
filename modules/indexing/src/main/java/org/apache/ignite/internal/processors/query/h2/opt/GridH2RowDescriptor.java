@@ -17,12 +17,14 @@
 
 package org.apache.ignite.internal.processors.query.h2.opt;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.query.h2.*;
-import org.apache.ignite.internal.util.offheap.unsafe.*;
-import org.h2.value.*;
-import org.jetbrains.annotations.*;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.processors.cache.CacheObject;
+import org.apache.ignite.internal.processors.query.h2.IgniteH2Indexing;
+import org.apache.ignite.internal.util.offheap.unsafe.GridOffHeapSmartPointerFactory;
+import org.apache.ignite.internal.util.offheap.unsafe.GridUnsafeGuard;
+import org.apache.ignite.internal.util.offheap.unsafe.GridUnsafeMemory;
+import org.h2.value.Value;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Row descriptor.
@@ -109,4 +111,14 @@ public interface GridH2RowDescriptor extends GridOffHeapSmartPointerFactory<Grid
      * @throws IgniteCheckedException If failed.
      */
     public Value wrap(Object o, int type) throws IgniteCheckedException;
+
+    /**
+     * @return {@code True} if should check swap value before offheap.
+     */
+    public boolean preferSwapValue();
+
+    /**
+     * @return {@code True} if index should support snapshots.
+     */
+    public boolean snapshotableIndex();
 }

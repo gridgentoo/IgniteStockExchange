@@ -17,15 +17,18 @@
 
 package org.apache.ignite.internal.processors.cache.query;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.marshaller.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-
-import java.nio.*;
+import java.nio.ByteBuffer;
+import java.util.LinkedHashMap;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.GridDirectTransient;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.A;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.marshaller.Marshaller;
+import org.apache.ignite.plugin.extensions.communication.Message;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
 
 /**
  * Query.
@@ -36,9 +39,6 @@ public class GridCacheSqlQuery implements Message {
 
     /** */
     public static final Object[] EMPTY_PARAMS = {};
-
-    /** */
-    private String alias;
 
     /** */
     @GridToStringInclude
@@ -52,6 +52,24 @@ public class GridCacheSqlQuery implements Message {
     /** */
     private byte[] paramsBytes;
 
+    /** */
+    @GridToStringInclude
+    @GridDirectTransient
+    private int[] paramIdxs;
+
+    /** */
+    @GridToStringInclude
+    @GridDirectTransient
+    private int paramsSize;
+
+    /** */
+    @GridToStringInclude
+    @GridDirectTransient
+    private LinkedHashMap<String, ?> cols;
+
+    /** Field kept for backward compatibility. */
+    private String alias;
+
     /**
      * For {@link Message}.
      */
@@ -60,24 +78,40 @@ public class GridCacheSqlQuery implements Message {
     }
 
     /**
-     * @param alias Alias.
      * @param qry Query.
      * @param params Query parameters.
      */
-    public GridCacheSqlQuery(String alias, String qry, Object[] params) {
+    public GridCacheSqlQuery(String qry, Object[] params) {
         A.ensure(!F.isEmpty(qry), "qry must not be empty");
 
-        this.alias = alias;
         this.qry = qry;
 
         this.params = F.isEmpty(params) ? EMPTY_PARAMS : params;
+        paramsSize = this.params.length;
     }
 
     /**
-     * @return Alias.
+     * @param paramIdxs Parameter indexes.
      */
-    public String alias() {
-        return alias;
+    public void parameterIndexes(int[] paramIdxs) {
+        this.paramIdxs = paramIdxs;
+    }
+
+    /**
+     * @return Columns.
+     */
+    public LinkedHashMap<String, ?> columns() {
+        return cols;
+    }
+
+    /**
+     * @param columns Columns.
+     * @return {@code this}.
+     */
+    public GridCacheSqlQuery columns(LinkedHashMap<String, ?> columns) {
+        this.cols = columns;
+
+        return this;
     }
 
     /**
@@ -194,7 +228,7 @@ public class GridCacheSqlQuery implements Message {
 
         }
 
-        return true;
+        return reader.afterMessageRead(GridCacheSqlQuery.class);
     }
 
     /** {@inheritDoc} */
@@ -205,5 +239,29 @@ public class GridCacheSqlQuery implements Message {
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
         return 3;
+    }
+
+    /**
+     * @param args Arguments.
+     * @return Copy.
+     */
+    public GridCacheSqlQuery copy(Object[] args) {
+        GridCacheSqlQuery cp = new GridCacheSqlQuery();
+
+        cp.qry = qry;
+        cp.cols = cols;
+        cp.paramIdxs = paramIdxs;
+        cp.paramsSize = paramsSize;
+
+        if (F.isEmpty(args))
+            cp.params = EMPTY_PARAMS;
+        else {
+            cp.params = new Object[paramsSize];
+
+            for (int paramIdx : paramIdxs)
+                cp.params[paramIdx] = args[paramIdx];
+        }
+
+        return cp;
     }
 }

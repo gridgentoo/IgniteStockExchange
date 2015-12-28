@@ -17,18 +17,23 @@
 
 package org.apache.ignite.igfs;
 
-import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.permission.*;
-import org.apache.ignite.internal.processors.igfs.*;
-
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.ignite.internal.processors.hadoop.igfs.HadoopIgfsUtils;
+import org.apache.ignite.internal.processors.igfs.IgfsEx;
+import org.apache.ignite.internal.processors.igfs.UniversalFileSystemAdapter;
 
 /**
  * Universal adapter wrapping {@link org.apache.hadoop.fs.FileSystem} instance.
  */
 public class HadoopFileSystemUniversalFileSystemAdapter implements UniversalFileSystemAdapter {
-
     /** The wrapped filesystem. */
     private final FileSystem fileSys;
 
@@ -65,7 +70,7 @@ public class HadoopFileSystemUniversalFileSystemAdapter implements UniversalFile
 
     /** {@inheritDoc} */
     @Override public void format() throws IOException {
-        fileSys.delete(new Path("/"), true);
+        HadoopIgfsUtils.clear(fileSys);
     }
 
     /** {@inheritDoc} */

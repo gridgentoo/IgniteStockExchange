@@ -17,10 +17,9 @@
 
 package org.apache.ignite.spi.discovery.tcp.messages;
 
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.spi.discovery.tcp.internal.*;
-
-import java.util.*;
+import java.util.UUID;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
 
 /**
  * Message sent by node to its next to ensure that next node and
@@ -60,6 +59,17 @@ public class TcpDiscoveryStatusCheckMessage extends TcpDiscoveryAbstractMessage 
 
         this.creatorNode = creatorNode;
         this.failedNodeId = failedNodeId;
+    }
+
+    /**
+     * @param msg Message to copy.
+     */
+    public TcpDiscoveryStatusCheckMessage(TcpDiscoveryStatusCheckMessage msg) {
+        super(msg);
+
+        this.creatorNode = msg.creatorNode;
+        this.failedNodeId = msg.failedNodeId;
+        this.status = msg.status;
     }
 
     /**

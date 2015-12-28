@@ -17,30 +17,30 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.events.*;
-import org.apache.ignite.internal.managers.eventstorage.*;
-import org.apache.ignite.internal.processors.cache.transactions.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
+import java.util.Collection;
+import java.util.UUID;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.events.CacheEvent;
+import org.apache.ignite.events.CacheRebalancingEvent;
+import org.apache.ignite.internal.managers.eventstorage.GridLocalEventListener;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.X;
+import org.apache.ignite.internal.util.typedef.internal.LT;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteUuid;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-
-import static org.apache.ignite.events.EventType.*;
+import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_PART_UNLOADED;
+import static org.apache.ignite.events.EventType.EVT_CACHE_STARTED;
+import static org.apache.ignite.events.EventType.EVT_CACHE_STOPPED;
 
 /**
  * Cache event manager.
  */
 public class GridCacheEventManager extends GridCacheManagerAdapter {
-    /** Local node ID. */
-    private UUID locNodeId;
-
-    /** {@inheritDoc} */
-    @Override public void start0() {
-        locNodeId = cctx.localNodeId();
-    }
+    /** Force keep binary flag. Will be set if event notification encountered exception during unmarshalling. */
+    private boolean forceKeepBinary;
 
     /**
      * Adds local event listener.
@@ -86,11 +86,12 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
         boolean hasOldVal,
         UUID subjId,
         String cloClsName,
-        String taskName)
+        String taskName,
+        boolean keepBinary)
     {
         addEvent(part,
             key,
-            locNodeId,
+            cctx.localNodeId(),
             tx,
             owner,
             type,
@@ -100,7 +101,8 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
             hasOldVal,
             subjId,
             cloClsName,
-            taskName);
+            taskName,
+            keepBinary);
     }
 
     /**
@@ -110,7 +112,7 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
         addEvent(
             0,
             null,
-            locNodeId,
+            cctx.localNodeId(),
             (IgniteUuid)null,
             null,
             type,
@@ -120,7 +122,8 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
             false,
             null,
             null,
-            null);
+            null,
+            false);
     }
 
     /**
@@ -150,7 +153,8 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
         boolean hasOldVal,
         UUID subjId,
         String cloClsName,
-        String taskName)
+        String taskName,
+        boolean keepBinary)
     {
         addEvent(part,
             key,
@@ -163,7 +167,8 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
             hasOldVal,
             subjId,
             cloClsName,
-            taskName);
+            taskName,
+            keepBinary);
     }
 
     /**
@@ -191,7 +196,8 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
         boolean hasOldVal,
         UUID subjId,
         String cloClsName,
-        String taskName)
+        String taskName,
+        boolean keepBinary)
     {
         IgniteInternalTx tx = owner == null ? null : cctx.tm().tx(owner.version());
 
@@ -207,7 +213,8 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
             hasOldVal,
             subjId,
             cloClsName,
-            taskName);
+            taskName,
+            keepBinary);
     }
 
     /**
@@ -238,7 +245,8 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
         boolean hasOldVal,
         UUID subjId,
         @Nullable String cloClsName,
-        @Nullable String taskName
+        @Nullable String taskName,
+        boolean keepBinary
     ) {
         assert key != null || type == EVT_CACHE_STARTED || type == EVT_CACHE_STOPPED;
 
@@ -257,6 +265,35 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
                     "(try to increase topology history size configuration property of configured " +
                     "discovery SPI): " + evtNodeId);
 
+            keepBinary = keepBinary || forceKeepBinary;
+
+            Object key0;
+            Object val0;
+            Object oldVal0;
+
+            try {
+                key0 = cctx.cacheObjectContext().unwrapBinaryIfNeeded(key, keepBinary, false);
+                val0 = cctx.cacheObjectContext().unwrapBinaryIfNeeded(newVal, keepBinary, false);
+                oldVal0 = cctx.cacheObjectContext().unwrapBinaryIfNeeded(oldVal, keepBinary, false);
+            }
+            catch (Exception e) {
+                if (!cctx.cacheObjectContext().processor().isBinaryEnabled(cctx.config()))
+                    throw e;
+
+                if (log.isDebugEnabled())
+                    log.debug("Failed to unmarshall cache object value for the event notification: " + e);
+
+                if (!forceKeepBinary)
+                    LT.warn(log, null, "Failed to unmarshall cache object value for the event notification " +
+                        "(all further notifications will keep binary object format).");
+
+                forceKeepBinary = true;
+
+                key0 = cctx.cacheObjectContext().unwrapBinaryIfNeeded(key, true, false);
+                val0 = cctx.cacheObjectContext().unwrapBinaryIfNeeded(newVal, true, false);
+                oldVal0 = cctx.cacheObjectContext().unwrapBinaryIfNeeded(oldVal, true, false);
+            }
+
             cctx.gridEvents().record(new CacheEvent(cctx.name(),
                 cctx.localNode(),
                 evtNode,
@@ -264,12 +301,12 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
                 type,
                 part,
                 cctx.isNear(),
-                key == null ? null : key.value(cctx.cacheObjectContext(), false),
+                key0,
                 xid,
                 lockId,
-                CU.value(newVal, cctx, false),
+                val0,
                 hasNewVal,
-                CU.value(oldVal, cctx, false),
+                oldVal0,
                 hasOldVal,
                 subjId,
                 cloClsName,
@@ -339,7 +376,9 @@ public class GridCacheEventManager extends GridCacheManagerAdapter {
      * @return {@code True} if event is recordable.
      */
     public boolean isRecordable(int type) {
-        return cctx.userCache() && cctx.gridEvents().isRecordable(type);
+        GridCacheContext cctx0 = cctx;
+
+        return cctx0 != null && cctx0.userCache() && cctx0.gridEvents().isRecordable(type);
     }
 
     /** {@inheritDoc} */

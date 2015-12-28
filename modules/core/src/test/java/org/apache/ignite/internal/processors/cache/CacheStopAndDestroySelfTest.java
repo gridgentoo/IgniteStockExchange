@@ -17,30 +17,34 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.managers.communication.*;
-import org.apache.ignite.internal.processors.cache.distributed.dht.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-import org.apache.ignite.spi.*;
-import org.apache.ignite.spi.communication.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.*;
-import org.apache.ignite.testframework.junits.common.*;
-
-import javax.cache.*;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.cache.Cache;
 import javax.cache.CacheManager;
-import javax.cache.configuration.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import javax.cache.Caching;
+import javax.cache.configuration.MutableConfiguration;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.configuration.NearCacheConfiguration;
+import org.apache.ignite.internal.managers.communication.GridIoMessage;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtTxPrepareRequest;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.plugin.extensions.communication.Message;
+import org.apache.ignite.spi.IgniteSpiException;
+import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
-import static org.apache.ignite.cache.CacheMode.*;
+import static org.apache.ignite.cache.CacheMode.LOCAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
 
 /**
  * Checks stop and destroy methods behavior.
@@ -63,9 +67,6 @@ public class CacheStopAndDestroySelfTest extends GridCommonAbstractTest {
 
     /** local cache name. */
     protected static String CACHE_NAME_LOC = "cache_local";
-
-    /** */
-    private static volatile boolean stop;
 
     /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
@@ -121,8 +122,9 @@ public class CacheStopAndDestroySelfTest extends GridCommonAbstractTest {
         public static UUID nodeFilter;
 
         /** {@inheritDoc} */
-        @Override public void sendMessage(ClusterNode node, Message msg) throws IgniteSpiException {
-            super.sendMessage(node, msg);
+        @Override public void sendMessage(ClusterNode node, Message msg, IgniteInClosure<IgniteException> ackClosure)
+            throws IgniteSpiException {
+            super.sendMessage(node, msg, ackClosure);
 
             if (nodeFilter != null &&
                 node.id().equals(nodeFilter) &&
@@ -537,6 +539,8 @@ public class CacheStopAndDestroySelfTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testNearClose() throws Exception {
+        fail("https://issues.apache.org/jira/browse/IGNITE-2189");
+
         IgniteCache<String, String> cache0 = grid(0).getOrCreateCache(getNearConfig());
 
         // GridDhtTxPrepareRequest requests to Client node will be counted.
@@ -670,6 +674,10 @@ public class CacheStopAndDestroySelfTest extends GridCommonAbstractTest {
 
         // Local creation after closed.
 
+        AffinityTopologyVersion topVer = grid(1).context().cache().context().exchange().lastTopologyFuture().get();
+
+        grid(0).context().cache().context().exchange().affinityReadyFuture(topVer).get();
+
         grid(0).getOrCreateCache(getLocalConfig());
 
         grid(0).cache(CACHE_NAME_LOC).put(KEY_VAL, KEY_VAL + "recreated0");
@@ -707,93 +715,6 @@ public class CacheStopAndDestroySelfTest extends GridCommonAbstractTest {
                 assert cache0.get(KEY_VAL).equals(curVal + 1);
                 assert cache1.get(KEY_VAL).equals(curVal + 2);
                 assert cache2.get(KEY_VAL).equals(curVal + 3);
-            }
-        }
-    }
-
-    /**
-     * Tests concurrent close.
-     *
-     * @throws Exception If failed.
-     */
-    public void testConcurrentCloseSetWithTry() throws Exception {
-        final AtomicInteger a1 = new AtomicInteger();
-        final AtomicInteger a2 = new AtomicInteger();
-        final AtomicInteger a3 = new AtomicInteger();
-        final AtomicInteger a4 = new AtomicInteger();
-
-        Thread t1 = new Thread(new Runnable() {
-            @Override public void run() {
-                Thread.currentThread().setName("test-thread-1");
-
-                closeWithTry(a1, 0);
-            }
-        });
-        Thread t2 = new Thread(new Runnable() {
-            @Override public void run() {
-                Thread.currentThread().setName("test-thread-2");
-
-                closeWithTry(a2, 0);
-            }
-        });
-        Thread t3 = new Thread(new Runnable() {
-            @Override public void run() {
-                Thread.currentThread().setName("test-thread-3");
-
-                closeWithTry(a3, 2);
-            }
-        });
-        Thread t4 = new Thread(new Runnable() {
-            @Override public void run() {
-                Thread.currentThread().setName("test-thread-4");
-
-                closeWithTry(a4, 2);
-            }
-        });
-
-        IgniteCache<Object, Object> cache = grid(0).getOrCreateCache(getDhtConfig());
-
-        cache.close();
-
-        t1.start();
-        t2.start();
-        t3.start();
-        t4.start();
-
-        try {
-            U.sleep(1000);
-        }
-        finally {
-            stop = true;
-        }
-
-        t1.join();
-        t2.join();
-        t3.join();
-        t4.join();
-
-        assert a1.get() > 1;
-        assert a2.get() > 1;
-        assert a3.get() > 1;
-        assert a4.get() > 1;
-
-        checkUsageFails(cache);
-    }
-
-    /**
-     * @param a AtomicInteger.
-     * @param node Node.
-     */
-    public void closeWithTry(AtomicInteger a, int node) {
-        while (!stop) {
-            try (IgniteCache<String, String> cache = grid(node).getOrCreateCache(getDhtConfig())) {
-                a.incrementAndGet();
-
-                assert cache.get(KEY_VAL) == null || cache.get(KEY_VAL).equals(KEY_VAL);
-
-                cache.put(KEY_VAL, KEY_VAL);
-
-                assert cache.get(KEY_VAL).equals(KEY_VAL);
             }
         }
     }

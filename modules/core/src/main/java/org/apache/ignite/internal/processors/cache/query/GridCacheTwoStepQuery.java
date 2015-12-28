@@ -17,13 +17,11 @@
 
 package org.apache.ignite.internal.processors.cache.query;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
  * Two step map-reduce style query.
@@ -34,11 +32,11 @@ public class GridCacheTwoStepQuery {
 
     /** */
     @GridToStringInclude
-    private Map<String, GridCacheSqlQuery> mapQrys;
+    private List<GridCacheSqlQuery> mapQrys = new ArrayList<>();
 
     /** */
     @GridToStringInclude
-    private GridCacheSqlQuery reduce;
+    private GridCacheSqlQuery rdc;
 
     /** */
     private int pageSize = DFLT_PAGE_SIZE;
@@ -49,15 +47,27 @@ public class GridCacheTwoStepQuery {
     /** */
     private Set<String> spaces;
 
+    /** */
+    private final boolean skipMergeTbl;
+
     /**
      * @param spaces All spaces accessed in query.
-     * @param qry Reduce query.
-     * @param params Reduce query parameters.
+     * @param rdc Reduce query.
+     * @param skipMergeTbl {@code True} if reduce query can skip merge table creation and
+     *      get data directly from merge index.
      */
-    public GridCacheTwoStepQuery(Set<String> spaces, String qry, Object ... params) {
-        this.spaces = spaces;
+    public GridCacheTwoStepQuery(Set<String> spaces, GridCacheSqlQuery rdc, boolean skipMergeTbl) {
+        assert rdc != null;
 
-        reduce = new GridCacheSqlQuery(null, qry, params);
+        this.spaces = spaces;
+        this.rdc = rdc;
+        this.skipMergeTbl = skipMergeTbl;
+    }
+    /**
+     * @return {@code True} if reduce query can skip merge table creation and get data directly from merge index.
+     */
+    public boolean skipMergeTable() {
+        return skipMergeTbl;
     }
 
     /**
@@ -89,32 +99,27 @@ public class GridCacheTwoStepQuery {
     }
 
     /**
-     * @param alias Alias.
      * @param qry SQL Query.
-     * @param params Query parameters.
+     * @return {@code this}.
      */
-    public void addMapQuery(String alias, String qry, Object ... params) {
-        A.ensure(!F.isEmpty(alias), "alias must not be empty");
+    public GridCacheTwoStepQuery addMapQuery(GridCacheSqlQuery qry) {
+        mapQrys.add(qry);
 
-        if (mapQrys == null)
-            mapQrys = new GridLeanMap<>();
-
-        if (mapQrys.put(alias, new GridCacheSqlQuery(alias, qry, params)) != null)
-            throw new IgniteException("Failed to add query, alias already exists: " + alias + ".");
+        return this;
     }
 
     /**
      * @return Reduce query.
      */
     public GridCacheSqlQuery reduceQuery() {
-        return reduce;
+        return rdc;
     }
 
     /**
      * @return Map queries.
      */
-    public Collection<GridCacheSqlQuery> mapQueries() {
-        return mapQrys.values();
+    public List<GridCacheSqlQuery> mapQueries() {
+        return mapQrys;
     }
 
     /**
@@ -129,6 +134,21 @@ public class GridCacheTwoStepQuery {
      */
     public void spaces(Set<String> spaces) {
         this.spaces = spaces;
+    }
+
+    /**
+     * @param args New arguments to copy with.
+     * @return Copy.
+     */
+    public GridCacheTwoStepQuery copy(Object[] args) {
+        assert !explain;
+
+        GridCacheTwoStepQuery cp = new GridCacheTwoStepQuery(spaces, rdc.copy(args), skipMergeTbl);
+        cp.pageSize = pageSize;
+        for (int i = 0; i < mapQrys.size(); i++)
+            cp.mapQrys.add(mapQrys.get(i).copy(args));
+
+        return cp;
     }
 
     /** {@inheritDoc} */

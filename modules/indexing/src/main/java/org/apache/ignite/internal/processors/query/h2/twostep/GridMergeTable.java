@@ -17,35 +17,50 @@
 
 package org.apache.ignite.internal.processors.query.h2.twostep;
 
-import org.h2.api.*;
-import org.h2.command.ddl.*;
-import org.h2.engine.*;
-import org.h2.index.*;
-import org.h2.message.*;
-import org.h2.result.*;
-import org.h2.table.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.UUID;
+import org.apache.ignite.internal.GridKernalContext;
+import org.h2.command.ddl.CreateTableData;
+import org.h2.engine.Session;
+import org.h2.index.Index;
+import org.h2.index.IndexType;
+import org.h2.message.DbException;
+import org.h2.result.Row;
+import org.h2.table.IndexColumn;
+import org.h2.table.TableBase;
 
 /**
  * Merge table for distributed queries.
  */
 public class GridMergeTable extends TableBase {
     /** */
-    private final ArrayList<Index> idxs = new ArrayList<>(1);
+    private final GridKernalContext ctx;
 
     /** */
     private final GridMergeIndex idx;
 
     /**
      * @param data Data.
+     * @param ctx Kernal context.
      */
-    public GridMergeTable(CreateTableData data) {
+    public GridMergeTable(CreateTableData data, GridKernalContext ctx) {
         super(data);
 
+        this.ctx = ctx;
         idx = new GridMergeIndexUnsorted(this, "merge_scan");
+    }
 
-        idxs.add(idx);
+    /**
+     * Fails merge table if any source node is left.
+     */
+    public void checkSourceNodesAlive() {
+        for (UUID nodeId : idx.sources()) {
+            if (!ctx.discovery().alive(nodeId)) {
+                idx.fail(nodeId);
+
+                return;
+            }
+        }
     }
 
     /** {@inheritDoc} */
@@ -106,7 +121,7 @@ public class GridMergeTable extends TableBase {
 
     /** {@inheritDoc} */
     @Override public ArrayList<Index> getIndexes() {
-        return idxs;
+        return null;
     }
 
     /** {@inheritDoc} */
@@ -152,35 +167,5 @@ public class GridMergeTable extends TableBase {
     /** {@inheritDoc} */
     @Override public void checkRename() {
         throw DbException.getUnsupportedException("rename");
-    }
-
-    /**
-     * Engine.
-     */
-    public static class Engine implements TableEngine {
-        /** */
-        private static ThreadLocal<GridMergeTable> createdTbl = new ThreadLocal<>();
-
-        /**
-         * @return Created table.
-         */
-        public static GridMergeTable getCreated() {
-            GridMergeTable tbl = createdTbl.get();
-
-            assert tbl != null;
-
-            createdTbl.remove();
-
-            return tbl;
-        }
-
-        /** {@inheritDoc} */
-        @Override public Table createTable(CreateTableData data) {
-            GridMergeTable tbl = new GridMergeTable(data);
-
-            createdTbl.set(tbl);
-
-            return tbl;
-        }
     }
 }

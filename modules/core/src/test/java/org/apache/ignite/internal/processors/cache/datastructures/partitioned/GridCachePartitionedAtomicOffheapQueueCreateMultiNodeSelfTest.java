@@ -16,20 +16,15 @@
  */
 package org.apache.ignite.internal.processors.cache.datastructures.partitioned;
 
-import org.apache.ignite.cache.*;
+import org.apache.ignite.cache.CacheMemoryMode;
 
-import static org.apache.ignite.cache.CacheMemoryMode.*;
+import static org.apache.ignite.cache.CacheMemoryMode.OFFHEAP_TIERED;
 
 /**
  *
  */
 public class GridCachePartitionedAtomicOffheapQueueCreateMultiNodeSelfTest
     extends GridCachePartitionedAtomicQueueCreateMultiNodeSelfTest {
-    /** {@inheritDoc} */
-    @Override protected void beforeTest() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-80");
-    }
-
     /** {@inheritDoc} */
     @Override protected CacheMemoryMode collectionMemoryMode() {
         return OFFHEAP_TIERED;

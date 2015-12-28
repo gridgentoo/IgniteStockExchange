@@ -17,15 +17,25 @@
 
 package org.apache.ignite.internal;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.plugin.*;
-
-import javax.cache.event.*;
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import javax.cache.event.CacheEntryEvent;
+import javax.cache.event.CacheEntryListenerException;
+import javax.cache.event.CacheEntryUpdatedListener;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.internal.processors.cache.CachePartialUpdateCheckedException;
+import org.apache.ignite.internal.processors.cache.GridCacheAdapter;
+import org.apache.ignite.internal.processors.cache.GridCacheTryPutFailedException;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.plugin.PluginProvider;
 
 /**
  * Marshaller context implementation.
@@ -112,8 +122,9 @@ public class MarshallerContextImpl extends MarshallerContextAdapter {
         }
         catch (CachePartialUpdateCheckedException | GridCacheTryPutFailedException e) {
             if (++failedCnt > 10) {
-                U.quietAndWarn(log, e, "Failed to register marshalled class for more than 10 times in a row " +
-                    "(may affect performance).");
+                if (log.isQuiet())
+                    U.quiet(false, "Failed to register marshalled class for more than 10 times in a row " +
+                        "(may affect performance).");
 
                 failedCnt = 0;
             }
@@ -135,7 +146,7 @@ public class MarshallerContextImpl extends MarshallerContextAdapter {
                 throw new IllegalStateException("Failed to initialize marshaller context (grid is stopping).");
         }
 
-        String clsName = cache0.get(id);
+        String clsName = cache0.getTopologySafe(id);
 
         if (clsName == null) {
             File file = new File(workDir, id + ".classname");
@@ -177,18 +188,21 @@ public class MarshallerContextImpl extends MarshallerContextAdapter {
         @Override public void onUpdated(Iterable<CacheEntryEvent<? extends Integer, ? extends String>> events)
             throws CacheEntryListenerException {
             for (CacheEntryEvent<? extends Integer, ? extends String> evt : events) {
-                assert evt.getOldValue() == null : "Received non-null old value for system marshaller cache: " + evt;
+                assert evt.getOldValue() == null || F.eq(evt.getOldValue(), evt.getValue()):
+                    "Received cache entry update for system marshaller cache: " + evt;
 
-                File file = new File(workDir, evt.getKey() + ".classname");
+                if (evt.getOldValue() == null) {
+                    File file = new File(workDir, evt.getKey() + ".classname");
 
-                try (Writer writer = new FileWriter(file)) {
-                    writer.write(evt.getValue());
+                    try (Writer writer = new FileWriter(file)) {
+                        writer.write(evt.getValue());
 
-                    writer.flush();
-                }
-                catch (IOException e) {
-                    U.error(log, "Failed to write class name to file [id=" + evt.getKey() +
-                        ", clsName=" + evt.getValue() + ", file=" + file.getAbsolutePath() + ']', e);
+                        writer.flush();
+                    }
+                    catch (IOException e) {
+                        U.error(log, "Failed to write class name to file [id=" + evt.getKey() +
+                            ", clsName=" + evt.getValue() + ", file=" + file.getAbsolutePath() + ']', e);
+                    }
                 }
             }
         }

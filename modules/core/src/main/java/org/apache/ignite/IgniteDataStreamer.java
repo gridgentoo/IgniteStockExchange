@@ -17,12 +17,13 @@
 
 package org.apache.ignite;
 
-import org.apache.ignite.lang.*;
-import org.apache.ignite.stream.*;
-import org.jetbrains.annotations.*;
-
-import javax.cache.*;
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import javax.cache.CacheException;
+import org.apache.ignite.lang.IgniteBiPredicate;
+import org.apache.ignite.lang.IgniteFuture;
+import org.apache.ignite.stream.StreamReceiver;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Data streamer is responsible for streaming external data into cache. It achieves it by
@@ -143,6 +144,22 @@ public interface IgniteDataStreamer<K, V> extends AutoCloseable {
      * @param skipStore Skip store flag.
      */
     public void skipStore(boolean skipStore);
+
+    /**
+     * Gets flag indicating that objects should be kept in binary format when passed to the stream receiver.
+     * Default is {@code false}.
+     *
+     * @return Skip store flag.
+     */
+    public boolean keepBinary();
+
+    /**
+     * Sets flag indicating that objects should be kept in binary format when passes to the steam receiver.
+     * Default is {@code false}.
+     *
+     * @param keepBinary Keep binary flag.
+     */
+    public void keepBinary(boolean keepBinary);
 
     /**
      * Gets size of per node key-value pairs buffer.

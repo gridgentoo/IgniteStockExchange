@@ -17,31 +17,49 @@
 
 package org.apache.ignite.internal.processors.igfs;
 
-import org.apache.commons.io.*;
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.igfs.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.*;
-import org.jetbrains.annotations.*;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.cache.Cache;
+import org.apache.commons.io.IOUtils;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteFileSystem;
+import org.apache.ignite.cache.CacheWriteSynchronizationMode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.FileSystemConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.igfs.IgfsDirectoryNotEmptyException;
+import org.apache.ignite.igfs.IgfsException;
+import org.apache.ignite.igfs.IgfsFile;
+import org.apache.ignite.igfs.IgfsGroupDataBlocksKeyMapper;
+import org.apache.ignite.igfs.IgfsInputStream;
+import org.apache.ignite.igfs.IgfsOutputStream;
+import org.apache.ignite.igfs.IgfsPath;
+import org.apache.ignite.internal.IgniteEx;
+import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.processors.cache.GridCacheAdapter;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.jetbrains.annotations.Nullable;
 
-import javax.cache.*;
-import java.security.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-
-import static java.nio.charset.StandardCharsets.*;
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMode.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheMode.REPLICATED;
 
 /**
  * Tests for {@link IgfsProcessor}.
@@ -371,15 +389,6 @@ public class IgfsProcessorSelfTest extends IgfsCommonAbstractTest {
 
         assert paths.size() == 3 : "Unexpected paths: " + paths;
 
-        // Delete.
-        GridTestUtils.assertThrowsInherited(log, new Callable<Object>() {
-            @Override public Object call() throws Exception {
-                igfs.delete(path("/"), false);
-
-                return null;
-            }
-        }, IgfsException.class, null);
-
         igfs.delete(path("/A1/B1/C1"), false);
         assertNull(igfs.info(path("/A1/B1/C1")));
 
@@ -398,19 +407,19 @@ public class IgfsProcessorSelfTest extends IgfsCommonAbstractTest {
 
         assertEquals(Arrays.asList(path("/A"), path("/A1"), path("/A2")), sorted(igfs.listPaths(path("/"))));
 
-        GridTestUtils.assertThrowsInherited(log, new Callable<Object>() {
-            @Override public Object call() throws Exception {
-                igfs.delete(path("/"), false);
-
-                return null;
-            }
-        }, IgfsException.class, null);
-        assertEquals(Arrays.asList(path("/A"), path("/A1"), path("/A2")), sorted(igfs.listPaths(path("/"))));
-
+        // Delete root when it is not empty:
         igfs.delete(path("/"), true);
+        igfs.delete(path("/"), false);
+
+        igfs.delete(path("/A"), true);
+        igfs.delete(path("/A1"), true);
+        igfs.delete(path("/A2"), true);
         assertEquals(Collections.<IgfsPath>emptyList(), igfs.listPaths(path("/")));
 
+        // Delete root when it is empty:
         igfs.delete(path("/"), false);
+        igfs.delete(path("/"), true);
+
         assertEquals(Collections.<IgfsPath>emptyList(), igfs.listPaths(path("/")));
 
         for (Cache.Entry<Object, Object> e : metaCache)
@@ -590,7 +599,7 @@ public class IgfsProcessorSelfTest extends IgfsCommonAbstractTest {
         assertEquals(text, read("/b"));
 
         // Cleanup.
-        igfs.delete(root, true);
+        igfs.format();
 
         assertEquals(Collections.<IgfsPath>emptyList(), igfs.listPaths(root));
     }
@@ -617,17 +626,17 @@ public class IgfsProcessorSelfTest extends IgfsCommonAbstractTest {
     /** @throws Exception If failed. */
     public void testCreateOpenAppend() throws Exception {
         // Error - path points to root directory.
-        assertCreateFails("/", false, "Failed to resolve parent directory");
+        assertCreateFails("/", false, "Failed to create file (path points to an existing directory)");
 
         // Create directories.
         igfs.mkdirs(path("/A/B1/C1"));
 
         // Error - path points to directory.
         for (String path : Arrays.asList("/A", "/A/B1", "/A/B1/C1")) {
-            assertCreateFails(path, false, "Failed to create file (file already exists)");
-            assertCreateFails(path, true, "Failed to create file (path points to a directory)");
-            assertAppendFails(path, false, "Failed to open file (not a file)");
-            assertAppendFails(path, true, "Failed to open file (not a file)");
+            assertCreateFails(path, false, "Failed to create file (path points to an existing directory)");
+            assertCreateFails(path, true, "Failed to create file (path points to an existing directory)");
+            assertAppendFails(path, false, "Failed to open file (path points to an existing directory)");
+            assertAppendFails(path, true, "Failed to open file (path points to an existing directory)");
             assertOpenFails(path, "Failed to open file (not a file)");
         }
 
@@ -644,7 +653,7 @@ public class IgfsProcessorSelfTest extends IgfsCommonAbstractTest {
             assertEquals(text1, create(path, false, text1));
 
             // Error - file already exists.
-            assertCreateFails(path, false, "Failed to create file (file already exists)");
+            assertCreateFails(path, false, "Failed to create file (file already exists and overwrite flag is false)");
 
             // Overwrite existent.
             assertEquals(text2, create(path, true, text2));

@@ -17,21 +17,65 @@
 
 package org.apache.ignite.internal.util.lang;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.compute.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-import org.jsr166.*;
-
-import javax.cache.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
+import java.util.NoSuchElementException;
+import java.util.RandomAccess;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.cache.Cache;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.compute.ComputeJobResult;
+import org.apache.ignite.internal.IgniteFutureTimeoutCheckedException;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.util.F0;
+import org.apache.ignite.internal.util.GridConcurrentHashSet;
+import org.apache.ignite.internal.util.GridEmptyIterator;
+import org.apache.ignite.internal.util.GridLeanMap;
+import org.apache.ignite.internal.util.GridLeanSet;
+import org.apache.ignite.internal.util.GridSerializableCollection;
+import org.apache.ignite.internal.util.GridSerializableIterator;
+import org.apache.ignite.internal.util.GridSerializableList;
+import org.apache.ignite.internal.util.GridSerializableMap;
+import org.apache.ignite.internal.util.GridSerializableSet;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.CA;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.P1;
+import org.apache.ignite.internal.util.typedef.R1;
+import org.apache.ignite.internal.util.typedef.internal.A;
+import org.apache.ignite.internal.util.typedef.internal.SB;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiClosure;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.apache.ignite.lang.IgniteCallable;
+import org.apache.ignite.lang.IgniteClosure;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.lang.IgniteOutClosure;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.lang.IgniteReducer;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jsr166.ConcurrentHashMap8;
+import org.jsr166.ConcurrentLinkedDeque8;
+import org.jsr166.ThreadLocalRandom8;
 
 /**
  * Contains factory and utility methods for {@code closures}, {@code predicates}, and {@code tuples}.
@@ -59,6 +103,9 @@ public class GridFunc {
 
     /** */
     private static final IgniteClosure IDENTITY = new C1() {
+        /** */
+        private static final long serialVersionUID = -6338573080046225172L;
+
         @Override public Object apply(Object o) {
             return o;
         }
@@ -70,6 +117,9 @@ public class GridFunc {
 
     /** */
     private static final IgnitePredicate<Object> ALWAYS_TRUE = new P1<Object>() {
+        /** */
+        private static final long serialVersionUID = 6101914246981105862L;
+
         @Override public boolean apply(Object e) {
             return true;
         }
@@ -1152,6 +1202,9 @@ public class GridFunc {
         A.notNull(nodeId, "nodeId");
 
         return new P1<T>() {
+            /** */
+            private static final long serialVersionUID = -7082730222779476623L;
+
             @Override public boolean apply(ClusterNode e) {
                 return e.id().equals(nodeId);
             }
@@ -1171,9 +1224,10 @@ public class GridFunc {
         if (isEmpty(nodeIds))
             return alwaysFalse();
 
-        assert nodeIds != null;
-
         return new P1<T>() {
+            /** */
+            private static final long serialVersionUID = -5664060422647374863L;
+
             @Override public boolean apply(ClusterNode e) {
                 return nodeIds.contains(e.id());
             }
@@ -1614,6 +1668,7 @@ public class GridFunc {
      * @return Light-weight view on given collection with provided predicate.
      */
     @SuppressWarnings("RedundantTypeArguments")
+    @SafeVarargs
     public static <T1, T2> Collection<T2> viewReadOnly(@Nullable final Collection<? extends T1> c,
         final IgniteClosure<? super T1, T2> trans, @Nullable final IgnitePredicate<? super T1>... p) {
         A.notNull(trans, "trans");
@@ -1660,6 +1715,9 @@ public class GridFunc {
         assert c != null;
 
         return new GridSerializableList<T2>() {
+            /** */
+            private static final long serialVersionUID = 3126625219739967068L;
+
             @Override public T2 get(int idx) {
                 return trans.apply(c.get(idx));
             }
@@ -1721,6 +1779,9 @@ public class GridFunc {
         assert m != null;
 
         return isEmpty(p) || isAlwaysTrue(p) ? m : new GridSerializableMap<K, V>() {
+            /** */
+            private static final long serialVersionUID = 5531745605372387948L;
+
             /** Entry predicate. */
             private IgnitePredicate<Entry<K, V>> ep = new P1<Map.Entry<K, V>>() {
                 @Override public boolean apply(Entry<K, V> e) {
@@ -1805,6 +1866,8 @@ public class GridFunc {
 
         assert m != null;
 
+        final boolean hasPred = p != null && p.length > 0;
+
         return new GridSerializableMap<K, V1>() {
             /** Entry predicate. */
             private IgnitePredicate<Entry<K, V>> ep = new P1<Map.Entry<K, V>>() {
@@ -1850,7 +1913,7 @@ public class GridFunc {
                     }
 
                     @Override public int size() {
-                        return F.size(m.keySet(), p);
+                        return hasPred ? F.size(m.keySet(), p) : m.size();
                     }
 
                     @SuppressWarnings({"unchecked"})
@@ -1864,13 +1927,13 @@ public class GridFunc {
                     }
 
                     @Override public boolean isEmpty() {
-                        return !iterator().hasNext();
+                        return hasPred ? !iterator().hasNext() : m.isEmpty();
                     }
                 };
             }
 
             @Override public boolean isEmpty() {
-                return entrySet().isEmpty();
+                return hasPred ? entrySet().isEmpty() : m.isEmpty();
             }
 
             @SuppressWarnings({"unchecked"})
@@ -3345,6 +3408,7 @@ public class GridFunc {
      * @return First element in given collection for which predicate evaluates to
      *      {@code true} - or {@code null} if such element cannot be found.
      */
+    @SafeVarargs
     @Nullable public static <V> V find(Iterable<? extends V> c, @Nullable V dfltVal,
         @Nullable IgnitePredicate<? super V>... p) {
         A.notNull(c, "c");
@@ -4074,6 +4138,20 @@ public class GridFunc {
     public static boolean contains(int[] arr, int val) {
         for (int i = 0; i < arr.length; i++) {
             if (arr[i] == val)
+                return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param arr Array.
+     * @param val Value to find.
+     * @return {@code True} if array contains given value.
+     */
+    public static boolean contains(Integer[] arr, int val) {
+        for (Integer el : arr) {
+            if (el == val)
                 return true;
         }
 

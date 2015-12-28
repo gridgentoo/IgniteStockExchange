@@ -17,33 +17,51 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.affinity.*;
-import org.apache.ignite.cache.query.*;
-import org.apache.ignite.cache.query.annotations.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.query.*;
-import org.apache.ignite.internal.processors.datastructures.*;
-import org.apache.ignite.internal.processors.query.*;
-import org.apache.ignite.internal.processors.query.h2.sql.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.spi.discovery.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.*;
-import org.apache.ignite.testframework.junits.common.*;
-import org.jetbrains.annotations.*;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import javax.cache.CacheException;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.CacheRebalanceMode;
+import org.apache.ignite.cache.CacheWriteSynchronizationMode;
+import org.apache.ignite.cache.affinity.AffinityKey;
+import org.apache.ignite.cache.query.QueryCursor;
+import org.apache.ignite.cache.query.SqlFieldsQuery;
+import org.apache.ignite.cache.query.annotations.QuerySqlField;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.binary.BinaryMarshaller;
+import org.apache.ignite.internal.processors.cache.query.GridCacheSqlIndexMetadata;
+import org.apache.ignite.internal.processors.cache.query.GridCacheSqlMetadata;
+import org.apache.ignite.internal.processors.datastructures.GridCacheAtomicLongValue;
+import org.apache.ignite.internal.processors.datastructures.GridCacheInternalKeyImpl;
+import org.apache.ignite.internal.processors.query.GridQueryFieldMetadata;
+import org.apache.ignite.internal.processors.query.h2.sql.GridSqlQuerySplitter;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.X;
+import org.apache.ignite.spi.discovery.DiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
+import org.jetbrains.annotations.Nullable;
 
-import javax.cache.*;
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
-
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMode.*;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMode.LOCAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheMode.REPLICATED;
 
 /**
  * Tests for fields queries.
@@ -66,6 +84,9 @@ public abstract class IgniteCacheAbstractFieldsQuerySelfTest extends GridCommonA
 
     /** Flag indicating if starting node should have cache. */
     protected boolean hasCache;
+
+    /** Whether BinaryMarshaller is set. */
+    protected boolean binaryMarshaller;
 
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
@@ -126,7 +147,8 @@ public abstract class IgniteCacheAbstractFieldsQuerySelfTest extends GridCommonA
             }
         }
 
-        cache.setIndexedTypes(indexedTypes.toArray(new Class[indexedTypes.size()]));
+        if (!indexedTypes.isEmpty())
+            cache.setIndexedTypes(indexedTypes.toArray(new Class[indexedTypes.size()]));
 
         if (cacheMode() == PARTITIONED)
             cache.setBackups(1);
@@ -188,6 +210,11 @@ public abstract class IgniteCacheAbstractFieldsQuerySelfTest extends GridCommonA
     }
 
     /** {@inheritDoc} */
+    @Override protected void beforeTest() throws Exception {
+        binaryMarshaller = grid(0).configuration().getMarshaller() instanceof BinaryMarshaller;
+    }
+
+    /** {@inheritDoc} */
     @Override protected void afterTestsStopped() throws Exception {
         stopAllGrids();
     }
@@ -231,31 +258,56 @@ public abstract class IgniteCacheAbstractFieldsQuerySelfTest extends GridCommonA
                     assert types.contains("String");
                     assert types.contains("Integer");
 
-                    assert AffinityKey.class.getName().equals(meta.keyClass("Person"));
+                    if (binaryMarshaller) {
+                        assert Object.class.getName().equals(meta.keyClass("Person"));
+                        assert Object.class.getName().equals(meta.valueClass("Person"));
+                        assert Object.class.getName().equals(meta.valueClass("Organization"));
+                    }
+                    else {
+                        assert AffinityKey.class.getName().equals(meta.keyClass("Person"));
+                        assert Person.class.getName().equals(meta.valueClass("Person"));
+                        assert Organization.class.getName().equals(meta.valueClass("Organization"));
+                    }
+
                     assert String.class.getName().equals(meta.keyClass("Organization"));
                     assert String.class.getName().equals(meta.keyClass("String"));
-
-                    assert Person.class.getName().equals(meta.valueClass("Person"));
-                    assert Organization.class.getName().equals(meta.valueClass("Organization"));
                     assert String.class.getName().equals(meta.valueClass("String"));
 
                     Map<String, String> fields = meta.fields("Person");
 
                     assert fields != null;
                     assert fields.size() == 5;
-                    assert AffinityKey.class.getName().equals(fields.get("_KEY"));
-                    assert Person.class.getName().equals(fields.get("_VAL"));
+
+                    if (binaryMarshaller) {
+                        assert Object.class.getName().equals(fields.get("_KEY"));
+                        assert Object.class.getName().equals(fields.get("_VAL"));
+                        assert Integer.class.getName().equals(fields.get("AGE"));
+                        assert Integer.class.getName().equals(fields.get("ORGID"));
+                    }
+                    else {
+                        assert AffinityKey.class.getName().equals(fields.get("_KEY"));
+                        assert Person.class.getName().equals(fields.get("_VAL"));
+                        assert int.class.getName().equals(fields.get("AGE"));
+                        assert int.class.getName().equals(fields.get("ORGID"));
+                    }
+
                     assert String.class.getName().equals(fields.get("NAME"));
-                    assert int.class.getName().equals(fields.get("AGE"));
-                    assert int.class.getName().equals(fields.get("ORGID"));
 
                     fields = meta.fields("Organization");
 
                     assert fields != null;
-                    assert fields.size() == 4;
+                    assertEquals("Fields: " + fields, 5, fields.size());
+
+                    if (binaryMarshaller) {
+                        assert Object.class.getName().equals(fields.get("_VAL"));
+                        assert Integer.class.getName().equals(fields.get("ID"));
+                    }
+                    else {
+                        assert Organization.class.getName().equals(fields.get("_VAL"));
+                        assert int.class.getName().equals(fields.get("ID"));
+                    }
+
                     assert String.class.getName().equals(fields.get("_KEY"));
-                    assert Organization.class.getName().equals(fields.get("_VAL"));
-                    assert int.class.getName().equals(fields.get("ID"));
                     assert String.class.getName().equals(fields.get("NAME"));
 
                     fields = meta.fields("String");
@@ -316,7 +368,7 @@ public abstract class IgniteCacheAbstractFieldsQuerySelfTest extends GridCommonA
         if (cacheMode() == PARTITIONED) {
             assertEquals(2, res.size());
 
-            assertTrue(((String)res.get(1).get(0)).contains(GridSqlQuerySplitter.TABLE_FUNC_NAME));
+            assertTrue(((String)res.get(1).get(0)).contains(GridSqlQuerySplitter.table(0).getSQL()));
         }
         else
             assertEquals(1, res.size());
@@ -527,7 +579,7 @@ public abstract class IgniteCacheAbstractFieldsQuerySelfTest extends GridCommonA
         int cnt = 0;
 
         for (List<?> row : res) {
-            assert row.size() == 9;
+            assertEquals(10, row.size());
 
             if (cnt == 0) {
                 assert new AffinityKey<>("p1", "o1").equals(row.get(0));
@@ -791,6 +843,23 @@ public abstract class IgniteCacheAbstractFieldsQuerySelfTest extends GridCommonA
     }
 
     /**
+     * @throws Exception If failed.
+     */
+    public void testMethodAnnotationWithoutGet() throws Exception {
+        if (!binaryMarshaller) {
+            QueryCursor<List<?>> qry = grid(0).cache(null)
+                .query(new SqlFieldsQuery("select methodField from Organization where methodField='name-A'")
+                    .setPageSize(10));
+
+            List<List<?>> flds = qry.getAll();
+
+            assertEquals(1, flds.size());
+
+            assertEquals("name-A", flds.get(0).get(0));
+        }
+    }
+
+    /**
      * @param cacheName Cache name.
      * @throws Exception If failed.
      */
@@ -975,6 +1044,14 @@ public abstract class IgniteCacheAbstractFieldsQuerySelfTest extends GridCommonA
 
             this.id = id;
             this.name = name;
+        }
+
+        /**
+         * @return Generated method value.
+         */
+        @QuerySqlField
+        public String methodField() {
+            return "name-" + name;
         }
 
         /** {@inheritDoc} */

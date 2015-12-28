@@ -17,25 +17,46 @@
 
 package org.apache.ignite.internal.processors.query.h2.opt;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.offheap.unsafe.*;
-import org.h2.api.*;
-import org.h2.command.ddl.*;
-import org.h2.engine.*;
-import org.h2.index.*;
-import org.h2.message.*;
-import org.h2.result.*;
-import org.h2.schema.*;
-import org.h2.table.*;
-import org.h2.value.*;
-import org.jetbrains.annotations.*;
-import org.jsr166.*;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.internal.processors.cache.CacheObject;
+import org.apache.ignite.internal.util.offheap.unsafe.GridUnsafeMemory;
+import org.h2.api.TableEngine;
+import org.h2.command.ddl.CreateTableData;
+import org.h2.engine.Constants;
+import org.h2.engine.Database;
+import org.h2.engine.DbObject;
+import org.h2.engine.Session;
+import org.h2.index.Cursor;
+import org.h2.index.Index;
+import org.h2.index.IndexType;
+import org.h2.message.DbException;
+import org.h2.result.Row;
+import org.h2.result.SearchRow;
+import org.h2.result.SortOrder;
+import org.h2.schema.Schema;
+import org.h2.table.Column;
+import org.h2.table.IndexColumn;
+import org.h2.table.Table;
+import org.h2.table.TableBase;
+import org.h2.table.TableFilter;
+import org.h2.value.Value;
+import org.jetbrains.annotations.Nullable;
+import org.jsr166.ConcurrentHashMap8;
+import org.jsr166.LongAdder8;
 
-import java.sql.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.locks.*;
+import static org.apache.ignite.internal.processors.query.h2.opt.GridH2AbstractKeyValueRow.VAL_COL;
 
 /**
  * H2 Table implementation.
@@ -59,6 +80,12 @@ public class GridH2Table extends TableBase {
     /** */
     private volatile Object[] actualSnapshot;
 
+    /** */
+    private final LongAdder8 size = new LongAdder8();
+
+    /** */
+    private final boolean snapshotEnabled;
+
     /**
      * Creates table.
      *
@@ -81,10 +108,12 @@ public class GridH2Table extends TableBase {
         assert idxs != null;
         assert idxs.size() >= 1;
 
-        lock =  new ReentrantReadWriteLock();
+        lock = new ReentrantReadWriteLock();
 
         // Add scan index at 0 which is required by H2.
         idxs.add(0, new ScanIndex(index(0)));
+
+        snapshotEnabled = desc == null || desc.snapshotableIndex();
     }
 
     /** {@inheritDoc} */
@@ -144,7 +173,7 @@ public class GridH2Table extends TableBase {
 
         GridUnsafeMemory mem = desc.memory();
 
-        lock.readLock().lock();
+        readLock();
 
         if (mem != null)
             desc.guard().begin();
@@ -163,7 +192,7 @@ public class GridH2Table extends TableBase {
             return true;
         }
         finally {
-            lock.readLock().unlock();
+            readUnlock();
 
             if (mem != null)
                 desc.guard().end();
@@ -188,6 +217,9 @@ public class GridH2Table extends TableBase {
                 ses.addLock(this);
             }
         }
+
+        if (!snapshotEnabled)
+            return;
 
         Object[] snapshot;
 
@@ -277,16 +309,14 @@ public class GridH2Table extends TableBase {
      * Closes table and releases resources.
      */
     public void close() {
-        Lock l = lock.writeLock();
-
-        l.lock();
+        writeLock();
 
         try {
             for (int i = 1, len = idxs.size(); i < len; i++)
                 index(i).close(null);
         }
         finally {
-            l.unlock();
+            writeUnlock();
         }
     }
 
@@ -343,7 +373,7 @@ public class GridH2Table extends TableBase {
         // getting updated from different threads with different rows with the same key is impossible.
         GridUnsafeMemory mem = desc == null ? null : desc.memory();
 
-        lock.readLock().lock();
+        readLock();
 
         if (mem != null)
             desc.guard().begin();
@@ -353,6 +383,14 @@ public class GridH2Table extends TableBase {
 
             if (!del) {
                 GridH2Row old = pk.put(row); // Put to PK.
+
+                if (old instanceof GridH2AbstractKeyValueRow) { // Unswap value on replace.
+                    GridH2AbstractKeyValueRow kvOld = (GridH2AbstractKeyValueRow)old;
+
+                    kvOld.onUnswap(kvOld.getValue(VAL_COL), true);
+                }
+                else if (old == null)
+                    size.increment();
 
                 int len = idxs.size();
 
@@ -381,13 +419,15 @@ public class GridH2Table extends TableBase {
                 GridH2Row old = pk.remove(row);
 
                 if (old instanceof GridH2AbstractKeyValueRow) { // Unswap value.
-                    Value v = row.getValue(GridH2AbstractKeyValueRow.VAL_COL);
+                    Value v = row.getValue(VAL_COL);
 
                     if (v != null)
                         ((GridH2AbstractKeyValueRow)old).onUnswap(v.getObject(), true);
                 }
 
                 if (old != null) {
+                    size.decrement();
+
                     // Remove row from all indexes.
                     // Start from 2 because 0 - Scan (don't need to update), 1 - PK (already updated).
                     for (int i = 2, len = idxs.size(); i < len; i++) {
@@ -406,7 +446,7 @@ public class GridH2Table extends TableBase {
             return true;
         }
         finally {
-            lock.readLock().unlock();
+            readUnlock();
 
             if (mem != null)
                 desc.guard().end();
@@ -443,6 +483,9 @@ public class GridH2Table extends TableBase {
      * Rebuilds all indexes of this table.
      */
     public void rebuildIndexes() {
+        if (!snapshotEnabled)
+            return;
+
         GridUnsafeMemory memory = desc == null ? null : desc.memory();
 
         lock.writeLock().lock();
@@ -553,7 +596,7 @@ public class GridH2Table extends TableBase {
 
     /** {@inheritDoc} */
     @Override public long getRowCountApproximation() {
-        return getUniqueIndex().getRowCountApproximation();
+        return size.longValue();
     }
 
     /** {@inheritDoc} */
@@ -576,6 +619,38 @@ public class GridH2Table extends TableBase {
         res.sortType = sorting;
 
         return res;
+    }
+
+    /**
+     *
+     */
+    private void readLock() {
+        if (snapshotEnabled)
+            lock.readLock().lock();
+    }
+
+    /**
+     *
+     */
+    private void readUnlock() {
+        if (snapshotEnabled)
+            lock.readLock().unlock();
+    }
+
+    /**
+     *
+     */
+    private void writeLock() {
+        if (snapshotEnabled)
+            lock.writeLock().lock();
+    }
+
+    /**
+     *
+     */
+    private void writeUnlock() {
+        if (snapshotEnabled)
+            lock.writeLock().unlock();
     }
 
     /**

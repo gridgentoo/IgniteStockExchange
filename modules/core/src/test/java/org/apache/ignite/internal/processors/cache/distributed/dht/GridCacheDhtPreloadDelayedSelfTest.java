@@ -17,31 +17,43 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.affinity.*;
-import org.apache.ignite.cache.affinity.rendezvous.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.events.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.*;
-import org.apache.ignite.internal.processors.cache.distributed.near.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.*;
-import org.apache.ignite.testframework.junits.common.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CachePeekMode;
+import org.apache.ignite.cache.CacheRebalanceMode;
+import org.apache.ignite.cache.CacheWriteSynchronizationMode;
+import org.apache.ignite.cache.affinity.Affinity;
+import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.events.Event;
+import org.apache.ignite.events.EventType;
+import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPartitionFullMap;
+import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPartitionMap2;
+import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPreloader;
+import org.apache.ignite.internal.processors.cache.distributed.near.GridNearCacheAdapter;
+import org.apache.ignite.internal.util.typedef.CAX;
+import org.apache.ignite.internal.util.typedef.G;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
-import java.util.*;
-import java.util.concurrent.*;
-
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMode.*;
-import static org.apache.ignite.cache.CacheRebalanceMode.*;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheRebalanceMode.ASYNC;
+import static org.apache.ignite.cache.CacheRebalanceMode.SYNC;
 
 /**
  * Test cases for partitioned cache {@link GridDhtPreloader preloader}.
@@ -94,7 +106,9 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
         stopAllGrids();
     }
 
-    /** @throws Exception If failed. */
+    /**
+     * @throws Exception If failed.
+     */
     public void testManualPreload() throws Exception {
         delay = -1;
 
@@ -171,7 +185,9 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
         checkCache(c2, cnt);
     }
 
-    /** @throws Exception If failed. */
+    /**
+     * @throws Exception If failed.
+     */
     public void testDelayedPreload() throws Exception {
         delay = PRELOAD_DELAY;
 
@@ -225,9 +241,9 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
 
         checkMaps(false, d0, d1, d2);
 
-        assert l1.await(PRELOAD_DELAY * 3 / 2, TimeUnit.MILLISECONDS);
+        assert l1.await(PRELOAD_DELAY * 3 / 2, MILLISECONDS);
 
-        assert l2.await(PRELOAD_DELAY * 3 / 2, TimeUnit.MILLISECONDS);
+        assert l2.await(PRELOAD_DELAY * 3 / 2, MILLISECONDS);
 
         U.sleep(1000);
 
@@ -240,7 +256,9 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
         checkCache(c2, cnt);
     }
 
-    /** @throws Exception If failed. */
+    /**
+     * @throws Exception If failed.
+     */
     public void testAutomaticPreload() throws Exception {
         delay = 0;
         preloadMode = CacheRebalanceMode.SYNC;
@@ -271,7 +289,9 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
         checkCache(c2, cnt);
     }
 
-    /** @throws Exception If failed. */
+    /**
+     * @throws Exception If failed.
+     */
     public void testAutomaticPreloadWithEmptyCache() throws Exception {
         preloadMode = SYNC;
 
@@ -292,10 +312,10 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
 
                     GridDhtPartitionFullMap fullMap = top.partitionMap(true);
 
-                    for (Map.Entry<UUID, GridDhtPartitionMap> fe : fullMap.entrySet()) {
+                    for (Map.Entry<UUID, GridDhtPartitionMap2> fe : fullMap.entrySet()) {
                         UUID nodeId = fe.getKey();
 
-                        GridDhtPartitionMap m = fe.getValue();
+                        GridDhtPartitionMap2 m = fe.getValue();
 
                         for (Map.Entry<Integer, GridDhtPartitionState> e : m.entrySet()) {
                             int p = e.getKey();
@@ -318,7 +338,9 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
         }
     }
 
-    /** @throws Exception If failed. */
+    /**
+     * @throws Exception If failed.
+     */
     public void testManualPreloadSyncMode() throws Exception {
         preloadMode = CacheRebalanceMode.SYNC;
         delay = -1;
@@ -331,7 +353,9 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
         }
     }
 
-    /** @throws Exception If failed. */
+    /**
+     * @throws Exception If failed.
+     */
     public void testPreloadManyNodes() throws Exception {
         delay = 0;
         preloadMode = ASYNC;
@@ -406,9 +430,11 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
      *
      * @param strict Strict check flag.
      * @param caches Maps to compare.
+     * @throws Exception If failed.
      */
-    private void checkMaps(final boolean strict, final GridDhtCacheAdapter<String, Integer>... caches)
-        throws IgniteInterruptedCheckedException {
+    @SafeVarargs
+    private final void checkMaps(final boolean strict, final GridDhtCacheAdapter<String, Integer>... caches)
+        throws Exception {
         if (caches.length < 2)
             return;
 
@@ -426,12 +452,12 @@ public class GridCacheDhtPreloadDelayedSelfTest extends GridCommonAbstractTest {
 
                     assert orig.keySet().equals(cmp.keySet());
 
-                    for (Map.Entry<UUID, GridDhtPartitionMap> entry : orig.entrySet()) {
+                    for (Map.Entry<UUID, GridDhtPartitionMap2> entry : orig.entrySet()) {
                         UUID nodeId = entry.getKey();
 
-                        GridDhtPartitionMap nodeMap = entry.getValue();
+                        GridDhtPartitionMap2 nodeMap = entry.getValue();
 
-                        GridDhtPartitionMap cmpMap = cmp.get(nodeId);
+                        GridDhtPartitionMap2 cmpMap = cmp.get(nodeId);
 
                         assert cmpMap != null;
 

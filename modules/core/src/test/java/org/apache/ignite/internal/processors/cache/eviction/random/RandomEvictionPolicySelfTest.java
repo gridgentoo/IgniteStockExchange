@@ -17,13 +17,13 @@
 
 package org.apache.ignite.internal.processors.cache.eviction.random;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.eviction.random.*;
-import org.apache.ignite.internal.processors.cache.eviction.*;
-import org.jetbrains.annotations.*;
-
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Random;
+import java.util.concurrent.Callable;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.eviction.random.RandomEvictionPolicy;
+import org.apache.ignite.internal.processors.cache.eviction.EvictionAbstractTest;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Random eviction policy test.
@@ -92,7 +92,11 @@ public class RandomEvictionPolicySelfTest extends
                     info("Stats [cntr=" + i + ", total=" + runs + ']');
             }
 
-            assert g.cache(null).size() <= max;
+            int size = g.cache(null).size();
+
+            info("Cache size: " + size);
+
+            assert size <= (max * 1.2) : size; // Add 20% room for random evictions.
 
             info(policy(0));
         }
@@ -193,7 +197,9 @@ public class RandomEvictionPolicySelfTest extends
                 }
             }, 10);
 
-            assert g.cache(null).size() <= max;
+            int size = g.cache(null).size();
+
+            assertTrue("Unexpected cache size [size=" + size + ", max=" + max + ']', size <= max);
 
             info(policy(0));
         }

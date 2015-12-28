@@ -17,21 +17,26 @@
 
 package org.apache.ignite.internal.processors.cache.eviction.lru;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.eviction.lru.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.junits.common.*;
+import java.util.Random;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteDataStreamer;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMemoryMode;
+import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.configuration.NearCacheConfiguration;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
-import java.util.*;
-
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMode.*;
-import static org.apache.ignite.cache.CacheRebalanceMode.*;
-import static org.apache.ignite.cache.CacheWriteSynchronizationMode.*;
+import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMemoryMode.ONHEAP_TIERED;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheRebalanceMode.SYNC;
+import static org.apache.ignite.cache.CacheWriteSynchronizationMode.PRIMARY_SYNC;
 
 /**
  * LRU near eviction tests (GG-8884).
@@ -49,14 +54,18 @@ public class LruNearEvictionPolicySelfTest extends GridCommonAbstractTest {
     /** Cache atomicity mode specified by test. */
     private CacheAtomicityMode atomicityMode;
 
+    /** Memory mode. */
+    private CacheMemoryMode memMode;
+
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration c = super.getConfiguration(gridName);
 
         CacheConfiguration cc = new CacheConfiguration();
 
-        cc.setAtomicityMode(atomicityMode);
         cc.setCacheMode(PARTITIONED);
+        cc.setAtomicityMode(atomicityMode);
+        cc.setMemoryMode(memMode);
         cc.setWriteSynchronizationMode(PRIMARY_SYNC);
         cc.setRebalanceMode(SYNC);
         cc.setStartSize(100);
@@ -86,6 +95,17 @@ public class LruNearEvictionPolicySelfTest extends GridCommonAbstractTest {
      */
     public void testAtomicNearEvictionMaxSize() throws Exception {
         atomicityMode = ATOMIC;
+        memMode = ONHEAP_TIERED;
+
+        checkNearEvictionMaxSize();
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testAtomicOffHeapNearEvictionMaxSize() throws Exception {
+        atomicityMode = ATOMIC;
+        memMode = CacheMemoryMode.OFFHEAP_TIERED;
 
         checkNearEvictionMaxSize();
     }
@@ -95,6 +115,17 @@ public class LruNearEvictionPolicySelfTest extends GridCommonAbstractTest {
      */
     public void testTransactionalNearEvictionMaxSize() throws Exception {
         atomicityMode = TRANSACTIONAL;
+        memMode = ONHEAP_TIERED;
+
+        checkNearEvictionMaxSize();
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTransactionalOffHeapNearEvictionMaxSize() throws Exception {
+        atomicityMode = TRANSACTIONAL;
+        memMode = CacheMemoryMode.OFFHEAP_TIERED;
 
         checkNearEvictionMaxSize();
     }

@@ -17,31 +17,51 @@
 
 package org.apache.ignite.internal.processors.cache.distributed;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.compute.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.cluster.*;
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.cache.distributed.dht.*;
-import org.apache.ignite.internal.processors.cache.distributed.near.*;
-import org.apache.ignite.internal.processors.cache.transactions.*;
-import org.apache.ignite.internal.processors.cache.version.*;
-import org.apache.ignite.internal.processors.datastreamer.*;
-import org.apache.ignite.internal.processors.task.*;
-import org.apache.ignite.internal.util.future.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.transactions.*;
-import org.jetbrains.annotations.*;
+import java.io.Externalizable;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.cluster.ClusterTopologyException;
+import org.apache.ignite.compute.ComputeJob;
+import org.apache.ignite.compute.ComputeJobResult;
+import org.apache.ignite.compute.ComputeJobResultPolicy;
+import org.apache.ignite.compute.ComputeTaskAdapter;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.cluster.ClusterGroupEmptyCheckedException;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.CacheOperationContext;
+import org.apache.ignite.internal.processors.cache.GridCacheAdapter;
+import org.apache.ignite.internal.processors.cache.GridCacheConcurrentMap;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
+import org.apache.ignite.internal.processors.cache.GridCacheSwapEntry;
+import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
+import org.apache.ignite.internal.processors.cache.KeyCacheObject;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheAdapter;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheEntry;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtLocalPartition;
+import org.apache.ignite.internal.processors.cache.distributed.near.GridNearCacheAdapter;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteTxLocalEx;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.processors.datastreamer.DataStreamerCacheUpdaters;
+import org.apache.ignite.internal.processors.datastreamer.DataStreamerImpl;
+import org.apache.ignite.internal.processors.task.GridInternal;
+import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.lang.GridCloseableIterator;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.transactions.TransactionIsolation;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.io.*;
-import java.util.*;
-
-import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.*;
-import static org.apache.ignite.internal.processors.task.GridTaskThreadContextKey.*;
+import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.OWNING;
+import static org.apache.ignite.internal.processors.task.GridTaskThreadContextKey.TC_SUBGRID;
 
 /**
  * Distributed cache implementation.
@@ -149,6 +169,8 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
 
             boolean skipStore = opCtx != null && opCtx.skipStore();
 
+            boolean keepBinary = opCtx != null && opCtx.isKeepBinary();
+
             do {
                 retry = false;
 
@@ -161,7 +183,7 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
                     ctx.kernalContext().task().setThreadContext(TC_SUBGRID, nodes);
 
                     retry = !ctx.kernalContext().task().execute(
-                        new RemoveAllTask(ctx.name(), topVer, skipStore), null).get();
+                        new RemoveAllTask(ctx.name(), topVer, skipStore, keepBinary), null).get();
                 }
             }
             while (ctx.affinity().affinityTopologyVersion().compareTo(topVer) != 0 || retry);
@@ -180,9 +202,7 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
 
         CacheOperationContext opCtx = ctx.operationContextPerCall();
 
-        boolean skipStore = opCtx != null && opCtx.skipStore();
-
-        removeAllAsync(opFut, topVer, skipStore);
+        removeAllAsync(opFut, topVer, opCtx != null && opCtx.skipStore(), opCtx != null && opCtx.isKeepBinary());
 
         return opFut;
     }
@@ -192,15 +212,19 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
      * @param topVer Topology version.
      * @param skipStore Skip store flag.
      */
-    private void removeAllAsync(final GridFutureAdapter<Void> opFut, final AffinityTopologyVersion topVer,
-        final boolean skipStore) {
+    private void removeAllAsync(
+        final GridFutureAdapter<Void> opFut,
+        final AffinityTopologyVersion topVer,
+        final boolean skipStore,
+        final boolean keepBinary
+    ) {
         Collection<ClusterNode> nodes = ctx.grid().cluster().forDataNodes(name()).nodes();
 
         if (!nodes.isEmpty()) {
             ctx.kernalContext().task().setThreadContext(TC_SUBGRID, nodes);
 
             IgniteInternalFuture<Boolean> rmvAll = ctx.kernalContext().task().execute(
-                new RemoveAllTask(ctx.name(), topVer, skipStore), null);
+                new RemoveAllTask(ctx.name(), topVer, skipStore, keepBinary), null);
 
             rmvAll.listen(new IgniteInClosure<IgniteInternalFuture<Boolean>>() {
                 @Override public void apply(IgniteInternalFuture<Boolean> fut) {
@@ -212,7 +236,7 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
                         if (topVer0.equals(topVer) && !retry)
                             opFut.onDone();
                         else
-                            removeAllAsync(opFut, topVer0, skipStore);
+                            removeAllAsync(opFut, topVer0, skipStore, keepBinary);
                     }
                     catch (ClusterGroupEmptyCheckedException ignore) {
                         if (log.isDebugEnabled())
@@ -257,15 +281,19 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
         /** Skip store flag. */
         private final boolean skipStore;
 
+        /** Keep binary flag. */
+        private final boolean keepBinary;
+
         /**
          * @param cacheName Cache name.
          * @param topVer Affinity topology version.
          * @param skipStore Skip store flag.
          */
-        public RemoveAllTask(String cacheName, AffinityTopologyVersion topVer, boolean skipStore) {
+        public RemoveAllTask(String cacheName, AffinityTopologyVersion topVer, boolean skipStore, boolean keepBinary) {
             this.cacheName = cacheName;
             this.topVer = topVer;
             this.skipStore = skipStore;
+            this.keepBinary = keepBinary;
         }
 
         /** {@inheritDoc} */
@@ -274,7 +302,7 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
             Map<ComputeJob, ClusterNode> jobs = new HashMap();
 
             for (ClusterNode node : subgrid)
-                jobs.put(new GlobalRemoveAllJob(cacheName, topVer, skipStore), node);
+                jobs.put(new GlobalRemoveAllJob(cacheName, topVer, skipStore, keepBinary), node);
 
             return jobs;
         }
@@ -315,15 +343,24 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
         /** Skip store flag. */
         private final boolean skipStore;
 
+        /** Keep binary flag. */
+        private final boolean keepBinary;
+
         /**
          * @param cacheName Cache name.
          * @param topVer Topology version.
          * @param skipStore Skip store flag.
          */
-        private GlobalRemoveAllJob(String cacheName, @NotNull AffinityTopologyVersion topVer, boolean skipStore) {
+        private GlobalRemoveAllJob(
+            String cacheName,
+            @NotNull AffinityTopologyVersion topVer,
+            boolean skipStore,
+            boolean keepBinary
+        ) {
             super(cacheName, topVer);
 
             this.skipStore = skipStore;
+            this.keepBinary = keepBinary;
         }
 
         /** {@inheritDoc} */
@@ -356,6 +393,7 @@ public abstract class GridDistributedCacheAdapter<K, V> extends GridCacheAdapter
                     ((DataStreamerImpl) dataLdr).maxRemapCount(0);
 
                     dataLdr.skipStore(skipStore);
+                    dataLdr.keepBinary(keepBinary);
 
                     dataLdr.receiver(DataStreamerCacheUpdaters.<KeyCacheObject, Object>batched());
 

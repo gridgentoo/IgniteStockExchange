@@ -17,17 +17,28 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-import org.jetbrains.annotations.*;
-
-import javax.cache.processor.*;
-import java.io.*;
-import java.nio.*;
-import java.util.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import javax.cache.processor.EntryProcessorResult;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.GridDirectCollection;
+import org.apache.ignite.internal.GridDirectTransient;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.plugin.extensions.communication.Message;
+import org.apache.ignite.plugin.extensions.communication.MessageCollectionItemType;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Return value for cases where both, value and success flag need to be returned.
@@ -90,13 +101,13 @@ public class GridCacheReturn implements Externalizable, Message {
      * @param v Value.
      * @param success Success flag.
      */
-    public GridCacheReturn(GridCacheContext cctx, boolean loc, Object v, boolean success) {
+    public GridCacheReturn(GridCacheContext cctx, boolean loc, boolean keepBinary, Object v, boolean success) {
         this.loc = loc;
         this.success = success;
 
         if (v != null) {
             if (v instanceof CacheObject)
-                initValue(cctx, (CacheObject)v);
+                initValue(cctx, (CacheObject)v, keepBinary);
             else {
                 assert loc;
 
@@ -141,8 +152,8 @@ public class GridCacheReturn implements Externalizable, Message {
      * @param v Value.
      * @return This instance for chaining.
      */
-    public GridCacheReturn value(GridCacheContext cctx, CacheObject v) {
-        initValue(cctx, v);
+    public GridCacheReturn value(GridCacheContext cctx, CacheObject v, boolean keepBinary) {
+        initValue(cctx, v, keepBinary);
 
         return this;
     }
@@ -160,10 +171,15 @@ public class GridCacheReturn implements Externalizable, Message {
      * @param success Success flag to set.
      * @return This instance for chaining.
      */
-    public GridCacheReturn set(GridCacheContext cctx, @Nullable CacheObject cacheObj, boolean success) {
+    public GridCacheReturn set(
+        GridCacheContext cctx,
+        @Nullable CacheObject cacheObj,
+        boolean success,
+        boolean keepBinary
+    ) {
         this.success = success;
 
-        initValue(cctx, cacheObj);
+        initValue(cctx, cacheObj, keepBinary);
 
         return this;
     }
@@ -172,9 +188,9 @@ public class GridCacheReturn implements Externalizable, Message {
      * @param cctx Cache context.
      * @param cacheObj Cache object.
      */
-    private void initValue(GridCacheContext cctx, @Nullable CacheObject cacheObj) {
+    private void initValue(GridCacheContext cctx, @Nullable CacheObject cacheObj, boolean keepBinary) {
         if (loc)
-            v = CU.value(cacheObj, cctx, true);
+            v = cctx.cacheObjectContext().unwrapBinaryIfNeeded(cacheObj, keepBinary, true);
         else {
             assert cacheId == 0 || cacheId == cctx.cacheId();
 
@@ -302,7 +318,7 @@ public class GridCacheReturn implements Externalizable, Message {
         if (cacheObj != null) {
             cacheObj.finishUnmarshal(ctx.cacheObjectContext(), ldr);
 
-            v = cacheObj.value(ctx.cacheObjectContext(), false);
+            v = ctx.cacheObjectContext().unwrapBinaryIfNeeded(cacheObj, true, false);
         }
 
         if (invokeRes && invokeResCol != null) {
@@ -313,10 +329,10 @@ public class GridCacheReturn implements Externalizable, Message {
 
             for (CacheInvokeDirectResult res : invokeResCol) {
                 CacheInvokeResult<?> res0 = res.error() == null ?
-                    CacheInvokeResult.fromResult(CU.value(res.result(), ctx, false)) :
+                    CacheInvokeResult.fromResult(ctx.cacheObjectContext().unwrapBinaryIfNeeded(res.result(), true, false)) :
                     CacheInvokeResult.fromError(res.error());
 
-                map0.put(res.key().value(ctx.cacheObjectContext(), false), res0);
+                map0.put(ctx.cacheObjectContext().unwrapBinaryIfNeeded(res.key(), true, false), res0);
             }
 
             v = map0;
@@ -425,7 +441,7 @@ public class GridCacheReturn implements Externalizable, Message {
 
         }
 
-        return true;
+        return reader.afterMessageRead(GridCacheReturn.class);
     }
 
     /** {@inheritDoc} */

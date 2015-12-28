@@ -17,23 +17,42 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.affinity.*;
-import org.apache.ignite.cache.eviction.fifo.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.spi.*;
-import org.apache.ignite.spi.swapspace.*;
-import org.apache.ignite.spi.swapspace.file.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import javax.cache.Cache;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheMemoryMode;
+import org.apache.ignite.cache.CachePeekMode;
+import org.apache.ignite.cache.affinity.Affinity;
+import org.apache.ignite.cache.eviction.fifo.FifoEvictionPolicy;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.configuration.NearCacheConfiguration;
+import org.apache.ignite.internal.IgniteEx;
+import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.util.typedef.T2;
+import org.apache.ignite.spi.IgniteSpiCloseableIterator;
+import org.apache.ignite.spi.swapspace.SwapSpaceSpi;
+import org.apache.ignite.spi.swapspace.file.FileSwapSpaceSpi;
 
-import javax.cache.*;
-import java.util.*;
-
-import static org.apache.ignite.cache.CacheMode.*;
-import static org.apache.ignite.cache.CachePeekMode.*;
+import static org.apache.ignite.cache.CacheMode.LOCAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheMode.REPLICATED;
+import static org.apache.ignite.cache.CachePeekMode.ALL;
+import static org.apache.ignite.cache.CachePeekMode.BACKUP;
+import static org.apache.ignite.cache.CachePeekMode.NEAR;
+import static org.apache.ignite.cache.CachePeekMode.OFFHEAP;
+import static org.apache.ignite.cache.CachePeekMode.ONHEAP;
+import static org.apache.ignite.cache.CachePeekMode.PRIMARY;
+import static org.apache.ignite.cache.CachePeekMode.SWAP;
 
 /**
  * Tests for methods using {@link CachePeekMode}:
@@ -243,25 +262,32 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
             for (Integer key : keys)
                 cache0.put(key, val);
 
-            SwapSpaceSpi swap = ignite(nodeIdx).configuration().getSwapSpaceSpi();
+            Ignite ignite = ignite(nodeIdx);
+
+            SwapSpaceSpi swap = ignite.configuration().getSwapSpaceSpi();
+
+            GridCacheAdapter<Integer, String> internalCache =
+                ((IgniteKernal)ignite).context().cache().internalCache();
+
+            CacheObjectContext coctx = internalCache.context().cacheObjectContext();
 
             Set<Integer> swapKeys = new HashSet<>();
 
-            IgniteSpiCloseableIterator<Integer> it = swap.keyIterator(SPACE_NAME, null);
+            IgniteSpiCloseableIterator<KeyCacheObject> it = swap.keyIterator(SPACE_NAME, null);
 
             assertNotNull(it);
 
-            while (it.hasNext())
-                assertTrue(swapKeys.add(it.next()));
+            while (it.hasNext()) {
+                KeyCacheObject next = it.next();
+
+                assertTrue(swapKeys.add((Integer)next.value(coctx, false)));
+            }
 
             assertFalse(swapKeys.isEmpty());
 
             assertTrue(swapKeys.size() + HEAP_ENTRIES < 100);
 
             Set<Integer> offheapKeys = new HashSet<>();
-
-            GridCacheAdapter<Integer, String> internalCache =
-                ((IgniteKernal)ignite(nodeIdx)).context().cache().internalCache();
 
             Iterator<Map.Entry<Integer, String>> offheapIt;
 
@@ -628,7 +654,7 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
     private T2<List<Integer>, List<Integer>> swapKeys(int nodeIdx) {
         SwapSpaceSpi swap = ignite(nodeIdx).configuration().getSwapSpaceSpi();
 
-        IgniteSpiCloseableIterator<Integer> it = swap.keyIterator(SPACE_NAME, null);
+        IgniteSpiCloseableIterator<KeyCacheObject> it = swap.keyIterator(SPACE_NAME, null);
 
         assertNotNull(it);
 
@@ -639,8 +665,11 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
         List<Integer> primary = new ArrayList<>();
         List<Integer> backups = new ArrayList<>();
 
+        CacheObjectContext coctx = ((IgniteEx)ignite(nodeIdx)).context().cache().internalCache()
+            .context().cacheObjectContext();
+
         while (it.hasNext()) {
-            Integer key = it.next();
+            Integer key = it.next().value(coctx, false);
 
             if (aff.isPrimary(node, key))
                 primary.add(key);

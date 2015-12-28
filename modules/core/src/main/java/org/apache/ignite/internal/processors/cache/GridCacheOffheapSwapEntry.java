@@ -17,12 +17,13 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.internal.processors.cache.version.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-import sun.misc.*;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.util.GridUnsafe;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteUuid;
+import org.jetbrains.annotations.Nullable;
+import sun.misc.Unsafe;
 
 /**
  * GridCacheSwapEntry over offheap pointer.
@@ -33,7 +34,7 @@ import sun.misc.*;
  *     <li>Expire time</li>
  *     <li>GridCacheVersion or GridCacheVersionEx</li>
  *     <li>Value is byte array flag</li>
- *     <li>Value byte array (marshalled with portable or grid marshaller)</li>
+ *     <li>Value byte array (marshalled with binary or grid marshaller)</li>
  *     <li>Value classloader UUID</li>
  *     <li>Key classloader UUID</li>
  * </ul>

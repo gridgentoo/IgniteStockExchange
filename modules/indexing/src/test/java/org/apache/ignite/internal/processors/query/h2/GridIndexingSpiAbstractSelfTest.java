@@ -17,24 +17,36 @@
 
 package org.apache.ignite.internal.processors.query.h2;
 
-import org.apache.ignite.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.processors.cache.*;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.internal.processors.cache.CacheObject;
-import org.apache.ignite.internal.processors.query.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-import org.apache.ignite.spi.*;
-import org.apache.ignite.testframework.*;
-import org.apache.ignite.testframework.junits.common.*;
-import org.h2.util.*;
-import org.jetbrains.annotations.*;
-
-import java.nio.*;
-import java.util.*;
-import java.util.concurrent.*;
+import org.apache.ignite.internal.processors.cache.CacheObjectContext;
+import org.apache.ignite.internal.processors.query.GridQueryFieldsResult;
+import org.apache.ignite.internal.processors.query.GridQueryIndexDescriptor;
+import org.apache.ignite.internal.processors.query.GridQueryIndexType;
+import org.apache.ignite.internal.processors.query.GridQueryProperty;
+import org.apache.ignite.internal.processors.query.GridQueryTypeDescriptor;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
+import org.apache.ignite.spi.IgniteSpiException;
+import org.apache.ignite.testframework.GridStringLogger;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
+import org.h2.util.Utils;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Tests for all SQL based indexing SPI implementations.
@@ -417,19 +429,6 @@ public abstract class GridIndexingSpiAbstractSelfTest extends GridCommonAbstract
         }
     }
 
-    public void testResultReuse() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-828");
-
-        final IgniteH2Indexing spi = getIndexing();
-
-        multithreaded(new Callable<Object>() {
-              @Override public Object call() throws Exception {
-                  return spi.queryFields(null, "SELECT sum(x) + sum(x) + sum(x) + sum(x) FROM SYSTEM_RANGE(?, ?)",
-                      F.<Object>asList(0, 7000000), null);
-              }
-          }, 5);
-    }
-
     /**
      * Index descriptor.
      */
@@ -507,6 +506,24 @@ public abstract class GridIndexingSpiAbstractSelfTest extends GridCommonAbstract
         }
 
         /** {@inheritDoc} */
+        @Override public GridQueryProperty property(final String name) {
+            return new GridQueryProperty() {
+                @Override public Object value(Object key, Object val) throws IgniteCheckedException {
+                    return TypeDesc.this.value(name, key, val);
+                }
+
+                @Override public String name() {
+                    return name;
+                }
+
+                @Override
+                public Class<?> type() {
+                    return Object.class;
+                }
+            };
+        }
+
+        /** {@inheritDoc} */
         @SuppressWarnings("unchecked")
         @Override public <T> T value(String field, Object key, Object val) throws IgniteSpiException {
             assert !F.isEmpty(field);
@@ -567,8 +584,13 @@ public abstract class GridIndexingSpiAbstractSelfTest extends GridCommonAbstract
         }
 
         /** {@inheritDoc} */
-        @Override public byte type() {
+        @Override public byte cacheObjectType() {
             throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean isPlatformType() {
+            return true;
         }
 
         /** {@inheritDoc} */

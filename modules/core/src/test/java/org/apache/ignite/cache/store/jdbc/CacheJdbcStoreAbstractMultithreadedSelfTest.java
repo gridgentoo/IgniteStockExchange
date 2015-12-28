@@ -17,32 +17,45 @@
 
 package org.apache.ignite.cache.store.jdbc;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.store.jdbc.model.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.junits.common.*;
-import org.apache.ignite.transactions.*;
-import org.jetbrains.annotations.*;
-import org.springframework.beans.*;
-import org.springframework.beans.factory.xml.*;
-import org.springframework.context.support.*;
-import org.springframework.core.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.Callable;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cache.CacheTypeMetadata;
+import org.apache.ignite.cache.store.jdbc.model.Organization;
+import org.apache.ignite.cache.store.jdbc.model.OrganizationKey;
+import org.apache.ignite.cache.store.jdbc.model.Person;
+import org.apache.ignite.cache.store.jdbc.model.PersonKey;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.util.typedef.X;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
+import org.apache.ignite.transactions.Transaction;
+import org.jetbrains.annotations.Nullable;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
+import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.core.io.UrlResource;
 
-import java.net.*;
-import java.sql.*;
-import java.util.*;
-import java.util.concurrent.*;
-
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMode.*;
-import static org.apache.ignite.testframework.GridTestUtils.*;
+import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.testframework.GridTestUtils.runMultiThreaded;
+import static org.apache.ignite.testframework.GridTestUtils.runMultiThreadedAsync;
 
 /**
  *
@@ -124,7 +137,10 @@ public abstract class CacheJdbcStoreAbstractMultithreadedSelfTest<T extends Cach
         return c;
     }
 
-    /** */
+    /**
+     * @return Cache configuration.
+     * @throws Exception If failed.
+     */
     protected CacheConfiguration cacheConfiguration() throws Exception {
         CacheConfiguration cc = defaultCacheConfiguration();
 
@@ -190,7 +206,7 @@ public abstract class CacheJdbcStoreAbstractMultithreadedSelfTest<T extends Cach
                     if (rnd.nextBoolean())
                         cache.put(new OrganizationKey(id), new Organization(id, "Name" + id, "City" + id));
                     else
-                        cache.put(new PersonKey(id), new Person(id, rnd.nextInt(), "Name" + id));
+                        cache.put(new PersonKey(id), new Person(id, rnd.nextInt(), "Name" + id, 1));
                 }
 
                 return null;
@@ -209,7 +225,7 @@ public abstract class CacheJdbcStoreAbstractMultithreadedSelfTest<T extends Cach
                     if (rnd.nextBoolean())
                         cache.putIfAbsent(new OrganizationKey(id), new Organization(id, "Name" + id, "City" + id));
                     else
-                        cache.putIfAbsent(new PersonKey(id), new Person(id, rnd.nextInt(), "Name" + id));
+                        cache.putIfAbsent(new PersonKey(id), new Person(id, rnd.nextInt(), "Name" + id, i));
                 }
 
                 return null;
@@ -248,7 +264,7 @@ public abstract class CacheJdbcStoreAbstractMultithreadedSelfTest<T extends Cach
                         if (rnd.nextBoolean())
                             map.put(new OrganizationKey(id), new Organization(id, "Name" + id, "City" + id));
                         else
-                            map.put(new PersonKey(id), new Person(id, rnd.nextInt(), "Name" + id));
+                            map.put(new PersonKey(id), new Person(id, rnd.nextInt(), "Name" + id, 1));
                     }
 
                     IgniteCache<Object, Object> cache = jcache();
@@ -273,17 +289,17 @@ public abstract class CacheJdbcStoreAbstractMultithreadedSelfTest<T extends Cach
                     IgniteCache<PersonKey, Person> cache = jcache();
 
                     try (Transaction tx = grid().transactions().txStart()) {
-                        cache.put(new PersonKey(1), new Person(1, rnd.nextInt(), "Name" + 1));
-                        cache.put(new PersonKey(2), new Person(2, rnd.nextInt(), "Name" + 2));
-                        cache.put(new PersonKey(3), new Person(3, rnd.nextInt(), "Name" + 3));
+                        cache.put(new PersonKey(1), new Person(1, rnd.nextInt(), "Name" + 1, 1));
+                        cache.put(new PersonKey(2), new Person(2, rnd.nextInt(), "Name" + 2, 2));
+                        cache.put(new PersonKey(3), new Person(3, rnd.nextInt(), "Name" + 3, 3));
 
                         cache.get(new PersonKey(1));
                         cache.get(new PersonKey(4));
 
                         Map<PersonKey, Person> map =  U.newHashMap(2);
 
-                        map.put(new PersonKey(5), new Person(5, rnd.nextInt(), "Name" + 5));
-                        map.put(new PersonKey(6), new Person(6, rnd.nextInt(), "Name" + 6));
+                        map.put(new PersonKey(5), new Person(5, rnd.nextInt(), "Name" + 5, 5));
+                        map.put(new PersonKey(6), new Person(6, rnd.nextInt(), "Name" + 6, 6));
 
                         cache.putAll(map);
 

@@ -131,7 +131,7 @@ class VisorKillCommand extends VisorConsoleCommand {
             if (kill && restart)
                 scold("Only one of '-k' or '-r' can be specified.")
             else if (!kill && !restart)
-                scold("Invalid command arguments: " + args)
+                scold("Missing '-k' or '-r' option in command: " + args)
             else if (id8.isDefined && id.isDefined)
                 scold("Only one of -id8 or -id is allowed.")
             else {
@@ -256,7 +256,7 @@ class VisorKillCommand extends VisorConsoleCommand {
         askForHost("Select host from:") match {
             case Some(p) => ask("Do you want to [k]ill or [r]estart? (k/r) [r]: ", "r") match {
                 case "k" | "K" => killOrRestart(p.nodes().map(_.id), false)
-                case "r" | "R" => killOrRestart(p.nodes().map(_.id), false)
+                case "r" | "R" => killOrRestart(p.nodes().map(_.id), true)
                 case x => nl(); warn("Invalid answer: " + x)
             }
             case None => ()

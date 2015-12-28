@@ -17,13 +17,17 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht;
 
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.jetbrains.annotations.*;
-
-import java.util.*;
+import java.util.Map;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.CacheObject;
+import org.apache.ignite.internal.processors.cache.GridCacheConcurrentMap;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
+import org.apache.ignite.internal.processors.cache.GridCacheMapEntry;
+import org.apache.ignite.internal.processors.cache.KeyCacheObject;
+import org.apache.ignite.internal.util.lang.GridTriple;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Empty cache map that will never store any entries.
@@ -37,7 +41,7 @@ public class GridNoStorageCacheMap extends GridCacheConcurrentMap {
      * @param ctx Cache context.
      */
     public GridNoStorageCacheMap(GridCacheContext ctx) {
-        super(ctx, 0, 0.75f, 1);
+        super(ctx, 0, null, 0.75f, 1);
     }
 
     /** {@inheritDoc} */
@@ -87,8 +91,8 @@ public class GridNoStorageCacheMap extends GridCacheConcurrentMap {
     {
         if (create) {
             GridCacheMapEntry entry = ctx.useOffheapEntry() ?
-                new GridDhtOffHeapCacheEntry(ctx, topVer, key, hash(key.hashCode()), val, null, 0) :
-                new GridDhtCacheEntry(ctx, topVer, key, hash(key.hashCode()), val, null, 0);
+                new GridDhtOffHeapCacheEntry(ctx, topVer, key, hash(key.hashCode()), val) :
+                new GridDhtCacheEntry(ctx, topVer, key, hash(key.hashCode()), val);
 
             return new GridTriple<>(entry, null, null);
         }

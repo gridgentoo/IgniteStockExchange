@@ -17,11 +17,12 @@
 
 package org.apache.ignite.internal.processors.cache.datastructures.partitioned;
 
-import org.apache.ignite.cache.*;
-import org.apache.ignite.internal.processors.cache.datastructures.*;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMemoryMode;
+import org.apache.ignite.internal.processors.cache.datastructures.GridCacheSetFailoverAbstractSelfTest;
 
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMemoryMode.*;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMemoryMode.ONHEAP_TIERED;
 
 /**
  * Set failover tests.
@@ -35,5 +36,9 @@ public class GridCachePartitionedSetFailoverSelfTest extends GridCacheSetFailove
     /** {@inheritDoc} */
     @Override protected CacheMemoryMode collectionMemoryMode() {
         return ONHEAP_TIERED;
+    }
+
+    @Override public void testNodeRestart(){
+        fail("https://issues.apache.org/jira/browse/IGNITE-1593");
     }
 }

@@ -17,15 +17,19 @@
 
 package org.apache.ignite.cache.eviction.random;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.eviction.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import javax.cache.Cache;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CachePeekMode;
+import org.apache.ignite.cache.eviction.EvictableEntry;
+import org.apache.ignite.cache.eviction.EvictionPolicy;
+import org.apache.ignite.internal.util.typedef.internal.A;
+import org.apache.ignite.internal.util.typedef.internal.S;
 
-import javax.cache.*;
-import java.io.*;
-
-import static org.apache.ignite.configuration.CacheConfiguration.*;
+import static org.apache.ignite.configuration.CacheConfiguration.DFLT_CACHE_SIZE;
 
 /**
  * Cache eviction policy which will select random cache entry for eviction if cache
@@ -35,7 +39,11 @@ import static org.apache.ignite.configuration.CacheConfiguration.*;
  * <p>
  * Random eviction will provide the best performance over any key queue in which every
  * key has the same probability of being accessed.
+ *
+ * @deprecated This eviction policy implementation doesn't support near cache
+ * and doesn't work on client nodes. Also it seems that random eviction doesn't make sense.
  */
+@Deprecated
 public class RandomEvictionPolicy<K, V> implements EvictionPolicy<K, V>, RandomEvictionPolicyMBean, Externalizable {
     /** */
     private static final long serialVersionUID = 0L;

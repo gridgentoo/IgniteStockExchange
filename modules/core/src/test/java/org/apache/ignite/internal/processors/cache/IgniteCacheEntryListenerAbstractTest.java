@@ -17,28 +17,62 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.continuous.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.testframework.*;
-import org.jetbrains.annotations.*;
-
-import javax.cache.configuration.*;
-import javax.cache.event.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.cache.configuration.CacheEntryListenerConfiguration;
+import javax.cache.configuration.Factory;
+import javax.cache.configuration.FactoryBuilder;
+import javax.cache.configuration.MutableCacheEntryListenerConfiguration;
+import javax.cache.event.CacheEntryCreatedListener;
 import javax.cache.event.CacheEntryEvent;
-import javax.cache.expiry.*;
-import javax.cache.processor.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import javax.cache.event.CacheEntryExpiredListener;
+import javax.cache.event.CacheEntryListener;
+import javax.cache.event.CacheEntryListenerException;
+import javax.cache.event.CacheEntryRemovedListener;
+import javax.cache.event.CacheEntryUpdatedListener;
+import javax.cache.event.EventType;
+import javax.cache.expiry.CreatedExpiryPolicy;
+import javax.cache.expiry.Duration;
+import javax.cache.expiry.ModifiedExpiryPolicy;
+import javax.cache.processor.EntryProcessor;
+import javax.cache.processor.EntryProcessorException;
+import javax.cache.processor.MutableEntry;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheEntryEventSerializableFilter;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.processors.continuous.GridContinuousProcessor;
+import org.apache.ignite.internal.util.lang.GridAbsPredicate;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.jetbrains.annotations.Nullable;
 
-import static java.util.concurrent.TimeUnit.*;
-import static javax.cache.event.EventType.*;
-import static org.apache.ignite.cache.CacheMode.*;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static javax.cache.event.EventType.CREATED;
+import static javax.cache.event.EventType.EXPIRED;
+import static javax.cache.event.EventType.REMOVED;
+import static javax.cache.event.EventType.UPDATED;
+import static org.apache.ignite.cache.CacheMode.LOCAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheMode.REPLICATED;
 
 /**
  *
@@ -79,7 +113,13 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
         for (int i = 0; i < gridCount(); i++) {
             GridContinuousProcessor proc = grid(i).context().continuous();
 
-            ConcurrentMap<?, ?> syncMsgFuts = GridTestUtils.getFieldValue(proc, "syncMsgFuts");
+            final ConcurrentMap<?, ?> syncMsgFuts = GridTestUtils.getFieldValue(proc, "syncMsgFuts");
+
+            GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                @Override public boolean apply() {
+                    return syncMsgFuts.size() == 0;
+                }
+            }, 5000);
 
             assertEquals(0, syncMsgFuts.size());
         }
@@ -328,6 +368,70 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
         finally {
             stopGrid(gridCount());
         }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testConcurrentRegisterDeregister() throws Exception {
+        final int THREADS = 10;
+
+        final CyclicBarrier barrier = new CyclicBarrier(THREADS);
+
+        final IgniteCache<Integer, Integer> cache = jcache(0);
+
+        GridTestUtils.runMultiThreadedAsync(new Callable<Void>() {
+            @Override public Void call() throws Exception {
+                CacheEntryListenerConfiguration<Integer, Integer> cfg = new MutableCacheEntryListenerConfiguration<>(
+                    new Factory<CacheEntryListener<Integer, Integer>>() {
+                        @Override public CacheEntryListener<Integer, Integer> create() {
+                            return new CreateUpdateRemoveExpireListener();
+                        }
+                    },
+                    null,
+                    true,
+                    false
+                );
+
+                barrier.await();
+
+                for (int i = 0; i < 200; i++) {
+                    cache.registerCacheEntryListener(cfg);
+
+                    cache.deregisterCacheEntryListener(cfg);
+                }
+
+                return null;
+            }
+        }, THREADS, "register-thread").get();
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testSerialization() throws Exception {
+        if (cacheMode() == LOCAL)
+            return;
+
+        AtomicBoolean serialized = new AtomicBoolean();
+
+        NonSerializableListener lsnr = new NonSerializableListener(serialized);
+
+        jcache(0).registerCacheEntryListener(new MutableCacheEntryListenerConfiguration<>(
+            FactoryBuilder.factoryOf(lsnr),
+            null,
+            true,
+            false
+        ));
+
+        try {
+            startGrid(gridCount());
+        }
+        finally {
+            stopGrid(gridCount());
+        }
+
+        assertFalse(serialized.get());
     }
 
     /**
@@ -890,6 +994,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class CreateUpdateRemoveExpireListenerFactory implements Factory<CacheEntryListener<Integer, Integer>> {
+        /** {@inheritDoc} */
         @Override public CacheEntryListener<Integer, Integer> create() {
             return new CreateUpdateRemoveExpireListener();
         }
@@ -899,6 +1004,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class NoOpCreateUpdateListenerFactory implements Factory<CacheEntryListener<Integer, Integer>> {
+        /** {@inheritDoc} */
         @Override public CacheEntryListener<Integer, Integer> create() {
             return new NoOpCreateUpdateListener();
         }
@@ -908,6 +1014,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class CreateUpdateListenerFactory implements Factory<CacheEntryListener<Integer, Integer>> {
+        /** {@inheritDoc} */
         @Override public CacheEntryListener<Integer, Integer> create() {
             return new CreateUpdateListener();
         }
@@ -917,6 +1024,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class CreateListenerFactory implements Factory<CacheEntryListener<Integer, Integer>> {
+        /** {@inheritDoc} */
         @Override public CacheEntryListener<Integer, Integer> create() {
             return new CreateListener();
         }
@@ -926,6 +1034,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class RemoveListenerFactory implements Factory<CacheEntryListener<Integer, Integer>> {
+        /** {@inheritDoc} */
         @Override public CacheEntryListener<Integer, Integer> create() {
             return new RemoveListener();
         }
@@ -935,6 +1044,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class UpdateListenerFactory implements Factory<CacheEntryListener<Integer, Integer>> {
+        /** {@inheritDoc} */
         @Override public CacheEntryListener<Integer, Integer> create() {
             return new UpdateListener();
         }
@@ -944,6 +1054,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class ExpireListenerFactory implements Factory<CacheEntryListener<Integer, Integer>> {
+        /** {@inheritDoc} */
         @Override public CacheEntryListener<Integer, Integer> create() {
             return new ExpireListener();
         }
@@ -963,6 +1074,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class CreateListener implements CacheEntryCreatedListener<Integer, Integer> {
+        /** {@inheritDoc} */
         @Override public void onCreated(Iterable<CacheEntryEvent<? extends Integer, ? extends Integer>> evts) {
             for (CacheEntryEvent<? extends Integer, ? extends Integer> evt : evts)
                 onEvent(evt);
@@ -973,6 +1085,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class UpdateListener implements CacheEntryUpdatedListener<Integer, Integer> {
+        /** {@inheritDoc} */
         @Override public void onUpdated(Iterable<CacheEntryEvent<? extends Integer, ? extends Integer>> evts) {
             for (CacheEntryEvent<? extends Integer, ? extends Integer> evt : evts)
                 onEvent(evt);
@@ -983,6 +1096,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class RemoveListener implements CacheEntryRemovedListener<Integer, Integer> {
+        /** {@inheritDoc} */
         @Override public void onRemoved(Iterable<CacheEntryEvent<? extends Integer, ? extends Integer>> evts) {
             for (CacheEntryEvent<? extends Integer, ? extends Integer> evt : evts)
                 onEvent(evt);
@@ -993,6 +1107,7 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
      *
      */
     private static class ExpireListener implements CacheEntryExpiredListener<Integer, Integer> {
+        /** {@inheritDoc} */
         @Override public void onExpired(Iterable<CacheEntryEvent<? extends Integer, ? extends Integer>> evts) {
             for (CacheEntryEvent<? extends Integer, ? extends Integer> evt : evts)
                 onEvent(evt);
@@ -1163,4 +1278,33 @@ public abstract class IgniteCacheEntryListenerAbstractTest extends IgniteCacheAb
         }
     }
 
+    /**
+     */
+    public static class NonSerializableListener implements CacheEntryCreatedListener<Object, Object>, Externalizable {
+        /** */
+        private final AtomicBoolean serialized;
+
+        /**
+         * @param serialized Serialized flag.
+         */
+        public NonSerializableListener(AtomicBoolean serialized) {
+            this.serialized = serialized;
+        }
+
+        /** {@inheritDoc} */
+        @Override public void onCreated(Iterable<CacheEntryEvent<?, ?>> evts)
+            throws CacheEntryListenerException {
+            // No-op.
+        }
+
+        /** {@inheritDoc} */
+        @Override public void writeExternal(ObjectOutput out) throws IOException {
+            serialized.set(true);
+        }
+
+        /** {@inheritDoc} */
+        @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+            // No-op.
+        }
+    }
 }

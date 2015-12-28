@@ -17,8 +17,8 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.jetbrains.annotations.*;
+import org.apache.ignite.IgniteCheckedException;
+import org.jetbrains.annotations.Nullable;
 
 /**
  *
@@ -58,6 +58,11 @@ public class KeyCacheObjectImpl extends CacheObjectAdapter implements KeyCacheOb
         assert val != null;
 
         return val instanceof GridCacheInternal;
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean isPlatformType() {
+        return true;
     }
 
     /** {@inheritDoc} */

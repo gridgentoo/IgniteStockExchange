@@ -17,21 +17,29 @@
 
 package org.apache.ignite;
 
-import org.apache.ignite.cache.affinity.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.plugin.*;
-import org.jetbrains.annotations.*;
-import org.springframework.beans.*;
-import org.springframework.beans.factory.*;
-import org.springframework.context.*;
-
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Collection;
+import java.util.concurrent.ExecutorService;
+import org.apache.ignite.cache.affinity.Affinity;
+import org.apache.ignite.cluster.ClusterGroup;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.CollectionConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.configuration.NearCacheConfiguration;
+import org.apache.ignite.internal.util.typedef.G;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteProductVersion;
+import org.apache.ignite.plugin.IgnitePlugin;
+import org.apache.ignite.plugin.PluginNotFoundException;
+import org.jetbrains.annotations.Nullable;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 
 /**
  * Grid Spring bean allows to bypass {@link Ignition} methods.
@@ -232,6 +240,14 @@ public class IgniteSpringBean implements Ignite, DisposableBean, InitializingBea
         return g.cache(name);
     }
 
+
+    /** {@inheritDoc} */
+    @Override public Collection<String> cacheNames() {
+        assert g != null;
+
+        return g.cacheNames();
+    }
+
     /** {@inheritDoc} */
     @Override public <K, V> IgniteCache<K, V> createCache(CacheConfiguration<K, V> cacheCfg) {
         assert g != null;
@@ -339,6 +355,13 @@ public class IgniteSpringBean implements Ignite, DisposableBean, InitializingBea
     }
 
     /** {@inheritDoc} */
+    @Override public IgniteBinary binary() {
+        assert g != null;
+
+        return g.binary();
+    }
+
+    /** {@inheritDoc} */
     @Override public void close() throws IgniteException {
         g.close();
     }
@@ -387,6 +410,18 @@ public class IgniteSpringBean implements Ignite, DisposableBean, InitializingBea
         assert g != null;
 
         return g.countDownLatch(name, cnt, autoDel, create);
+    }
+
+    /** {@inheritDoc} */
+    @Nullable @Override public IgniteSemaphore semaphore(String name,
+        int cnt,
+        boolean failoverSafe,
+        boolean create)
+    {
+        assert g != null;
+
+        return g.semaphore(name, cnt,
+            failoverSafe, create);
     }
 
     /** {@inheritDoc} */

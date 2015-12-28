@@ -17,19 +17,20 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-import org.apache.ignite.spi.discovery.tcp.internal.*;
-import org.jetbrains.annotations.*;
-
-import java.nio.*;
-import java.util.*;
+import java.nio.ByteBuffer;
+import java.util.List;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.GridDirectTransient;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.GridCacheMessage;
+import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
+import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Affinity assignment response.
@@ -66,11 +67,6 @@ public class GridDhtAffinityAssignmentResponse extends GridCacheMessage {
         this.cacheId = cacheId;
         this.topVer = topVer;
         this.affAssignment = affAssignment;
-    }
-
-    /** {@inheritDoc} */
-    @Override public boolean allowForStartup() {
-        return true;
     }
 
     /** {@inheritDoc} */
@@ -120,7 +116,7 @@ public class GridDhtAffinityAssignmentResponse extends GridCacheMessage {
         if (affAssignmentBytes != null) {
             affAssignment = ctx.marshaller().unmarshal(affAssignmentBytes, ldr);
 
-            // TODO IGNITE-10: setting 'local' for nodes not needed when IGNITE-10 is implemented.
+            // TODO IGNITE-2110: setting 'local' for nodes not needed when IGNITE-2110 is implemented.
             int assignments = affAssignment.size();
 
             for (int n = 0; n < assignments; n++) {
@@ -136,6 +132,11 @@ public class GridDhtAffinityAssignmentResponse extends GridCacheMessage {
                 }
             }
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean addDeploymentInfo() {
+        return false;
     }
 
     /** {@inheritDoc} */
@@ -199,7 +200,7 @@ public class GridDhtAffinityAssignmentResponse extends GridCacheMessage {
 
         }
 
-        return true;
+        return reader.afterMessageRead(GridDhtAffinityAssignmentResponse.class);
     }
 
     /** {@inheritDoc} */

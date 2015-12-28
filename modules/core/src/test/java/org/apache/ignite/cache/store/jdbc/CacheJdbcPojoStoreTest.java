@@ -17,27 +17,31 @@
 
 package org.apache.ignite.cache.store.jdbc;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.store.jdbc.dialect.*;
-import org.apache.ignite.cache.store.jdbc.model.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.testframework.*;
-import org.apache.ignite.testframework.junits.cache.*;
-import org.h2.jdbcx.*;
-import org.springframework.beans.*;
-import org.springframework.beans.factory.xml.*;
-import org.springframework.context.support.*;
-import org.springframework.core.io.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import javax.cache.integration.CacheWriterException;
 
-import javax.cache.integration.*;
-import java.net.*;
-import java.sql.*;
-import java.util.*;
-import java.util.concurrent.*;
+import org.apache.ignite.cache.store.jdbc.dialect.H2Dialect;
+import org.apache.ignite.cache.store.jdbc.model.Organization;
+import org.apache.ignite.cache.store.jdbc.model.OrganizationKey;
+import org.apache.ignite.cache.store.jdbc.model.Person;
+import org.apache.ignite.cache.store.jdbc.model.PersonComplexKey;
+import org.apache.ignite.cache.store.jdbc.model.PersonKey;
+import org.apache.ignite.internal.processors.cache.CacheEntryImpl;
+import org.apache.ignite.internal.util.typedef.CI2;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiInClosure;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.apache.ignite.testframework.junits.cache.GridAbstractCacheStoreSelfTest;
+import org.h2.jdbcx.JdbcConnectionPool;
 
 /**
  * Class for {@code PojoCacheStore} tests.
@@ -45,9 +49,6 @@ import java.util.concurrent.*;
 public class CacheJdbcPojoStoreTest extends GridAbstractCacheStoreSelfTest<CacheJdbcPojoStore<Object, Object>> {
     /** DB connection URL. */
     private static final String DFLT_CONN_URL = "jdbc:h2:mem:autoCacheStore;DB_CLOSE_DELAY=-1";
-
-    /** Default config with mapping. */
-    private static final String DFLT_MAPPING_CONFIG = "modules/core/src/test/config/store/jdbc/ignite-type-metadata.xml";
 
     /** Organization count. */
     protected static final int ORGANIZATION_CNT = 1000;
@@ -64,70 +65,85 @@ public class CacheJdbcPojoStoreTest extends GridAbstractCacheStoreSelfTest<Cache
 
     /** {@inheritDoc} */
     @Override protected CacheJdbcPojoStore<Object, Object> store() {
-        CacheJdbcPojoStore<Object, Object> store = new CacheJdbcPojoStore<>();
+        CacheJdbcPojoStoreFactory<Object, Object> storeFactory = new CacheJdbcPojoStoreFactory<>();
 
-//        PGPoolingDataSource ds = new PGPoolingDataSource();
-//        ds.setUser("postgres");
-//        ds.setPassword("postgres");
-//        ds.setServerName("ip");
-//        ds.setDatabaseName("postgres");
-//        store.setDataSource(ds);
+        JdbcType[] storeTypes = new JdbcType[6];
 
-//        MysqlDataSource ds = new MysqlDataSource();
-//        ds.setURL("jdbc:mysql://ip:port/dbname");
-//        ds.setUser("mysql");
-//        ds.setPassword("mysql");
+        storeTypes[0] = new JdbcType();
+        storeTypes[0].setDatabaseSchema("PUBLIC");
+        storeTypes[0].setDatabaseTable("ORGANIZATION");
+        storeTypes[0].setKeyType("org.apache.ignite.cache.store.jdbc.model.OrganizationKey");
+        storeTypes[0].setKeyFields(new JdbcTypeField(Types.INTEGER, "ID", Integer.class, "id"));
 
+        storeTypes[0].setValueType("org.apache.ignite.cache.store.jdbc.model.Organization");
+        storeTypes[0].setValueFields(
+            new JdbcTypeField(Types.INTEGER, "ID", Integer.class, "id"),
+            new JdbcTypeField(Types.VARCHAR, "NAME", String.class, "name"),
+            new JdbcTypeField(Types.VARCHAR, "CITY", String.class, "city"));
+
+        storeTypes[1] = new JdbcType();
+        storeTypes[1].setDatabaseSchema("PUBLIC");
+        storeTypes[1].setDatabaseTable("PERSON");
+        storeTypes[1].setKeyType("org.apache.ignite.cache.store.jdbc.model.PersonKey");
+        storeTypes[1].setKeyFields(new JdbcTypeField(Types.INTEGER, "ID", Integer.class, "id"));
+
+        storeTypes[1].setValueType("org.apache.ignite.cache.store.jdbc.model.Person");
+        storeTypes[1].setValueFields(
+            new JdbcTypeField(Types.INTEGER, "ID", Integer.class, "id"),
+            new JdbcTypeField(Types.INTEGER, "ORG_ID", Integer.class, "orgId"),
+            new JdbcTypeField(Types.VARCHAR, "NAME", String.class, "name"));
+
+        storeTypes[2] = new JdbcType();
+        storeTypes[2].setDatabaseSchema("PUBLIC");
+        storeTypes[2].setDatabaseTable("PERSON_COMPLEX");
+        storeTypes[2].setKeyType("org.apache.ignite.cache.store.jdbc.model.PersonComplexKey");
+        storeTypes[2].setKeyFields(
+            new JdbcTypeField(Types.INTEGER, "ID", int.class, "id"),
+            new JdbcTypeField(Types.INTEGER, "ORG_ID", int.class, "orgId"),
+            new JdbcTypeField(Types.INTEGER, "CITY_ID", int.class, "cityId"));
+
+        storeTypes[2].setValueType("org.apache.ignite.cache.store.jdbc.model.Person");
+        storeTypes[2].setValueFields(
+            new JdbcTypeField(Types.INTEGER, "ID", Integer.class, "id"),
+            new JdbcTypeField(Types.INTEGER, "ORG_ID", Integer.class, "orgId"),
+            new JdbcTypeField(Types.VARCHAR, "NAME", String.class, "name"),
+            new JdbcTypeField(Types.INTEGER, "SALARY", Integer.class, "salary"));
+
+        storeTypes[3] = new JdbcType();
+        storeTypes[3].setDatabaseSchema("PUBLIC");
+        storeTypes[3].setDatabaseTable("TIMESTAMP_ENTRIES");
+        storeTypes[3].setKeyType("java.sql.Timestamp");
+        storeTypes[3].setKeyFields(new JdbcTypeField(Types.TIMESTAMP, "KEY", Timestamp.class, null));
+
+        storeTypes[3].setValueType("java.lang.Integer");
+        storeTypes[3].setValueFields(new JdbcTypeField(Types.INTEGER, "VAL", Integer.class, null));
+
+        storeTypes[4] = new JdbcType();
+        storeTypes[4].setDatabaseSchema("PUBLIC");
+        storeTypes[4].setDatabaseTable("STRING_ENTRIES");
+        storeTypes[4].setKeyType("java.lang.String");
+        storeTypes[4].setKeyFields(new JdbcTypeField(Types.VARCHAR, "KEY", String.class, null));
+
+        storeTypes[4].setValueType("java.lang.String");
+        storeTypes[4].setValueFields(new JdbcTypeField(Types.VARCHAR, "VAL", Integer.class, null));
+
+        storeTypes[5] = new JdbcType();
+        storeTypes[5].setDatabaseSchema("PUBLIC");
+        storeTypes[5].setDatabaseTable("UUID_ENTRIES");
+        storeTypes[5].setKeyType("java.util.UUID");
+        storeTypes[5].setKeyFields(new JdbcTypeField(Types.BINARY, "KEY", UUID.class, null));
+
+        storeTypes[5].setValueType("java.util.UUID");
+        storeTypes[5].setValueFields(new JdbcTypeField(Types.BINARY, "VAL", UUID.class, null));
+
+        storeFactory.setTypes(storeTypes);
+
+        storeFactory.setDialect(new H2Dialect());
+
+        CacheJdbcPojoStore<Object, Object> store = storeFactory.create();
+
+        // H2 DataSource
         store.setDataSource(JdbcConnectionPool.create(DFLT_CONN_URL, "sa", ""));
-
-        URL cfgUrl;
-
-        try {
-            cfgUrl = new URL(DFLT_MAPPING_CONFIG);
-        }
-        catch (MalformedURLException ignore) {
-            cfgUrl = U.resolveIgniteUrl(DFLT_MAPPING_CONFIG);
-        }
-
-        if (cfgUrl == null)
-            throw new IgniteException("Failed to resolve metadata path: " + DFLT_MAPPING_CONFIG);
-
-        try {
-            GenericApplicationContext springCtx = new GenericApplicationContext();
-
-            new XmlBeanDefinitionReader(springCtx).loadBeanDefinitions(new UrlResource(cfgUrl));
-
-            springCtx.refresh();
-
-            Collection<CacheTypeMetadata> typeMeta = springCtx.getBeansOfType(CacheTypeMetadata.class).values();
-
-            Map<Integer, Map<Object, CacheAbstractJdbcStore.EntryMapping>> cacheMappings = new HashMap<>();
-
-            JdbcDialect dialect = store.resolveDialect();
-
-            GridTestUtils.setFieldValue(store, CacheAbstractJdbcStore.class, "dialect", dialect);
-
-            Map<Object, CacheAbstractJdbcStore.EntryMapping> entryMappings = U.newHashMap(typeMeta.size());
-
-            for (CacheTypeMetadata type : typeMeta)
-                entryMappings.put(store.keyTypeId(type.getKeyType()),
-                    new CacheAbstractJdbcStore.EntryMapping(null, dialect, type));
-
-            store.prepareBuilders(null, typeMeta);
-
-            cacheMappings.put(null, entryMappings);
-
-            GridTestUtils.setFieldValue(store, CacheAbstractJdbcStore.class, "cacheMappings", cacheMappings);
-        }
-        catch (BeansException e) {
-            if (X.hasCause(e, ClassNotFoundException.class))
-                throw new IgniteException("Failed to instantiate Spring XML application context " +
-                    "(make sure all classes used in Spring configuration are present at CLASSPATH) " +
-                    "[springUrl=" + cfgUrl + ']', e);
-            else
-                throw new IgniteException("Failed to instantiate Spring XML application context [springUrl=" +
-                    cfgUrl + ", err=" + e.getMessage() + ']', e);
-        }
 
         return store;
     }
@@ -183,12 +199,24 @@ public class CacheJdbcPojoStoreTest extends GridAbstractCacheStoreSelfTest<Cache
             // No-op.
         }
 
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS String_Entries (key varchar(100) not null, val varchar(100), PRIMARY KEY(key))");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS UUID_Entries (key binary(16) not null, val binary(16), PRIMARY KEY(key))");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS Timestamp_Entries (key timestamp not null, val integer, PRIMARY KEY(key))");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS Organization (id integer not null, name varchar(50), city varchar(50), PRIMARY KEY(id))");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS Person (id integer not null, org_id integer, name varchar(50), PRIMARY KEY(id))");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS Person_Complex (id integer not null, org_id integer not null, city_id integer not null, name varchar(50), PRIMARY KEY(id))");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " +
+            "String_Entries (key varchar(100) not null, val varchar(100), PRIMARY KEY(key))");
+
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " +
+            "UUID_Entries (key binary(16) not null, val binary(16), PRIMARY KEY(key))");
+
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " +
+            "Timestamp_Entries (key timestamp not null, val integer, PRIMARY KEY(key))");
+
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " +
+            "Organization (id integer not null, name varchar(50), city varchar(50), PRIMARY KEY(id))");
+
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " +
+            "Person (id integer not null, org_id integer, name varchar(50), PRIMARY KEY(id))");
+
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS " +
+            "Person_Complex (id integer not null, org_id integer not null, city_id integer not null, " +
+            "name varchar(50), salary integer, PRIMARY KEY(id))");
 
         conn.commit();
 
@@ -198,7 +226,6 @@ public class CacheJdbcPojoStoreTest extends GridAbstractCacheStoreSelfTest<Cache
 
         super.beforeTest();
     }
-
 
     /**
      * @throws Exception If failed.
@@ -238,13 +265,18 @@ public class CacheJdbcPojoStoreTest extends GridAbstractCacheStoreSelfTest<Cache
 
         U.closeQuiet(prnStmt);
 
-        PreparedStatement prnComplexStmt = conn.prepareStatement("INSERT INTO Person_Complex(id, org_id, city_id, name) VALUES (?, ?, ?, ?)");
+        PreparedStatement prnComplexStmt = conn.prepareStatement("INSERT INTO Person_Complex(id, org_id, city_id, name, salary) VALUES (?, ?, ?, ?, ?)");
 
         for (int i = 0; i < PERSON_CNT; i++) {
             prnComplexStmt.setInt(1, i);
             prnComplexStmt.setInt(2, i % 500);
             prnComplexStmt.setInt(3, i % 100);
             prnComplexStmt.setString(4, "name" + i);
+
+            if (i > 0)
+                prnComplexStmt.setInt(5, 1000 + i * 500);
+            else // Add person with null salary
+                prnComplexStmt.setNull(5, Types.INTEGER);
 
             prnComplexStmt.addBatch();
         }
@@ -272,9 +304,9 @@ public class CacheJdbcPojoStoreTest extends GridAbstractCacheStoreSelfTest<Cache
 
                     Person val = (Person)v;
 
-                    assert key.getId() == val.getId();
-                    assert key.getOrgId() == val.getOrgId();
-                    assert ("name"  + key.getId()).equals(val.getName());
+                    assertTrue("Key ID should be the same as value ID", key.getId() == val.getId());
+                    assertTrue("Key orgID should be the same as value orgID", key.getOrgId() == val.getOrgId());
+                    assertEquals("name" + key.getId(), val.getName());
 
                     prnComplexKeys.add((PersonComplexKey)k);
                 }
@@ -321,25 +353,23 @@ public class CacheJdbcPojoStoreTest extends GridAbstractCacheStoreSelfTest<Cache
      * @throws Exception If failed.
      */
     public void testWriteRetry() throws Exception {
+        CacheJdbcPojoStore<Object, Object> store = store();
+
         // Special dialect that will skip updates, to test write retry.
-        BasicJdbcDialect dialect = new BasicJdbcDialect() {
+        store.setDialect(new H2Dialect() {
             /** {@inheritDoc} */
-            @Override public String updateQuery(String tblName, Collection<String> keyCols, Iterable<String> valCols) {
+            @Override public boolean hasMerge() {
+                return false;
+            }
+
+            /** {@inheritDoc} */
+            @Override public String updateQuery(String tblName, Collection<String> keyCols,
+                Iterable<String> valCols) {
                 return super.updateQuery(tblName, keyCols, valCols) + " AND 1 = 0";
             }
-        };
+        });
 
-        store.setDialect(dialect);
-
-        Map<String, Map<Object, CacheAbstractJdbcStore.EntryMapping>> cacheMappings =
-            GridTestUtils.getFieldValue(store, CacheAbstractJdbcStore.class, "cacheMappings");
-
-        CacheAbstractJdbcStore.EntryMapping em = cacheMappings.get(null).get(OrganizationKey.class);
-
-        CacheTypeMetadata typeMeta = GridTestUtils.getFieldValue(em, CacheAbstractJdbcStore.EntryMapping.class, "typeMeta");
-
-        cacheMappings.get(null).put(OrganizationKey.class,
-            new CacheAbstractJdbcStore.EntryMapping(null, dialect, typeMeta));
+        inject(store);
 
         Connection conn = store.openConnection(false);
 
@@ -362,6 +392,8 @@ public class CacheJdbcPojoStoreTest extends GridAbstractCacheStoreSelfTest<Cache
 
         try {
             store.write(new CacheEntryImpl<>(k1, v1));
+
+            fail("CacheWriterException wasn't thrown.");
         }
         catch (CacheWriterException e) {
             if (!e.getMessage().startsWith("Failed insert entry in database, violate a unique index or primary key") ||

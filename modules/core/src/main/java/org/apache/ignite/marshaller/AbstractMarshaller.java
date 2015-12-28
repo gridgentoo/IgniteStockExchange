@@ -17,11 +17,12 @@
 
 package org.apache.ignite.marshaller;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.io.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.jetbrains.annotations.*;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.util.GridByteArrayList;
+import org.apache.ignite.internal.util.io.GridByteArrayInputStream;
+import org.apache.ignite.internal.util.io.GridByteArrayOutputStream;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Base class for marshallers. Provides default implementations of methods
@@ -35,6 +36,16 @@ public abstract class AbstractMarshaller implements Marshaller {
 
     /** Context. */
     protected MarshallerContext ctx;
+
+
+    /**
+     * Undeployment callback invoked when class loader is being undeployed.
+     *
+     * Some marshallers may want to clean their internal state that uses the undeployed class loader somehow.
+     *
+     * @param ldr Class loader being undeployed.
+     */
+    public abstract void onUndeploy(ClassLoader ldr);
 
     /** {@inheritDoc} */
     @Override public void setContext(MarshallerContext ctx) {

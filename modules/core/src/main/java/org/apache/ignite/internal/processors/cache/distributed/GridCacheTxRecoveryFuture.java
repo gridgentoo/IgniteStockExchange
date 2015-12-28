@@ -17,22 +17,29 @@
 
 package org.apache.ignite.internal.processors.cache.distributed;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.cluster.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.cache.transactions.*;
-import org.apache.ignite.internal.processors.cache.version.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.future.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-
-import java.util.*;
-import java.util.concurrent.atomic.*;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
+import org.apache.ignite.internal.processors.cache.GridCacheFuture;
+import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.util.GridLeanMap;
+import org.apache.ignite.internal.util.future.GridCompoundIdentityFuture;
+import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.CI1;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteUuid;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Future verifying that all remote transactions related to transaction were prepared or committed.
@@ -156,12 +163,13 @@ public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolea
                     0,
                     true,
                     futureId(),
-                    fut.futureId());
+                    fut.futureId(),
+                    tx.activeCachesDeploymentEnabled());
 
                 try {
                     cctx.io().send(nearNodeId, req, tx.ioPolicy());
                 }
-                catch (ClusterTopologyCheckedException e) {
+                catch (ClusterTopologyCheckedException ignore) {
                     fut.onNodeLeft();
                 }
                 catch (IgniteCheckedException e) {
@@ -261,7 +269,8 @@ public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolea
                         nodeTransactions(id),
                         false,
                         futureId(),
-                        fut.futureId());
+                        fut.futureId(),
+                        tx.activeCachesDeploymentEnabled());
 
                     try {
                         cctx.io().send(id, req, tx.ioPolicy());
@@ -286,7 +295,8 @@ public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolea
                     nodeTransactions(nodeId),
                     false,
                     futureId(),
-                    fut.futureId());
+                    fut.futureId(),
+                    tx.activeCachesDeploymentEnabled());
 
                 try {
                     cctx.io().send(nodeId, req, tx.ioPolicy());
@@ -331,20 +341,45 @@ public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolea
      */
     public void onResult(UUID nodeId, GridCacheTxRecoveryResponse res) {
         if (!isDone()) {
-            for (IgniteInternalFuture<Boolean> fut : pending()) {
-                if (isMini(fut)) {
-                    MiniFuture f = (MiniFuture)fut;
+            MiniFuture mini = miniFuture(res.miniId());
 
-                    if (f.futureId().equals(res.miniId())) {
-                        assert f.nodeId().equals(nodeId);
+            if (mini != null) {
+                assert mini.nodeId().equals(nodeId);
 
-                        f.onResult(res);
+                mini.onResult(res);
+            }
+        }
+    }
 
-                        break;
-                    }
+    /**
+     * Finds pending mini future by the given mini ID.
+     *
+     * @param miniId Mini ID to find.
+     * @return Mini future.
+     */
+    @SuppressWarnings("ForLoopReplaceableByForEach")
+    private MiniFuture miniFuture(IgniteUuid miniId) {
+        // We iterate directly over the futs collection here to avoid copy.
+        synchronized (futs) {
+            // Avoid iterator creation.
+            for (int i = 0; i < futs.size(); i++) {
+                IgniteInternalFuture<Boolean> fut = futs.get(i);
+
+                if (!isMini(fut))
+                    continue;
+
+                MiniFuture mini = (MiniFuture)fut;
+
+                if (mini.futureId().equals(miniId)) {
+                    if (!mini.isDone())
+                        return mini;
+                    else
+                        return null;
                 }
             }
         }
+
+        return null;
     }
 
     /** {@inheritDoc} */
@@ -353,29 +388,16 @@ public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolea
     }
 
     /** {@inheritDoc} */
-    @Override public GridCacheVersion version() {
-        return tx.xidVersion();
-    }
-
-    /** {@inheritDoc} */
-    @Override public Collection<? extends ClusterNode> nodes() {
-        return nodes.values();
-    }
-
-    /** {@inheritDoc} */
     @Override public boolean onNodeLeft(UUID nodeId) {
         for (IgniteInternalFuture<?> fut : futures())
             if (isMini(fut)) {
                 MiniFuture f = (MiniFuture)fut;
 
-                if (f.nodeId().equals(nodeId)) {
+                if (f.nodeId().equals(nodeId))
                     f.onNodeLeft();
-
-                    return true;
-                }
             }
 
-        return false;
+        return true;
     }
 
     /** {@inheritDoc} */
@@ -391,7 +413,7 @@ public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolea
     /** {@inheritDoc} */
     @Override public boolean onDone(@Nullable Boolean res, @Nullable Throwable err) {
         if (super.onDone(res, err)) {
-            cctx.mvcc().removeFuture(this);
+            cctx.mvcc().removeFuture(futId);
 
             if (err == null) {
                 assert res != null;
@@ -428,7 +450,16 @@ public class GridCacheTxRecoveryFuture extends GridCompoundIdentityFuture<Boolea
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        return S.toString(GridCacheTxRecoveryFuture.class, this, "super", super.toString());
+        Collection<String> futs = F.viewReadOnly(futures(), new C1<IgniteInternalFuture<?>, String>() {
+            @Override public String apply(IgniteInternalFuture<?> f) {
+                return "[node=" + ((MiniFuture)f).nodeId +
+                    ", done=" + f.isDone() + "]";
+            }
+        });
+
+        return S.toString(GridCacheTxRecoveryFuture.class, this,
+            "innerFuts", futs,
+            "super", super.toString());
     }
 
     /**

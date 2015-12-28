@@ -17,19 +17,27 @@
 
 package org.apache.ignite.marshaller.optimized;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.marshaller.*;
-import org.jetbrains.annotations.*;
-import org.jsr166.*;
-import sun.misc.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.Serializable;
+import java.util.concurrent.ConcurrentMap;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteSystemProperties;
+import org.apache.ignite.internal.util.GridUnsafe;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.marshaller.AbstractMarshaller;
+import org.jetbrains.annotations.Nullable;
+import org.jsr166.ConcurrentHashMap8;
+import sun.misc.Unsafe;
 
-import java.io.*;
-import java.util.concurrent.*;
+import static org.apache.ignite.IgniteSystemProperties.IGNITE_OPTIMIZED_MARSHALLER_USE_DEFAULT_SUID;
 
 /**
- * Optimized implementation of {@link org.apache.ignite.marshaller.Marshaller}. Unlike {@link org.apache.ignite.marshaller.jdk.JdkMarshaller},
+ * Optimized implementation of {@link org.apache.ignite.marshaller.Marshaller}.
+ * Unlike {@link org.apache.ignite.marshaller.jdk.JdkMarshaller},
  * which is based on standard {@link ObjectOutputStream}, this marshaller does not
  * enforce that all serialized objects implement {@link Serializable} interface. It is also
  * about 20 times faster as it removes lots of serialization overhead that exists in
@@ -71,11 +79,15 @@ import java.util.concurrent.*;
  * &lt;/bean&gt;
  * </pre>
  * <p>
- * <img src="http://ignite.incubator.apache.org/images/spring-small.png">
+ * <img src="http://ignite.apache.org/images/spring-small.png">
  * <br>
  * For information about Spring framework visit <a href="http://www.springframework.org/">www.springframework.org</a>
  */
 public class OptimizedMarshaller extends AbstractMarshaller {
+    /** Use default {@code serialVersionUID} for {@link Serializable} classes. */
+    public static final boolean USE_DFLT_SUID =
+        IgniteSystemProperties.getBoolean(IGNITE_OPTIMIZED_MARSHALLER_USE_DEFAULT_SUID, false);
+
     /** Default class loader. */
     private final ClassLoader dfltClsLdr = getClass().getClassLoader();
 
@@ -284,7 +296,7 @@ public class OptimizedMarshaller extends AbstractMarshaller {
      *
      * @param ldr Class loader being undeployed.
      */
-    public void onUndeploy(ClassLoader ldr) {
+    @Override public void onUndeploy(ClassLoader ldr) {
         for (Class<?> cls : clsMap.keySet()) {
             if (ldr.equals(cls.getClassLoader()))
                 clsMap.remove(cls);

@@ -17,14 +17,16 @@
 
 package org.apache.ignite.internal.util.nio;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.apache.ignite.lang.IgniteInClosure;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Recovery information for single node.
@@ -132,13 +134,6 @@ public class GridNioRecoveryDescriptor {
     }
 
     /**
-     * @return Received messages count.
-     */
-    public long receivedCount() {
-        return rcvCnt;
-    }
-
-    /**
      * @return Maximum size of unacknowledged messages queue.
      */
     public int queueLimit() {
@@ -182,20 +177,28 @@ public class GridNioRecoveryDescriptor {
 
             assert fut.isDone() : fut;
 
+            if (fut.ackClosure() != null)
+                fut.ackClosure().apply(null);
+
             acked++;
         }
     }
 
     /**
      * Node left callback.
+     *
+     * @return {@code False} if descriptor is reserved.
      */
-    public void onNodeLeft() {
+    public boolean onNodeLeft() {
         GridNioFuture<?>[] futs = null;
 
         synchronized (this) {
             nodeLeft = true;
 
-            if (!reserved && !msgFuts.isEmpty()) {
+            if (reserved)
+                return false;
+
+            if (!msgFuts.isEmpty()) {
                 futs = msgFuts.toArray(new GridNioFuture<?>[msgFuts.size()]);
 
                 msgFuts.clear();
@@ -204,6 +207,8 @@ public class GridNioRecoveryDescriptor {
 
         if (futs != null)
             completeOnNodeLeft(futs);
+
+        return true;
     }
 
     /**
@@ -254,8 +259,8 @@ public class GridNioRecoveryDescriptor {
      */
     public void connected() {
         synchronized (this) {
-            assert reserved;
-            assert !connected;
+            assert reserved : this;
+            assert !connected : this;
 
             connected = true;
 
@@ -358,8 +363,14 @@ public class GridNioRecoveryDescriptor {
      * @param futs Futures to complete.
      */
     private void completeOnNodeLeft(GridNioFuture<?>[] futs) {
-        for (GridNioFuture<?> msg : futs)
-            ((GridNioFutureImpl)msg).onDone(new IOException("Failed to send message, node has left: " + node.id()));
+        for (GridNioFuture<?> msg : futs) {
+            IOException e = new IOException("Failed to send message, node has left: " + node.id());
+
+            ((GridNioFutureImpl)msg).onDone(e);
+
+            if (msg.ackClosure() != null)
+                msg.ackClosure().apply(new IgniteException(e));
+        }
     }
 
     /** {@inheritDoc} */

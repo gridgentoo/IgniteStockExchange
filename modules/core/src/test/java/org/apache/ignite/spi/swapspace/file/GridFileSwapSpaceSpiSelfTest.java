@@ -17,18 +17,28 @@
 
 package org.apache.ignite.spi.swapspace.file;
 
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.spi.*;
-import org.apache.ignite.spi.swapspace.*;
-import org.jetbrains.annotations.*;
-import org.jsr166.*;
-
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.processors.cache.KeyCacheObject;
+import org.apache.ignite.internal.processors.cache.KeyCacheObjectImpl;
+import org.apache.ignite.internal.util.typedef.CIX1;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiInClosure;
+import org.apache.ignite.spi.IgniteSpiCloseableIterator;
+import org.apache.ignite.spi.swapspace.GridSwapSpaceSpiAbstractSelfTest;
+import org.apache.ignite.spi.swapspace.SwapKey;
+import org.apache.ignite.spi.swapspace.SwapSpaceSpi;
+import org.jetbrains.annotations.Nullable;
+import org.jsr166.ConcurrentHashMap8;
 
 /**
  * Test for {@link FileSwapSpaceSpi}.
@@ -103,7 +113,7 @@ public class GridFileSwapSpaceSpiSelfTest extends GridSwapSpaceSpiAbstractSelfTe
      * @return Swap key.
      */
     private SwapKey key(int i) {
-        return new SwapKey(i, i % 11, U.intToBytes(i));
+        return new SwapKey(new KeyCacheObjectImpl(i, U.intToBytes(i)), i % 11, U.intToBytes(i));
     }
 
     /**
@@ -346,8 +356,11 @@ public class GridFileSwapSpaceSpiSelfTest extends GridSwapSpaceSpiAbstractSelfTe
 
         assertEquals(cnt, spi.count(space));
 
-        for (Map.Entry<SwapKey, byte[]> entry : map.entrySet())
-            hash1 += (Integer)entry.getKey().key() * Arrays.hashCode(entry.getValue());
+        for (Map.Entry<SwapKey, byte[]> entry : map.entrySet()) {
+            KeyCacheObject key = (KeyCacheObject)entry.getKey().key();
+
+            hash1 += (Integer)key.value(null, false) * Arrays.hashCode(entry.getValue());
+        }
 
         assertEquals(hash0, hash1);
     }

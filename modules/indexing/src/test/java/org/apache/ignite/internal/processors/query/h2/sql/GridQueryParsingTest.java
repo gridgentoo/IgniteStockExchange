@@ -17,28 +17,34 @@
 
 package org.apache.ignite.internal.processors.query.h2.sql;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.query.annotations.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.query.*;
-import org.apache.ignite.internal.processors.query.h2.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.junits.common.*;
-import org.h2.command.*;
-import org.h2.command.dml.*;
-import org.h2.engine.*;
-import org.h2.jdbc.*;
+import java.io.Serializable;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.query.annotations.QuerySqlField;
+import org.apache.ignite.cache.query.annotations.QuerySqlFunction;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.IgniteEx;
+import org.apache.ignite.internal.processors.query.GridQueryProcessor;
+import org.apache.ignite.internal.processors.query.h2.IgniteH2Indexing;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
+import org.h2.command.Prepared;
+import org.h2.command.dml.Query;
+import org.h2.engine.Session;
+import org.h2.jdbc.JdbcConnection;
 
-import java.io.*;
-import java.sql.*;
-
-import static org.apache.ignite.cache.CacheRebalanceMode.*;
-import static org.apache.ignite.cache.CacheWriteSynchronizationMode.*;
+import static org.apache.ignite.cache.CacheRebalanceMode.SYNC;
+import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 
 /**
  *
@@ -92,6 +98,33 @@ public class GridQueryParsingTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testAllExamples() throws Exception {
+        checkQuery("select 42");
+        checkQuery("select ()");
+        checkQuery("select (1)");
+        checkQuery("select (1 + 1)");
+        checkQuery("select (1,)");
+        checkQuery("select (?)");
+        checkQuery("select (?,)");
+        checkQuery("select (1, 2)");
+        checkQuery("select (?, ? + 1, 2 + 2) as z");
+        checkQuery("select (1,(1,(1,(1,(1,?)))))");
+        checkQuery("select (select 1)");
+        checkQuery("select (select 1, select ?)");
+        checkQuery("select ((select 1), select ? + ?)");
+
+        checkQuery("select extract(year from ?)");
+        checkQuery("select convert(?, timestamp)");
+
+        checkQuery("select * from table(id bigint = 1)");
+        checkQuery("select * from table(id bigint = (1))");
+        checkQuery("select * from table(id bigint = (1,))");
+        checkQuery("select * from table(id bigint = (1,), name varchar = 'asd')");
+        checkQuery("select * from table(id bigint = (1,2), name varchar = 'asd')");
+        checkQuery("select * from table(id bigint = (1,2), name varchar = ('asd',))");
+        checkQuery("select * from table(id bigint = (1,2), name varchar = ?)");
+        checkQuery("select * from table(id bigint = (1,2), name varchar = (?,))");
+        checkQuery("select * from table(id bigint = ?, name varchar = ('abc', 'def', 100, ?)) t");
+
         checkQuery("select ? limit ? offset ?");
 
         checkQuery("select cool1()");
@@ -166,7 +199,7 @@ public class GridQueryParsingTest extends GridCommonAbstractTest {
 
         checkQuery("select p.name, ? from Person p where name regexp ? and p.old < ?");
 
-        checkQuery("select count(*) as a from Person");
+        checkQuery("select count(*) as a from Person having a > 10");
         checkQuery("select count(*) as a, count(p.*), count(p.name) from Person p");
         checkQuery("select count(distinct p.name) from Person p");
         checkQuery("select name, count(*) cnt from Person group by name order by cnt desc limit 10");
@@ -283,12 +316,7 @@ public class GridQueryParsingTest extends GridCommonAbstractTest {
 
         GridSqlQueryParser ses = new GridSqlQueryParser();
 
-        String res;
-
-        if (prepared instanceof Query)
-            res = ses.parse((Query) prepared).getSQL();
-        else
-            throw new UnsupportedOperationException();
+        String res = ses.parse(prepared).getSQL();
 
         System.out.println(normalizeSql(res));
 

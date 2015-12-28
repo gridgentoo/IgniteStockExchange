@@ -17,10 +17,12 @@
 
 package org.apache.ignite.transactions;
 
-import org.apache.ignite.*;
-import org.apache.ignite.lang.*;
-
-import java.util.*;
+import java.util.UUID;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteTransactions;
+import org.apache.ignite.lang.IgniteAsyncSupport;
+import org.apache.ignite.lang.IgniteAsyncSupported;
+import org.apache.ignite.lang.IgniteUuid;
 
 /**
  * Grid cache transaction. Cache transactions have a default 2PC (two-phase-commit) behavior and
@@ -52,7 +54,7 @@ import java.util.*;
  *  Read access with this level happens the same way as with {@link TransactionIsolation#REPEATABLE_READ} level.
  *  However, in {@link TransactionConcurrency#OPTIMISTIC} mode, if some transactions cannot be serially isolated
  *  from each other, then one winner will be picked and the other transactions in conflict will result in
- * {@link org.apache.ignite.internal.transactions.IgniteTxOptimisticCheckedException} being thrown.
+ * {@link TransactionOptimisticException} being thrown.
  * </li>
  * </ul>
  * <p>

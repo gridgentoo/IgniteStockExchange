@@ -17,12 +17,11 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.preloader;
 
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.util.tostring.GridToStringExclude;
+import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
  * Partition to node assignments.
@@ -38,16 +37,33 @@ public class GridDhtPreloaderAssignments extends ConcurrentHashMap<ClusterNode, 
     /** Last join order. */
     private final AffinityTopologyVersion topVer;
 
+    /** */
+    private boolean cancelled;
+
     /**
      * @param exchFut Exchange future.
      * @param topVer Last join order.
      */
     public GridDhtPreloaderAssignments(GridDhtPartitionsExchangeFuture exchFut, AffinityTopologyVersion topVer) {
         assert exchFut != null;
-        assert topVer.topologyVersion() > 0;
+        assert topVer.topologyVersion() > 0 : topVer;
 
         this.exchFut = exchFut;
         this.topVer = topVer;
+    }
+
+    /**
+     * @return {@code True} if assignments creation was cancelled.
+     */
+    public boolean cancelled() {
+        return cancelled;
+    }
+
+    /**
+     * @param cancelled {@code True} if assignments creation was cancelled.
+     */
+    public void cancelled(boolean cancelled) {
+        this.cancelled = cancelled;
     }
 
     /**
@@ -70,4 +86,3 @@ public class GridDhtPreloaderAssignments extends ConcurrentHashMap<ClusterNode, 
             "super", super.toString());
     }
 }
-

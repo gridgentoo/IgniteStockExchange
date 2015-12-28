@@ -17,22 +17,34 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.near;
 
-import com.google.common.collect.*;
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.events.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
+import com.google.common.collect.ImmutableSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.cache.expiry.Duration;
+import javax.cache.expiry.TouchedExpiryPolicy;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CachePeekMode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.NearCacheConfiguration;
+import org.apache.ignite.events.Event;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.resources.LoggerResource;
 
-import javax.cache.expiry.*;
-import java.util.*;
-import java.util.concurrent.atomic.*;
-
-import static java.util.concurrent.TimeUnit.*;
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.events.EventType.*;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
+import static org.apache.ignite.events.EventType.EVT_CACHE_OBJECT_SWAPPED;
+import static org.apache.ignite.events.EventType.EVT_CACHE_OBJECT_UNSWAPPED;
 
 /**
  *
@@ -97,9 +109,11 @@ public class GridCacheAtomicClientOnlyMultiNodeFullApiSelfTest extends GridCache
 
         affinityNodes(); // Just to ack cache configuration to log..
 
-        checkKeySize(map.keySet());
+        Set<String> keys = new LinkedHashSet<>(map.keySet());
 
-        checkSize(map.keySet());
+        checkKeySize(keys);
+
+        checkSize(keys);
 
         int fullCacheSize = 0;
 
@@ -308,24 +322,8 @@ public class GridCacheAtomicClientOnlyMultiNodeFullApiSelfTest extends GridCache
         Collection<String> locKeys = new HashSet<>();
 
         for (int i = 0; i < gridCount(); i++) {
-            grid(i).events().localListen(new IgnitePredicate<Event>() {
-                @Override public boolean apply(Event evt) {
-                    info("Received event: " + evt);
-
-                    switch (evt.type()) {
-                        case EVT_CACHE_OBJECT_SWAPPED:
-                            swapEvts.incrementAndGet();
-
-                            break;
-                        case EVT_CACHE_OBJECT_UNSWAPPED:
-                            unswapEvts.incrementAndGet();
-
-                            break;
-                    }
-
-                    return true;
-                }
-            }, EVT_CACHE_OBJECT_SWAPPED, EVT_CACHE_OBJECT_UNSWAPPED);
+            grid(i).events().localListen(
+                new LocalListener(swapEvts, unswapEvts), EVT_CACHE_OBJECT_SWAPPED, EVT_CACHE_OBJECT_UNSWAPPED);
         }
 
         cache.localEvict(Collections.singleton(k2));
@@ -406,5 +404,47 @@ public class GridCacheAtomicClientOnlyMultiNodeFullApiSelfTest extends GridCache
 
         assertEquals(cnt, swapEvts.get());
         assertEquals(cnt, unswapEvts.get());
+    }
+
+    /**
+     *
+     */
+    private static class LocalListener implements IgnitePredicate<Event> {
+        /** Logger. */
+        @LoggerResource
+        private IgniteLogger log;
+
+        /** Swap events. */
+        private final AtomicInteger swapEvts;
+
+        /** Unswap events. */
+        private final AtomicInteger unswapEvts;
+
+        /**
+         * @param swapEvts Swap events.
+         * @param unswapEvts Unswap events.
+         */
+        public LocalListener(AtomicInteger swapEvts, AtomicInteger unswapEvts) {
+            this.swapEvts = swapEvts;
+            this.unswapEvts = unswapEvts;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean apply(Event evt) {
+            log.info("Received event: " + evt);
+
+            switch (evt.type()) {
+                case EVT_CACHE_OBJECT_SWAPPED:
+                    swapEvts.incrementAndGet();
+
+                    break;
+                case EVT_CACHE_OBJECT_UNSWAPPED:
+                    unswapEvts.incrementAndGet();
+
+                    break;
+            }
+
+            return true;
+        }
     }
 }

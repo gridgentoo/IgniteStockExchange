@@ -17,21 +17,26 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.near;
 
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.cache.distributed.*;
-import org.apache.ignite.internal.processors.cache.transactions.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-import org.jetbrains.annotations.*;
-
-import java.io.*;
-import java.nio.*;
-import java.util.*;
+import java.io.Externalizable;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.internal.GridDirectCollection;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.distributed.GridDistributedTxPrepareRequest;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteTxEntry;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.plugin.extensions.communication.MessageCollectionItemType;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Near transaction prepare request.
@@ -66,7 +71,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
     /** Implicit single flag. */
     private boolean implicitSingle;
 
-    /** Explicit lock flag. Set to true if at leat one entry was explicitly locked. */
+    /** Explicit lock flag. Set to true if at least one entry was explicitly locked. */
     private boolean explicitLock;
 
     /** Subject ID. */
@@ -94,7 +99,6 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
      * @param near {@code True} if mapping is for near caches.
      * @param txNodes Transaction nodes mapping.
      * @param last {@code True} if this last prepare request for node.
-     * @param lastBackups IDs of backup nodes receiving last prepare request during this prepare.
      * @param onePhaseCommit One phase commit flag.
      * @param retVal Return value flag.
      * @param implicitSingle Implicit single flag.
@@ -102,6 +106,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
      * @param subjId Subject ID.
      * @param taskNameHash Task name hash.
      * @param firstClientReq {@code True} if first optimistic tx prepare request sent from client node.
+     * @param addDepInfo Deployment info flag.
      */
     public GridNearTxPrepareRequest(
         IgniteUuid futId,
@@ -112,16 +117,16 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
         boolean near,
         Map<UUID, Collection<UUID>> txNodes,
         boolean last,
-        Collection<UUID> lastBackups,
         boolean onePhaseCommit,
         boolean retVal,
         boolean implicitSingle,
         boolean explicitLock,
         @Nullable UUID subjId,
         int taskNameHash,
-        boolean firstClientReq
+        boolean firstClientReq,
+        boolean addDepInfo
     ) {
-        super(tx, reads, writes, txNodes, onePhaseCommit);
+        super(tx, reads, writes, txNodes, onePhaseCommit, addDepInfo);
 
         assert futId != null;
         assert !firstClientReq || tx.optimistic() : tx;
@@ -130,7 +135,6 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
         this.topVer = topVer;
         this.near = near;
         this.last = last;
-        this.lastBackups = lastBackups;
         this.retVal = retVal;
         this.implicitSingle = implicitSingle;
         this.explicitLock = explicitLock;
@@ -146,12 +150,6 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
         return firstClientReq;
     }
 
-    /**
-     * @return IDs of backup nodes receiving last prepare request during this prepare.
-     */
-    public Collection<UUID> lastBackups() {
-        return lastBackups;
-    }
 
     /**
      * @return {@code True} if this last prepare request for node.
@@ -284,73 +282,73 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
         }
 
         switch (writer.state()) {
-            case 22:
+            case 23:
                 if (!writer.writeBoolean("explicitLock", explicitLock))
                     return false;
 
                 writer.incrementState();
 
-            case 23:
+            case 24:
                 if (!writer.writeBoolean("firstClientReq", firstClientReq))
                     return false;
 
                 writer.incrementState();
 
-            case 24:
+            case 25:
                 if (!writer.writeIgniteUuid("futId", futId))
                     return false;
 
                 writer.incrementState();
 
-            case 25:
+            case 26:
                 if (!writer.writeBoolean("implicitSingle", implicitSingle))
                     return false;
 
                 writer.incrementState();
 
-            case 26:
+            case 27:
                 if (!writer.writeBoolean("last", last))
                     return false;
 
                 writer.incrementState();
 
-            case 27:
+            case 28:
                 if (!writer.writeCollection("lastBackups", lastBackups, MessageCollectionItemType.UUID))
                     return false;
 
                 writer.incrementState();
 
-            case 28:
+            case 29:
                 if (!writer.writeIgniteUuid("miniId", miniId))
                     return false;
 
                 writer.incrementState();
 
-            case 29:
+            case 30:
                 if (!writer.writeBoolean("near", near))
                     return false;
 
                 writer.incrementState();
 
-            case 30:
+            case 31:
                 if (!writer.writeBoolean("retVal", retVal))
                     return false;
 
                 writer.incrementState();
 
-            case 31:
+            case 32:
                 if (!writer.writeUuid("subjId", subjId))
                     return false;
 
                 writer.incrementState();
 
-            case 32:
+            case 33:
                 if (!writer.writeInt("taskNameHash", taskNameHash))
                     return false;
 
                 writer.incrementState();
 
-            case 33:
+            case 34:
                 if (!writer.writeMessage("topVer", topVer))
                     return false;
 
@@ -372,7 +370,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
             return false;
 
         switch (reader.state()) {
-            case 22:
+            case 23:
                 explicitLock = reader.readBoolean("explicitLock");
 
                 if (!reader.isLastRead())
@@ -380,7 +378,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 23:
+            case 24:
                 firstClientReq = reader.readBoolean("firstClientReq");
 
                 if (!reader.isLastRead())
@@ -388,7 +386,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 24:
+            case 25:
                 futId = reader.readIgniteUuid("futId");
 
                 if (!reader.isLastRead())
@@ -396,7 +394,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 25:
+            case 26:
                 implicitSingle = reader.readBoolean("implicitSingle");
 
                 if (!reader.isLastRead())
@@ -404,7 +402,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 26:
+            case 27:
                 last = reader.readBoolean("last");
 
                 if (!reader.isLastRead())
@@ -412,7 +410,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 27:
+            case 28:
                 lastBackups = reader.readCollection("lastBackups", MessageCollectionItemType.UUID);
 
                 if (!reader.isLastRead())
@@ -420,7 +418,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 28:
+            case 29:
                 miniId = reader.readIgniteUuid("miniId");
 
                 if (!reader.isLastRead())
@@ -428,7 +426,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 29:
+            case 30:
                 near = reader.readBoolean("near");
 
                 if (!reader.isLastRead())
@@ -436,7 +434,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 30:
+            case 31:
                 retVal = reader.readBoolean("retVal");
 
                 if (!reader.isLastRead())
@@ -444,7 +442,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 31:
+            case 32:
                 subjId = reader.readUuid("subjId");
 
                 if (!reader.isLastRead())
@@ -452,7 +450,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 32:
+            case 33:
                 taskNameHash = reader.readInt("taskNameHash");
 
                 if (!reader.isLastRead())
@@ -460,7 +458,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
                 reader.incrementState();
 
-            case 33:
+            case 34:
                 topVer = reader.readMessage("topVer");
 
                 if (!reader.isLastRead())
@@ -470,7 +468,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
         }
 
-        return true;
+        return reader.afterMessageRead(GridNearTxPrepareRequest.class);
     }
 
     /** {@inheritDoc} */
@@ -480,7 +478,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
 
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
-        return 34;
+        return 35;
     }
 
     /** {@inheritDoc} */

@@ -17,17 +17,22 @@
 
 package org.apache.ignite.internal.processors.igfs;
 
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.igfs.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-
-import java.io.*;
-import java.util.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Collections;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.configuration.FileSystemConfiguration;
+import org.apache.ignite.igfs.IgfsPath;
+import org.apache.ignite.internal.util.GridLeanMap;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteUuid;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Unmodifiable file information.
@@ -119,6 +124,16 @@ public final class IgfsFileInfo implements Externalizable {
     }
 
     /**
+     * Consturcts directory with random ID, provided listing and properties.
+     *
+     * @param listing Listing.
+     * @param props The properties to set for the new directory.
+     */
+    IgfsFileInfo(@Nullable Map<String, IgfsListingEntry> listing, @Nullable Map<String,String> props) {
+        this(true/*dir*/, null, 0, 0, null, listing, props, null, false, System.currentTimeMillis(), false);
+    }
+
+    /**
      * Constructs file info.
      *
      * @param blockSize Block size.
@@ -189,7 +204,7 @@ public final class IgfsFileInfo implements Externalizable {
      * @param evictExclude Evict exclude flag.
      */
     IgfsFileInfo(int blockSize, long len, boolean evictExclude, @Nullable Map<String, String> props) {
-        this(blockSize == 0, // NB The contract is: (blockSize == null) <=> isDirectory()
+        this(blockSize == 0, // NB The contract is: (blockSize == 0) <=> isDirectory()
             null, blockSize, len, null, null, props, null, true, System.currentTimeMillis(), evictExclude);
     }
 
@@ -211,7 +226,7 @@ public final class IgfsFileInfo implements Externalizable {
      * @param listing New directory listing.
      * @param old Old file info.
      */
-    IgfsFileInfo(Map<String, IgfsListingEntry> listing, IgfsFileInfo old) {
+    IgfsFileInfo(@Nullable Map<String, IgfsListingEntry> listing, IgfsFileInfo old) {
         this(old.isDirectory(), old.id, old.blockSize, old.len, old.affKey, listing, old.props, old.fileMap(),
             old.lockId, false, old.accessTime, old.modificationTime, old.evictExclude());
     }
@@ -490,6 +505,7 @@ public final class IgfsFileInfo implements Externalizable {
     }
 
     /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         id = U.readGridUuid(in);
         blockSize = in.readInt();

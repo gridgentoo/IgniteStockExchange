@@ -17,9 +17,10 @@
 
 package org.apache.ignite.internal.processors.query.h2.sql;
 
-import org.h2.util.*;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import org.h2.util.StatementBuilder;
+import org.h2.util.StringUtils;
 
 /**
  * Select query.
@@ -134,7 +135,7 @@ public abstract class GridSqlQuery {
      * @param col Column index.
      * @return Expression for column index.
      */
-    protected abstract GridSqlElement expression(int col);
+    protected abstract GridSqlElement column(int col);
 
     /**
      * @param buff Statement builder.
@@ -157,10 +158,13 @@ public abstract class GridSqlQuery {
                 if (idx < visibleCols)
                     buff.append(idx + 1);
                 else {
-                    GridSqlElement expr = expression(idx);
+                    GridSqlElement expr = column(idx);
 
                     if (expr == null) // For plain select should never be null, for union H2 itself can't parse query.
                         throw new IllegalStateException("Failed to build query: " + buff.toString());
+
+                    if (expr instanceof GridSqlAlias)
+                        expr = expr.child();
 
                     buff.append('=').append(StringUtils.unEnclose(expr.getSQL()));
                 }

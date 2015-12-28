@@ -17,11 +17,12 @@
 
 package org.apache.ignite;
 
-import org.jetbrains.annotations.*;
-
-import javax.net.ssl.*;
-import java.lang.management.*;
-import java.util.*;
+import java.io.Serializable;
+import java.lang.management.RuntimeMXBean;
+import java.util.Properties;
+import javax.net.ssl.HostnameVerifier;
+import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Contains constants for all system properties and environmental variables in Ignite.
@@ -96,6 +97,9 @@ public final class IgniteSystemProperties {
      * This property does not allow Ignite to override Jetty log configuration for REST processor.
      */
     public static final String IGNITE_JETTY_LOG_NO_OVERRIDE = "IGNITE_JETTY_LOG_NO_OVERRIDE";
+
+    /** This property allow rewriting default ({@code 30}) rest session expire time (in seconds). */
+    public static final String IGNITE_REST_SESSION_TIMEOUT = "IGNITE_REST_SESSION_TIMEOUT";
 
     /**
      * This property allows to override maximum count of task results stored on one node
@@ -248,7 +252,7 @@ public final class IgniteSystemProperties {
      */
     public static final String IGNITE_OFFHEAP_SAFE_RELEASE = "IGNITE_OFFHEAP_SAFE_RELEASE";
 
-    /** Maximum size for atomic cache queue delete history. */
+    /** Maximum size for atomic cache queue delete history (default is 200 000 entries per partition). */
     public static final String IGNITE_ATOMIC_CACHE_DELETE_HISTORY_SIZE = "IGNITE_ATOMIC_CACHE_DELETE_HISTORY_SIZE";
 
     /**
@@ -351,8 +355,24 @@ public final class IgniteSystemProperties {
     /** Maximum size for affinity assignment history. */
     public static final String IGNITE_AFFINITY_HISTORY_SIZE = "IGNITE_AFFINITY_HISTORY_SIZE";
 
+    /** Maximum size for discovery messages history. */
+    public static final String IGNITE_DISCOVERY_HISTORY_SIZE = "IGNITE_DISCOVERY_HISTORY_SIZE";
+
     /** Number of cache operation retries in case of topology exceptions. */
     public static final String IGNITE_CACHE_RETRIES_COUNT = "IGNITE_CACHE_RETRIES_COUNT";
+
+    /** Number of times pending cache objects will be dumped to the log in case of partition exchange timeout. */
+    public static final String IGNITE_DUMP_PENDING_OBJECTS_THRESHOLD = "IGNITE_DUMP_PENDING_OBJECTS_THRESHOLD";
+
+    /** JDBC driver cursor remove delay. */
+    public static final String IGNITE_JDBC_DRIVER_CURSOR_REMOVE_DELAY = "IGNITE_JDBC_DRIVER_CURSOR_RMV_DELAY";
+
+    /**
+     * Manages {@link OptimizedMarshaller} behavior of {@code serialVersionUID} computation for
+     * {@link Serializable} classes.
+     * */
+    public static final String IGNITE_OPTIMIZED_MARSHALLER_USE_DEFAULT_SUID =
+        "IGNITE_OPTIMIZED_MARSHALLER_USE_DEFAULT_SUID";
 
     /**
      * Enforces singleton.

@@ -17,9 +17,9 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-import org.jetbrains.annotations.*;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.plugin.extensions.communication.Message;
+import org.jetbrains.annotations.Nullable;
 
 /**
  *
@@ -30,6 +30,9 @@ public interface CacheObject extends Message {
 
     /** */
     public static final byte TYPE_BYTE_ARR = 2;
+
+    /** */
+    public static final byte TYPE_BINARY = 100;
 
     /**
      * @param ctx Context.
@@ -48,7 +51,16 @@ public interface CacheObject extends Message {
     /**
      * @return Object type.
      */
-    public byte type();
+    public byte cacheObjectType();
+
+    /**
+     * Gets flag indicating whether object value is a platform type. Platform types will be automatically
+     * deserialized on public API cache operations regardless whether
+     * {@link org.apache.ignite.IgniteCache#withKeepBinary()} is used or not.
+     *
+     * @return Platform type flag.
+     */
+    public boolean isPlatformType();
 
     /**
      * Prepares cache object for cache (e.g. copies user-provided object if needed).

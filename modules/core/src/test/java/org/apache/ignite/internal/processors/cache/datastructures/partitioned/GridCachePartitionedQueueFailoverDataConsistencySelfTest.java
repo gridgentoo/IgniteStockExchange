@@ -17,22 +17,18 @@
 
 package org.apache.ignite.internal.processors.cache.datastructures.partitioned;
 
-import org.apache.ignite.cache.*;
-import org.apache.ignite.internal.processors.cache.datastructures.*;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMemoryMode;
+import org.apache.ignite.internal.processors.cache.datastructures.GridCacheAbstractQueueFailoverDataConsistencySelfTest;
 
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMemoryMode.*;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMemoryMode.ONHEAP_TIERED;
 
 /**
  * Queue failover test for transactional cache.
  */
 public class GridCachePartitionedQueueFailoverDataConsistencySelfTest extends
     GridCacheAbstractQueueFailoverDataConsistencySelfTest {
-    /** {@inheritDoc} */
-    @Override protected void beforeTest() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-264");
-    }
-
     /** {@inheritDoc} */
     @Override protected CacheMemoryMode collectionMemoryMode() {
         return ONHEAP_TIERED;

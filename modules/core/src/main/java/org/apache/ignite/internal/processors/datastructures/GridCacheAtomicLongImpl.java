@@ -17,21 +17,28 @@
 
 package org.apache.ignite.internal.processors.datastructures;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.cache.transactions.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.ObjectStreamException;
+import java.util.concurrent.Callable;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiTuple;
 
-import java.io.*;
-import java.util.concurrent.*;
-
-import static org.apache.ignite.transactions.TransactionConcurrency.*;
-import static org.apache.ignite.transactions.TransactionIsolation.*;
-import static org.apache.ignite.internal.util.typedef.internal.CU.*;
+import static org.apache.ignite.internal.util.typedef.internal.CU.retryTopologySafe;
+import static org.apache.ignite.transactions.TransactionConcurrency.PESSIMISTIC;
+import static org.apache.ignite.transactions.TransactionIsolation.REPEATABLE_READ;
 
 /**
  * Cache atomic long implementation.
@@ -216,7 +223,7 @@ public final class GridCacheAtomicLongImpl implements GridCacheAtomicLongEx, Ext
         this.atomicView = atomicView;
         this.name = name;
 
-        log = ctx.gridConfig().getGridLogger().getLogger(getClass());
+        log = ctx.logger(getClass());
     }
 
     /** {@inheritDoc} */
@@ -325,7 +332,23 @@ public final class GridCacheAtomicLongImpl implements GridCacheAtomicLongEx, Ext
         checkRemoved();
 
         try {
-            return CU.outTx(internalCompareAndSet(expVal, newVal), ctx);
+            return CU.outTx(internalCompareAndSetAndGet(expVal, newVal) , ctx) == expVal;
+        }
+        catch (IgniteCheckedException e) {
+            throw U.convertException(e);
+        }
+    }
+
+    /**
+     * @param expVal Expected value.
+     * @param newVal New value.
+     * @return Old value.
+     */
+    public long compareAndSetAndGet(long expVal, long newVal) {
+        checkRemoved();
+
+        try {
+            return CU.outTx(internalCompareAndSetAndGet(expVal, newVal), ctx);
         }
         catch (IgniteCheckedException e) {
             throw U.convertException(e);
@@ -502,25 +525,25 @@ public final class GridCacheAtomicLongImpl implements GridCacheAtomicLongEx, Ext
     }
 
     /**
-     * Method returns callable for execution {@link #compareAndSet(long, long)}
+     * Method returns callable for execution {@link #compareAndSetAndGet(long, long)}
      * operation in async and sync mode.
      *
      * @param expVal Expected atomic long value.
      * @param newVal New atomic long value.
      * @return Callable for execution in async and sync mode.
      */
-    private Callable<Boolean> internalCompareAndSet(final long expVal, final long newVal) {
-        return new Callable<Boolean>() {
-            @Override public Boolean call() throws Exception {
+    private Callable<Long> internalCompareAndSetAndGet(final long expVal, final long newVal) {
+        return new Callable<Long>() {
+            @Override public Long call() throws Exception {
                 try (IgniteInternalTx tx = CU.txStartInternal(ctx, atomicView, PESSIMISTIC, REPEATABLE_READ)) {
                     GridCacheAtomicLongValue val = atomicView.get(key);
 
                     if (val == null)
                         throw new IgniteCheckedException("Failed to find atomic long with given name: " + name);
 
-                    boolean retVal = val.get() == expVal;
+                    long retVal = val.get();
 
-                    if (retVal) {
+                    if (retVal == expVal) {
                         val.set(newVal);
 
                         atomicView.getAndPut(key, val);

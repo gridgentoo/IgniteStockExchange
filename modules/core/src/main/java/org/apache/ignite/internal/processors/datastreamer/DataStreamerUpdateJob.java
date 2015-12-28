@@ -17,16 +17,19 @@
 
 package org.apache.ignite.internal.processors.datastreamer;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.plugin.security.*;
-import org.apache.ignite.stream.*;
-import org.jetbrains.annotations.*;
-
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.processors.cache.CacheObject;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.IgniteCacheProxy;
+import org.apache.ignite.internal.util.lang.GridPlainCallable;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.plugin.security.SecurityPermission;
+import org.apache.ignite.stream.StreamReceiver;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Job to put entries to cache on affinity node.
@@ -53,6 +56,9 @@ class DataStreamerUpdateJob implements GridPlainCallable<Object> {
     /** */
     private final StreamReceiver rcvr;
 
+    /** */
+    private boolean keepBinary;
+
     /**
      * @param ctx Context.
      * @param log Log.
@@ -69,6 +75,7 @@ class DataStreamerUpdateJob implements GridPlainCallable<Object> {
         Collection<DataStreamerEntry> col,
         boolean ignoreDepOwnership,
         boolean skipStore,
+        boolean keepBinary,
         StreamReceiver<?, ?> rcvr) {
         this.ctx = ctx;
         this.log = log;
@@ -80,6 +87,7 @@ class DataStreamerUpdateJob implements GridPlainCallable<Object> {
         this.col = col;
         this.ignoreDepOwnership = ignoreDepOwnership;
         this.skipStore = skipStore;
+        this.keepBinary = keepBinary;
         this.rcvr = rcvr;
     }
 
@@ -95,6 +103,9 @@ class DataStreamerUpdateJob implements GridPlainCallable<Object> {
 
         if (skipStore)
             cache = (IgniteCacheProxy<?, ?>)cache.withSkipStore();
+
+        if (keepBinary)
+            cache = (IgniteCacheProxy<?, ?>)cache.withKeepBinary();
 
         if (ignoreDepOwnership)
             cache.context().deploy().ignoreOwnership(true);
@@ -119,7 +130,7 @@ class DataStreamerUpdateJob implements GridPlainCallable<Object> {
             if (unwrapEntries()) {
                 Collection<Map.Entry> col0 = F.viewReadOnly(col, new C1<DataStreamerEntry, Map.Entry>() {
                     @Override public Map.Entry apply(DataStreamerEntry e) {
-                        return e.toEntry(cctx);
+                        return e.toEntry(cctx, keepBinary);
                     }
                 });
 

@@ -17,17 +17,19 @@
 
 package org.apache.ignite.cache.store.jdbc;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.store.jdbc.dialect.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.testframework.*;
-import org.apache.ignite.testframework.junits.common.*;
-import org.h2.jdbcx.*;
-
-import javax.cache.*;
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.concurrent.Callable;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.store.jdbc.dialect.H2Dialect;
+import org.apache.ignite.cache.store.jdbc.dialect.JdbcDialect;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
+import org.h2.jdbcx.JdbcDataSource;
 
 /**
  * Test for Cache jdbc blob store factory.
@@ -57,17 +59,11 @@ public class CacheJdbcPojoStoreFactorySelfTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testSerializable() throws Exception {
-        GridTestUtils.assertThrows(log, new Callable<Object>() {
-            @Override public Object call() throws Exception {
-                try (Ignite ignite = Ignition.start("modules/spring/src/test/config/node.xml")) {
-                    try (IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cacheConfigurationH2Dialect())) {
-                        checkStore(cache, JdbcDataSource.class);
-                    }
-                }
-
-                return null;
+        try (Ignite ignite = Ignition.start("modules/spring/src/test/config/node.xml")) {
+            try (IgniteCache<Integer, String> cache = ignite.getOrCreateCache(cacheConfigurationH2Dialect())) {
+                checkStore(cache, JdbcDataSource.class);
             }
-        }, CacheException.class, "Failed to validate cache configuration. Cache store factory is not serializable.");
+        }
     }
 
     /**

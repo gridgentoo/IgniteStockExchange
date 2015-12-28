@@ -17,10 +17,9 @@
 
 package org.apache.ignite.internal.visor.cache;
 
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-
-import java.io.*;
+import java.io.Serializable;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.internal.util.typedef.internal.U;
 
 /**
  * Data transfer object for cache query configuration data.
@@ -34,6 +33,9 @@ public class VisorCacheQueryConfiguration implements Serializable {
 
     /** */
     private long longQryWarnTimeout;
+
+    /** */
+    private String sqlSchema;
 
     /** */
     private boolean sqlEscapeAll;
@@ -70,6 +72,7 @@ public class VisorCacheQueryConfiguration implements Serializable {
 
         cfg.sqlFuncClss = compactClasses(ccfg.getSqlFunctionClasses());
         cfg.longQryWarnTimeout = ccfg.getLongQueryWarningTimeout();
+        cfg.sqlSchema = ccfg.getSqlSchema();
         cfg.sqlEscapeAll = ccfg.isSqlEscapeAll();
         cfg.indexedTypes = compactClasses(ccfg.getIndexedTypes());
         cfg.sqlOnheapRowCacheSize = ccfg.getSqlOnheapRowCacheSize();
@@ -89,6 +92,13 @@ public class VisorCacheQueryConfiguration implements Serializable {
      */
     public long longQueryWarningTimeout() {
         return longQryWarnTimeout;
+    }
+
+    /**
+     * @return Schema name, which is used by SQL engine for SQL statements generation.
+     */
+    public String sqlSchema() {
+        return sqlSchema;
     }
 
     /**

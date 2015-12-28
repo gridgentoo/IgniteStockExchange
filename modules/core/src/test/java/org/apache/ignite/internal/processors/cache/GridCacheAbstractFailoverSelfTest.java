@@ -17,23 +17,31 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.cluster.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.testframework.*;
-import org.apache.ignite.transactions.*;
-import org.jetbrains.annotations.*;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.cache.CacheException;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cache.CachePartialUpdateException;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
+import org.apache.ignite.internal.util.lang.GridAbsPredicate;
+import org.apache.ignite.internal.util.typedef.CA;
+import org.apache.ignite.internal.util.typedef.CIX1;
+import org.apache.ignite.internal.util.typedef.G;
+import org.apache.ignite.internal.util.typedef.X;
+import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.testframework.GridTestUtils;
+import org.apache.ignite.transactions.TransactionConcurrency;
+import org.apache.ignite.transactions.TransactionIsolation;
+import org.jetbrains.annotations.Nullable;
 
-import javax.cache.*;
-import java.util.concurrent.atomic.*;
-
-import static org.apache.ignite.cache.CacheRebalanceMode.*;
+import static org.apache.ignite.cache.CacheRebalanceMode.SYNC;
 
 /**
  * Failover tests for cache.
@@ -79,6 +87,8 @@ public abstract class GridCacheAbstractFailoverSelfTest extends GridCacheAbstrac
         discoSpi.setNetworkTimeout(60_000);
         discoSpi.setHeartbeatFrequency(30_000);
         discoSpi.setReconnectCount(2);
+
+        ((TcpCommunicationSpi)cfg.getCommunicationSpi()).setSharedMemoryPort(-1);
 
         return cfg;
     }
@@ -321,14 +331,21 @@ public abstract class GridCacheAbstractFailoverSelfTest extends GridCacheAbstrac
      * @throws IgniteCheckedException If failed.
      */
     private void remove(Ignite ignite, IgniteCache<String, Integer> cache, final int cnt,
-        TransactionConcurrency concurrency, TransactionIsolation isolation) throws Exception {
+        TransactionConcurrency concurrency, final TransactionIsolation isolation) throws Exception {
         try {
             info("Removing values form cache [0," + cnt + ')');
 
             CU.inTx(ignite, cache, concurrency, isolation, new CIX1<IgniteCache<String, Integer>>() {
                 @Override public void applyx(IgniteCache<String, Integer> cache) {
-                    for (int i = 0; i < cnt; i++)
-                        cache.remove("key" + i);
+                    for (int i = 0; i < cnt; i++) {
+                        String key = "key" + i;
+
+                        // Use removeAll for serializable tx to avoid version check.
+                        if (isolation == TransactionIsolation.SERIALIZABLE)
+                            cache.removeAll(Collections.singleton(key));
+                        else
+                            cache.remove(key);
+                    }
                 }
             });
         }

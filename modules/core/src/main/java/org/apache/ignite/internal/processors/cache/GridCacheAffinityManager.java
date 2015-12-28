@@ -17,18 +17,23 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.events.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.future.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.events.DiscoveryEvent;
+import org.apache.ignite.internal.IgniteClientDisconnectedCheckedException;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.affinity.GridAffinityAssignmentCache;
+import org.apache.ignite.internal.util.GridLeanSet;
+import org.apache.ignite.internal.util.future.GridFinishedFuture;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.lang.IgniteFuture;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Cache affinity manager.
@@ -257,7 +262,7 @@ public class GridCacheAffinityManager extends GridCacheManagerAdapter {
      * @param n Node to check.
      * @param part Partition.
      * @param topVer Topology version.
-     * @return {@code True} if checked node is primary for given key.
+     * @return {@code True} if checked node is primary for given partition.
      */
     public boolean primary(ClusterNode n, int part, AffinityTopologyVersion topVer) {
         return F.eq(primary(part, topVer), n);
@@ -286,6 +291,20 @@ public class GridCacheAffinityManager extends GridCacheManagerAdapter {
             return Collections.emptyList();
 
         return F.view(nodes, F.notEqualTo(nodes.get(0)));
+    }
+
+    /**
+     * @param n Node to check.
+     * @param part Partition.
+     * @param topVer Topology version.
+     * @return {@code True} if checked node is a backup node for given partition.
+     */
+    public boolean backup(ClusterNode n, int part, AffinityTopologyVersion topVer) {
+        List<ClusterNode> nodes = nodes(part, topVer);
+
+        assert !F.isEmpty(nodes);
+
+        return nodes.indexOf(n) > 0;
     }
 
     /**
@@ -364,5 +383,15 @@ public class GridCacheAffinityManager extends GridCacheManagerAdapter {
      */
     public AffinityTopologyVersion affinityTopologyVersion() {
         return aff.lastVersion();
+    }
+
+    /**
+     * Dumps debug information.
+     */
+    public void dumpDebugInfo() {
+        GridAffinityAssignmentCache aff0 = aff;
+
+        if (aff0 != null)
+            aff0.dumpDebugInfo();
     }
 }

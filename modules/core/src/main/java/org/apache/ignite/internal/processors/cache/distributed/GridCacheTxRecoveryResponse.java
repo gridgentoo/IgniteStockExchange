@@ -17,13 +17,13 @@
 
 package org.apache.ignite.internal.processors.cache.distributed;
 
-import org.apache.ignite.internal.processors.cache.version.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-
-import java.io.*;
-import java.nio.*;
+import java.io.Externalizable;
+import java.nio.ByteBuffer;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
 
 /**
  * Transactions recovery check response.
@@ -53,17 +53,21 @@ public class GridCacheTxRecoveryResponse extends GridDistributedBaseMessage {
      * @param futId Future ID.
      * @param miniId Mini future ID.
      * @param success {@code True} if all remote transactions were prepared, {@code false} otherwise.
+     * @param addDepInfo Deployment info flag.
      */
     public GridCacheTxRecoveryResponse(GridCacheVersion txId,
         IgniteUuid futId,
         IgniteUuid miniId,
-        boolean success)
+        boolean success,
+        boolean addDepInfo)
     {
-        super(txId, 0);
+        super(txId, 0, addDepInfo);
 
         this.futId = futId;
         this.miniId = miniId;
         this.success = success;
+
+        this.addDepInfo = addDepInfo;
     }
 
     /**
@@ -162,7 +166,7 @@ public class GridCacheTxRecoveryResponse extends GridDistributedBaseMessage {
 
         }
 
-        return true;
+        return reader.afterMessageRead(GridCacheTxRecoveryResponse.class);
     }
 
     /** {@inheritDoc} */

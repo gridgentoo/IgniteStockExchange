@@ -17,19 +17,24 @@
 
 package org.apache.ignite.marshaller.optimized;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.marshaller.*;
-import org.apache.ignite.marshaller.jdk.*;
-import sun.misc.*;
-
-import java.io.*;
-import java.lang.reflect.*;
-import java.nio.charset.*;
-import java.security.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.IOException;
+import java.io.ObjectStreamClass;
+import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.nio.charset.Charset;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.ConcurrentMap;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.internal.util.GridUnsafe;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.marshaller.MarshallerContext;
+import org.apache.ignite.marshaller.jdk.JdkMarshaller;
+import sun.misc.Unsafe;
 
 /**
  * Miscellaneous utility methods to facilitate {@link OptimizedMarshaller}.
@@ -150,12 +155,22 @@ class OptimizedMarshallerUtils {
     static final JdkMarshaller JDK_MARSH = new JdkMarshaller();
 
     static {
+        long mapOff;
+
         try {
-            HASH_SET_MAP_OFF = UNSAFE.objectFieldOffset(HashSet.class.getDeclaredField("map"));
+            mapOff = UNSAFE.objectFieldOffset(HashSet.class.getDeclaredField("map"));
         }
         catch (NoSuchFieldException e) {
-            throw new IgniteException("Initialization failure.", e);
+            try {
+                // Workaround for legacy IBM JRE.
+                mapOff = UNSAFE.objectFieldOffset(HashSet.class.getDeclaredField("backingMap"));
+            }
+            catch (NoSuchFieldException e2) {
+                throw new IgniteException("Initialization failure.", e2);
+            }
         }
+
+        HASH_SET_MAP_OFF = mapOff;
     }
 
     /**
@@ -269,8 +284,8 @@ class OptimizedMarshallerUtils {
     }
 
     /**
-     * Computes the serial version UID value for the given class.
-     * The code is taken from {@link ObjectStreamClass#computeDefaultSUID(Class)}.
+     * Computes the serial version UID value for the given class. The code is taken from {@link
+     * ObjectStreamClass#computeDefaultSUID(Class)}.
      *
      * @param cls A class.
      * @param fields Fields.
@@ -279,8 +294,30 @@ class OptimizedMarshallerUtils {
      */
     @SuppressWarnings("ForLoopReplaceableByForEach")
     static short computeSerialVersionUid(Class cls, List<Field> fields) throws IOException {
-        if (Serializable.class.isAssignableFrom(cls) && !Enum.class.isAssignableFrom(cls))
-            return (short)ObjectStreamClass.lookup(cls).getSerialVersionUID();
+        if (Serializable.class.isAssignableFrom(cls) && !Enum.class.isAssignableFrom(cls)) {
+            try {
+                Field field = cls.getDeclaredField("serialVersionUID");
+
+                if (field.getType() == long.class) {
+                    int mod = field.getModifiers();
+
+                    if (Modifier.isStatic(mod) && Modifier.isFinal(mod)) {
+                        field.setAccessible(true);
+
+                        return (short)field.getLong(null);
+                    }
+                }
+            }
+            catch (NoSuchFieldException e) {
+                // No-op.
+            }
+            catch (IllegalAccessException e) {
+                throw new IOException(e);
+            }
+
+            if (OptimizedMarshaller.USE_DFLT_SUID)
+                return (short)ObjectStreamClass.lookup(cls).getSerialVersionUID();
+        }
 
         MessageDigest md;
 

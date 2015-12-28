@@ -17,10 +17,10 @@
 
 package org.apache.ignite.marshaller;
 
-import org.apache.ignite.*;
-import org.jetbrains.annotations.*;
-
-import java.io.*;
+import java.io.InputStream;
+import java.io.OutputStream;
+import org.apache.ignite.IgniteCheckedException;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * {@code Marshaller} allows to marshal or unmarshal objects in grid. It provides
@@ -60,7 +60,7 @@ import java.io.*;
  * &lt;/bean&gt;
  * </pre>
  * <p>
- * <img src="http://ignite.incubator.apache.org/images/spring-small.png">
+ * <img src="http://ignite.apache.org/images/spring-small.png">
  * <br>
  * For information about Spring framework visit <a href="http://www.springframework.org/">www.springframework.org</a>
  */
@@ -92,7 +92,7 @@ public interface Marshaller {
     public byte[] marshal(@Nullable Object obj) throws IgniteCheckedException;
 
     /**
-     * Unmarshals object from the output stream using given class loader.
+     * Unmarshals object from the input stream using given class loader.
      * This method should not close given input stream.
      *
      * @param <T> Type of unmarshalled object.

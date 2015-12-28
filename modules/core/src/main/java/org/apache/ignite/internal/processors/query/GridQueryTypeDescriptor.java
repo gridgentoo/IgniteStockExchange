@@ -17,9 +17,8 @@
 
 package org.apache.ignite.internal.processors.query;
 
-import org.apache.ignite.*;
-
-import java.util.*;
+import java.util.Map;
+import org.apache.ignite.IgniteCheckedException;
 
 /**
  * Value descriptor which allows to extract fields from value object of given type.
@@ -49,6 +48,12 @@ public interface GridQueryTypeDescriptor {
      * @throws IgniteCheckedException If failed.
      */
     public <T> T value(String field, Object key, Object val) throws IgniteCheckedException;
+
+    /**
+     * @param name Property name.
+     * @return Property.
+     */
+    public GridQueryProperty property(String name);
 
     /**
      * Gets indexes for this type.

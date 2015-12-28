@@ -17,26 +17,34 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.cluster.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.cache.distributed.*;
-import org.apache.ignite.internal.processors.cache.transactions.*;
-import org.apache.ignite.internal.processors.cache.version.*;
-import org.apache.ignite.internal.transactions.*;
-import org.apache.ignite.internal.util.future.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
+import org.apache.ignite.internal.processors.cache.GridCacheFuture;
+import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
+import org.apache.ignite.internal.processors.cache.distributed.GridDistributedTxMapping;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteTxEntry;
+import org.apache.ignite.internal.transactions.IgniteTxHeuristicCheckedException;
+import org.apache.ignite.internal.transactions.IgniteTxRollbackCheckedException;
+import org.apache.ignite.internal.util.future.GridCompoundIdentityFuture;
+import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.tostring.GridToStringExclude;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteUuid;
 
-import java.util.*;
-import java.util.concurrent.atomic.*;
-
-import static org.apache.ignite.transactions.TransactionState.*;
+import static org.apache.ignite.transactions.TransactionState.COMMITTING;
 
 /**
  *
@@ -56,7 +64,7 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
     private GridCacheSharedContext<K, V> cctx;
 
     /** Future ID. */
-    private IgniteUuid futId;
+    private final IgniteUuid futId;
 
     /** Transaction. */
     @GridToStringExclude
@@ -102,26 +110,6 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
     /** {@inheritDoc} */
     @Override public IgniteUuid futureId() {
         return futId;
-    }
-
-    /** {@inheritDoc} */
-    @Override public GridCacheVersion version() {
-        return tx.xidVersion();
-    }
-
-    /**
-     * @return Involved nodes.
-     */
-    @Override public Collection<? extends ClusterNode> nodes() {
-        return
-            F.viewReadOnly(futures(), new IgniteClosure<IgniteInternalFuture<?>, ClusterNode>() {
-                @Nullable @Override public ClusterNode apply(IgniteInternalFuture<?> f) {
-                    if (isMini(f))
-                        return ((MiniFuture)f).node();
-
-                    return cctx.discovery().localNode();
-                }
-            });
     }
 
     /** {@inheritDoc} */
@@ -209,16 +197,24 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
     @Override public boolean onDone(IgniteInternalTx tx, Throwable err) {
         if (initialized() || err != null) {
             if (this.tx.onePhaseCommit() && (this.tx.state() == COMMITTING))
-                this.tx.tmCommit();
+                this.tx.tmFinish(err == null);
 
             Throwable e = this.err.get();
 
-            if (super.onDone(tx, e != null ? e : err)) {
+            if (e == null && commit)
+                e = this.tx.commitError();
+
+            Throwable finishErr = e != null ? e : err;
+
+            if (super.onDone(tx, finishErr)) {
+                if (finishErr == null)
+                    finishErr = this.tx.commitError();
+
                 // Always send finish reply.
-                this.tx.sendFinishReply(commit, error());
+                this.tx.sendFinishReply(commit, finishErr);
 
                 // Don't forget to clean up.
-                cctx.mvcc().removeFuture(this);
+                cctx.mvcc().removeFuture(futId);
 
                 return true;
             }
@@ -245,7 +241,7 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
     /**
      * Initializes future.
      */
-    @SuppressWarnings("SimplifiableIfStatement")
+    @SuppressWarnings({"SimplifiableIfStatement", "IfMayBeConditional"})
     public void finish() {
         boolean sync;
 
@@ -267,7 +263,7 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
      * @param nodes Nodes.
      * @return {@code True} in case there is at least one synchronous {@code MiniFuture} to wait for.
      */
-    private boolean rollbackLockTransactions(Set<ClusterNode> nodes) {
+    private boolean rollbackLockTransactions(Collection<ClusterNode> nodes) {
         assert !commit;
         assert !F.isEmpty(nodes);
 
@@ -310,7 +306,8 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
                 tx.pendingVersions(),
                 tx.size(),
                 tx.subjectId(),
-                tx.taskNameHash());
+                tx.taskNameHash(),
+                tx.activeCachesDeploymentEnabled());
 
             try {
                 cctx.io().send(n, req, tx.ioPolicy());
@@ -365,6 +362,11 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
 
             add(fut); // Append new future.
 
+            Collection<Long> updCntrs = new ArrayList<>(dhtMapping.entries().size());
+
+            for (IgniteTxEntry e : dhtMapping.entries())
+                updCntrs.add(e.updateCounter());
+
             GridDhtTxFinishRequest req = new GridDhtTxFinishRequest(
                 tx.nearNodeId(),
                 futId,
@@ -387,7 +389,11 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
                 tx.pendingVersions(),
                 tx.size(),
                 tx.subjectId(),
-                tx.taskNameHash());
+                tx.taskNameHash(),
+                tx.activeCachesDeploymentEnabled(),
+                updCntrs);
+
+            req.writeVersion(tx.writeVersion() != null ? tx.writeVersion() : tx.xidVersion());
 
             try {
                 cctx.io().send(n, req, tx.ioPolicy());
@@ -438,10 +444,10 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
                     tx.pendingVersions(),
                     tx.size(),
                     tx.subjectId(),
-                    tx.taskNameHash());
+                    tx.taskNameHash(),
+                    tx.activeCachesDeploymentEnabled());
 
-                if (tx.onePhaseCommit())
-                    req.writeVersion(tx.writeVersion());
+                req.writeVersion(tx.writeVersion());
 
                 try {
                     cctx.io().send(nearMapping.node(), req, tx.ioPolicy());
@@ -476,6 +482,7 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
         });
 
         return S.toString(GridDhtTxFinishFuture.class, this,
+            "xidVer", tx.xidVersion(),
             "innerFuts", futs,
             "super", super.toString());
     }
@@ -506,7 +513,7 @@ public final class GridDhtTxFinishFuture<K, V> extends GridCompoundIdentityFutur
         /**
          * @param node Node.
          */
-        public MiniFuture(ClusterNode node) {
+        private MiniFuture(ClusterNode node) {
             this.node = node;
         }
 

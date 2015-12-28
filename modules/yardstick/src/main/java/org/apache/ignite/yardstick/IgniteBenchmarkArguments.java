@@ -17,10 +17,12 @@
 
 package org.apache.ignite.yardstick;
 
-import com.beust.jcommander.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.transactions.*;
+import com.beust.jcommander.Parameter;
+import org.apache.ignite.cache.CacheAtomicWriteOrderMode;
+import org.apache.ignite.cache.CacheWriteSynchronizationMode;
+import org.apache.ignite.internal.util.tostring.GridToStringBuilder;
+import org.apache.ignite.transactions.TransactionConcurrency;
+import org.apache.ignite.transactions.TransactionIsolation;
 
 /**
  * Input arguments for Ignite benchmarks.
@@ -51,12 +53,16 @@ public class IgniteBenchmarkArguments {
     private boolean nearCacheFlag = false;
 
     /** */
+    @Parameter(names = {"-ncs", "--nearCacheSize"}, description = "Near cache size")
+    private int nearCacheSize;
+
+    /** */
     @Parameter(names = {"-wom", "--writeOrderMode"}, description = "Write ordering mode")
     private CacheAtomicWriteOrderMode orderMode;
 
     /** */
     @Parameter(names = {"-txc", "--txConcurrency"}, description = "Transaction concurrency")
-    private TransactionConcurrency txConcurrency = TransactionConcurrency.OPTIMISTIC;
+    private TransactionConcurrency txConcurrency = TransactionConcurrency.PESSIMISTIC;
 
     /** */
     @Parameter(names = {"-txi", "--txIsolation"}, description = "Transaction isolation")
@@ -77,10 +83,6 @@ public class IgniteBenchmarkArguments {
     /** */
     @Parameter(names = {"-rth", "--restHost"}, description = "REST TCP host")
     private String restTcpHost;
-
-    /** */
-    @Parameter(names = {"-ss", "--syncSend"}, description = "Synchronous send")
-    private boolean syncSnd;
 
     /** */
     @Parameter(names = {"-r", "--range"}, description = "Key range")
@@ -105,6 +107,41 @@ public class IgniteBenchmarkArguments {
     /** */
     @Parameter(names = {"-col", "--collocated"}, description = "Collocated")
     private boolean collocated;
+
+    /** */
+    @Parameter(names = {"-jdbc", "--jdbcUrl"}, description = "JDBC url")
+    private String jdbcUrl;
+
+    /** */
+    @Parameter(names = {"-rd", "--restartdelay"}, description = "Restart delay in seconds")
+    private int restartDelay = 20;
+
+    /** */
+    @Parameter(names = {"-rs", "--restartsleep"}, description = "Restart sleep in seconds")
+    private int restartSleep = 2;
+
+    /** */
+    @Parameter(names = {"-checkingPeriod", "--checkingPeriod"}, description = "Period to check cache consistency in seconds")
+    private int cacheConsistencyCheckingPeriod = 2 * 60;
+
+    /** */
+    @Parameter(names = {"-kc", "--keysCount"}, description = "Count of keys")
+    private int keysCnt = 5;
+
+    /** */
+    @Parameter(names = {"-cot", "--cacheOperationTimeout"}, description = "Max timeout for cache operations in seconds")
+    private int cacheOpTimeout = 30;
+
+    /** */
+    @Parameter(names = {"-kpt", "--keysPerThread"}, description = "Use not intersecting keys in putAll benchmark")
+    private boolean keysPerThread;
+
+    /**
+     * @return JDBC url.
+     */
+    public String jdbcUrl() {
+        return jdbcUrl;
+    }
 
     /**
      * @return Transaction concurrency.
@@ -146,6 +183,13 @@ public class IgniteBenchmarkArguments {
      */
     public boolean isNearCache() {
         return nearCacheFlag;
+    }
+
+    /**
+     * @return Near cache size ({@code 0} for unlimited).
+     */
+    public int getNearCacheSize() {
+        return nearCacheSize;
     }
 
     /**
@@ -198,13 +242,6 @@ public class IgniteBenchmarkArguments {
     }
 
     /**
-     * @return {@code True} if sending is synchronous.
-     */
-    public boolean isSyncSend() {
-        return syncSnd;
-    }
-
-    /**
      * @return Key range, from {@code 0} to this number.
      */
     public int range() {
@@ -254,11 +291,54 @@ public class IgniteBenchmarkArguments {
     }
 
     /**
+     * @return Delay in second which used in nodes restart algorithm.
+     */
+    public int restartDelay() {
+        return restartDelay;
+    }
+
+    /**
+     * @return Sleep in second which used in nodes restart algorithm.
+     */
+    public int restartSleep() {
+        return restartSleep;
+    }
+
+    /**
+     * @return Keys count.
+     */
+    public int keysCount() {
+        return keysCnt;
+    }
+
+    /**
+     * @return Period in seconds to check cache consistency.
+     */
+    public int cacheConsistencyCheckingPeriod() {
+        return cacheConsistencyCheckingPeriod;
+    }
+
+    /**
+     * @return Cache operation timeout in milliseconds.
+     */
+    public int cacheOperationTimeoutMillis() {
+        return cacheOpTimeout * 1000;
+    }
+
+    /**
+     * @return {@code True} if use not intersecting keys in putAll benchmark.
+     */
+    public boolean keysPerThread() {
+        return keysPerThread;
+    }
+
+    /**
      * @return Description.
      */
     public String description() {
         return "-nn=" + nodes + "-b=" + backups + "-sm=" + syncMode + "-cl=" + clientOnly + "-nc=" + nearCacheFlag +
-            (orderMode == null ? "" : "-wom=" + orderMode) + "-txc=" + txConcurrency;
+            (orderMode == null ? "" : "-wom=" + orderMode) + "-txc=" + txConcurrency + "-rd=" + restartDelay +
+            "-rs=" + restartSleep;
     }
 
     /** {@inheritDoc} */

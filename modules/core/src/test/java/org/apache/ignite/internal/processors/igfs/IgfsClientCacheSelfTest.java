@@ -18,17 +18,21 @@
 package org.apache.ignite.internal.processors.igfs;
 
 import org.apache.ignite.Ignite;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.igfs.*;
+import org.apache.ignite.cache.CacheWriteSynchronizationMode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.FileSystemConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.igfs.IgfsGroupDataBlocksKeyMapper;
+import org.apache.ignite.igfs.IgfsMode;
 import org.apache.ignite.igfs.secondary.IgfsSecondaryFileSystem;
 import org.apache.ignite.internal.util.typedef.G;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMode.*;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheMode.REPLICATED;
 
 /**
  * Test for igfs with nodes in client mode (see {@link IgniteConfiguration#setClientMode(boolean)}.
@@ -43,9 +47,6 @@ public class IgfsClientCacheSelfTest extends IgfsAbstractSelfTest {
     /** Data cache name. */
     private static final String DATA_CACHE_NAME = null;
 
-    /** Regular cache name. */
-    private static final String CACHE_NAME = "cache";
-
     /**
      * Constructor.
      */
@@ -57,9 +58,9 @@ public class IgfsClientCacheSelfTest extends IgfsAbstractSelfTest {
     @Override protected void beforeTestsStarted() throws Exception {
         igfsSecondaryFileSystem = createSecondaryFileSystemStack();
 
-        Ignite ignite1 = G.start(getConfiguration(getTestGridName(1)));
+        Ignite ignitePrimary = G.start(getConfiguration(getTestGridName(1)));
 
-        igfs = (IgfsImpl) ignite1.fileSystem("igfs");
+        igfs = (IgfsImpl) ignitePrimary.fileSystem("igfs");
     }
 
     /**{@inheritDoc} */
@@ -82,8 +83,10 @@ public class IgfsClientCacheSelfTest extends IgfsAbstractSelfTest {
     protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
 
-        cfg.setCacheConfiguration(cacheConfiguration(META_CACHE_NAME), cacheConfiguration(DATA_CACHE_NAME),
-            cacheConfiguration(CACHE_NAME));
+        cfg.setCacheConfiguration(
+            cacheConfiguration(META_CACHE_NAME),
+            cacheConfiguration(DATA_CACHE_NAME)
+        );
 
         TcpDiscoverySpi disco = new TcpDiscoverySpi();
 
@@ -113,7 +116,7 @@ public class IgfsClientCacheSelfTest extends IgfsAbstractSelfTest {
      * @return Cache configuration.
      */
     protected CacheConfiguration cacheConfiguration(String cacheName) {
-        CacheConfiguration cacheCfg = defaultCacheConfiguration();
+        CacheConfiguration<?,?> cacheCfg = defaultCacheConfiguration();
 
         cacheCfg.setName(cacheName);
 

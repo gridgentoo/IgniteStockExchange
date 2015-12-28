@@ -17,10 +17,22 @@
 
 package org.apache.ignite.schema.parser.dialect;
 
-import org.apache.ignite.schema.parser.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import java.sql.*;
-import java.util.*;
+import org.apache.ignite.cache.QueryIndex;
+import org.apache.ignite.cache.QueryIndexType;
+import org.apache.ignite.schema.parser.DbColumn;
+import org.apache.ignite.schema.parser.DbTable;
 
 /**
  * Metadata dialect that uses standard JDBC for reading metadata.
@@ -63,76 +75,120 @@ public class JdbcMetadataDialect extends DatabaseMetadataDialect {
     private static final int IDX_ASC_OR_DESC_IDX = 10;
 
     /** {@inheritDoc} */
-    @Override public Collection<DbTable> tables(Connection conn, boolean tblsOnly) throws SQLException {
+    @Override public List<String> schemas(Connection conn) throws SQLException {
+        List<String> schemas = new ArrayList<>();
+
+        ResultSet rs = conn.getMetaData().getSchemas();
+
+        Set<String> sys = systemSchemas();
+
+        while(rs.next()) {
+            String schema = rs.getString(1);
+
+            // Skip system schemas.
+            if (sys.contains(schema))
+                continue;
+
+            schemas.add(schema);
+        }
+
+        return schemas;
+    }
+
+    /**
+     * @return If {@code true} use catalogs for table division.
+     */
+    protected boolean useCatalog() {
+        return false;
+    }
+
+    /**
+     * @return If {@code true} use schemas for table division.
+     */
+    protected boolean useSchema() {
+        return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override public Collection<DbTable> tables(Connection conn, List<String> schemas, boolean tblsOnly)
+        throws SQLException {
         DatabaseMetaData dbMeta = conn.getMetaData();
 
         Set<String> sys = systemSchemas();
 
         Collection<DbTable> tbls = new ArrayList<>();
 
-        try (ResultSet tblsRs = dbMeta.getTables(null, null, "%",
-            tblsOnly ? TABLES_ONLY : TABLES_AND_VIEWS)) {
-            while (tblsRs.next()) {
-                String tblCatalog = tblsRs.getString(TBL_CATALOG_IDX);
-                String tblSchema = tblsRs.getString(TBL_SCHEMA_IDX);
-                String tblName = tblsRs.getString(TBL_NAME_IDX);
+        if (schemas.isEmpty())
+            schemas.add(null);
 
-                // In case of MySql we should use catalog.
-                String schema = tblSchema != null ? tblSchema : tblCatalog;
+        for (String toSchema: schemas) {
+            try (ResultSet tblsRs = dbMeta.getTables(useCatalog() ? toSchema : null, useSchema() ? toSchema : null, "%",
+                    tblsOnly ? TABLES_ONLY : TABLES_AND_VIEWS)) {
+                while (tblsRs.next()) {
+                    String tblCatalog = tblsRs.getString(TBL_CATALOG_IDX);
+                    String tblSchema = tblsRs.getString(TBL_SCHEMA_IDX);
+                    String tblName = tblsRs.getString(TBL_NAME_IDX);
 
-                // Skip system schemas.
-                if (sys.contains(schema))
-                    continue;
+                    // In case of MySql we should use catalog.
+                    String schema = tblSchema != null ? tblSchema : tblCatalog;
 
-                Set<String> pkCols = new HashSet<>();
+                    // Skip system schemas.
+                    if (sys.contains(schema))
+                        continue;
 
-                try (ResultSet pkRs = dbMeta.getPrimaryKeys(tblCatalog, tblSchema, tblName)) {
-                    while (pkRs.next())
-                        pkCols.add(pkRs.getString(PK_COL_NAME_IDX));
-                }
+                    Set<String> pkCols = new HashSet<>();
 
-                List<DbColumn> cols = new ArrayList<>();
-
-                try (ResultSet colsRs = dbMeta.getColumns(tblCatalog, tblSchema, tblName, null)) {
-                    while (colsRs.next()) {
-                        String colName = colsRs.getString(COL_NAME_IDX);
-
-                        cols.add(new DbColumn(
-                            colName,
-                            colsRs.getInt(COL_DATA_TYPE_IDX),
-                            pkCols.contains(colName),
-                            colsRs.getInt(COL_NULLABLE_IDX) == DatabaseMetaData.columnNullable));
+                    try (ResultSet pkRs = dbMeta.getPrimaryKeys(tblCatalog, tblSchema, tblName)) {
+                        while (pkRs.next())
+                            pkCols.add(pkRs.getString(PK_COL_NAME_IDX));
                     }
-                }
 
-                Map<String, Map<String, Boolean>> idxs = new LinkedHashMap<>();
+                    List<DbColumn> cols = new ArrayList<>();
 
-                try (ResultSet idxRs = dbMeta.getIndexInfo(tblCatalog, tblSchema, tblName, false, true)) {
-                    while (idxRs.next()) {
-                        String idxName = idxRs.getString(IDX_NAME_IDX);
+                    try (ResultSet colsRs = dbMeta.getColumns(tblCatalog, tblSchema, tblName, null)) {
+                        while (colsRs.next()) {
+                            String colName = colsRs.getString(COL_NAME_IDX);
 
-                        String colName = idxRs.getString(IDX_COL_NAME_IDX);
-
-                        if (idxName == null || colName == null)
-                            continue;
-
-                        Map<String, Boolean> idx = idxs.get(idxName);
-
-                        if (idx == null) {
-                            idx = new LinkedHashMap<>();
-
-                            idxs.put(idxName, idx);
+                            cols.add(new DbColumn(
+                                    colName,
+                                    colsRs.getInt(COL_DATA_TYPE_IDX),
+                                    pkCols.contains(colName),
+                                    colsRs.getInt(COL_NULLABLE_IDX) == DatabaseMetaData.columnNullable));
                         }
-
-                        String askOrDesc = idxRs.getString(IDX_ASC_OR_DESC_IDX);
-
-                        Boolean desc = askOrDesc != null ? "D".equals(askOrDesc) : null;
-
-                        idx.put(colName, desc);
                     }
-                }
 
-                tbls.add(table(schema, tblName, cols, idxs));
+                    Map<String, QueryIndex> idxs = new LinkedHashMap<>();
+
+                    try (ResultSet idxRs = dbMeta.getIndexInfo(tblCatalog, tblSchema, tblName, false, true)) {
+                        while (idxRs.next()) {
+                            String idxName = idxRs.getString(IDX_NAME_IDX);
+
+                            String colName = idxRs.getString(IDX_COL_NAME_IDX);
+
+                            if (idxName == null || colName == null)
+                                continue;
+
+                            QueryIndex idx = idxs.get(idxName);
+
+                            if (idx == null) {
+                                idx = new QueryIndex();
+                                idx.setName(idxName);
+                                idx.setIndexType(QueryIndexType.SORTED);
+                                idx.setFields(new LinkedHashMap<String, Boolean>());
+
+                                idxs.put(idxName, idx);
+                            }
+
+                            String askOrDesc = idxRs.getString(IDX_ASC_OR_DESC_IDX);
+
+                            Boolean asc = askOrDesc == null || "A".equals(askOrDesc);
+
+                            idx.getFields().put(colName, asc);
+                        }
+                    }
+
+                    tbls.add(table(schema, tblName, cols, idxs.values()));
+                }
             }
         }
 

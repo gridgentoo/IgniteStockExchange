@@ -17,10 +17,11 @@
 
 package org.apache.ignite.internal.processors.cache.jta;
 
-import org.apache.ignite.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.jetbrains.annotations.*;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.TransactionConfiguration;
+import org.apache.ignite.internal.processors.cache.GridCacheSharedManagerAdapter;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Provides possibility to integrate cache transactions with JTA.
@@ -42,6 +43,8 @@ public abstract class CacheJtaManagerAdapter extends GridCacheSharedManagerAdapt
 
     /**
      * Gets transaction manager finder. Returns Object to avoid dependency on JTA library.
+     *
+     * Used only in test purposes.
      *
      * @return Transaction manager finder.
      */

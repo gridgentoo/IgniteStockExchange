@@ -17,10 +17,10 @@
 
 package org.apache.ignite.compute;
 
-import org.apache.ignite.*;
-
-import java.io.*;
-import java.util.*;
+import java.io.Serializable;
+import java.util.List;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
 
 /**
  * Defines executable unit for {@link ComputeTask}.
@@ -142,7 +142,7 @@ public interface ComputeJob extends Serializable {
      * {@link ComputeTaskFuture#cancel()} is called.
      * <p>
      * Note that job cancellation is only a hint, and just like with
-     * {@link Thread#interrupt()}  method, it is really up to the actual job
+     * {@link Thread#interrupt()} method, it is really up to the actual job
      * instance to gracefully finish execution and exit.
      */
     public void cancel();

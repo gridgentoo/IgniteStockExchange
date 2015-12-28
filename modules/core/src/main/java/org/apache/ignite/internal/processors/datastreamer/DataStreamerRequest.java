@@ -17,17 +17,23 @@
 
 package org.apache.ignite.internal.processors.datastreamer;
 
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-import org.jetbrains.annotations.*;
-
-import java.nio.*;
-import java.util.*;
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.configuration.DeploymentMode;
+import org.apache.ignite.internal.GridDirectCollection;
+import org.apache.ignite.internal.GridDirectMap;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.plugin.extensions.communication.Message;
+import org.apache.ignite.plugin.extensions.communication.MessageCollectionItemType;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  *
@@ -57,6 +63,9 @@ public class DataStreamerRequest implements Message {
 
     /** */
     private boolean skipStore;
+
+    /** Keep binary flag. */
+    private boolean keepBinary;
 
     /** */
     private DeploymentMode depMode;
@@ -111,6 +120,7 @@ public class DataStreamerRequest implements Message {
         Collection<DataStreamerEntry> entries,
         boolean ignoreDepOwnership,
         boolean skipStore,
+        boolean keepBinary,
         DeploymentMode depMode,
         String sampleClsName,
         String userVer,
@@ -127,6 +137,7 @@ public class DataStreamerRequest implements Message {
         this.entries = entries;
         this.ignoreDepOwnership = ignoreDepOwnership;
         this.skipStore = skipStore;
+        this.keepBinary = keepBinary;
         this.depMode = depMode;
         this.sampleClsName = sampleClsName;
         this.userVer = userVer;
@@ -183,6 +194,13 @@ public class DataStreamerRequest implements Message {
      */
     public boolean skipStore() {
         return skipStore;
+    }
+
+    /**
+     * @return Keep binary flag.
+     */
+    public boolean keepBinary() {
+        return keepBinary;
     }
 
     /**
@@ -288,48 +306,54 @@ public class DataStreamerRequest implements Message {
                 writer.incrementState();
 
             case 6:
-                if (!writer.writeMap("ldrParticipants", ldrParticipants, MessageCollectionItemType.UUID, MessageCollectionItemType.IGNITE_UUID))
+                if (!writer.writeBoolean("keepBinary", keepBinary))
                     return false;
 
                 writer.incrementState();
 
             case 7:
-                if (!writer.writeLong("reqId", reqId))
+                if (!writer.writeMap("ldrParticipants", ldrParticipants, MessageCollectionItemType.UUID, MessageCollectionItemType.IGNITE_UUID))
                     return false;
 
                 writer.incrementState();
 
             case 8:
-                if (!writer.writeByteArray("resTopicBytes", resTopicBytes))
+                if (!writer.writeLong("reqId", reqId))
                     return false;
 
                 writer.incrementState();
 
             case 9:
-                if (!writer.writeString("sampleClsName", sampleClsName))
+                if (!writer.writeByteArray("resTopicBytes", resTopicBytes))
                     return false;
 
                 writer.incrementState();
 
             case 10:
-                if (!writer.writeBoolean("skipStore", skipStore))
+                if (!writer.writeString("sampleClsName", sampleClsName))
                     return false;
 
                 writer.incrementState();
 
             case 11:
-                if (!writer.writeMessage("topVer", topVer))
+                if (!writer.writeBoolean("skipStore", skipStore))
                     return false;
 
                 writer.incrementState();
 
             case 12:
-                if (!writer.writeByteArray("updaterBytes", updaterBytes))
+                if (!writer.writeMessage("topVer", topVer))
                     return false;
 
                 writer.incrementState();
 
             case 13:
+                if (!writer.writeByteArray("updaterBytes", updaterBytes))
+                    return false;
+
+                writer.incrementState();
+
+            case 14:
                 if (!writer.writeString("userVer", userVer))
                     return false;
 
@@ -401,7 +425,7 @@ public class DataStreamerRequest implements Message {
                 reader.incrementState();
 
             case 6:
-                ldrParticipants = reader.readMap("ldrParticipants", MessageCollectionItemType.UUID, MessageCollectionItemType.IGNITE_UUID, false);
+                keepBinary = reader.readBoolean("keepBinary");
 
                 if (!reader.isLastRead())
                     return false;
@@ -409,7 +433,7 @@ public class DataStreamerRequest implements Message {
                 reader.incrementState();
 
             case 7:
-                reqId = reader.readLong("reqId");
+                ldrParticipants = reader.readMap("ldrParticipants", MessageCollectionItemType.UUID, MessageCollectionItemType.IGNITE_UUID, false);
 
                 if (!reader.isLastRead())
                     return false;
@@ -417,7 +441,7 @@ public class DataStreamerRequest implements Message {
                 reader.incrementState();
 
             case 8:
-                resTopicBytes = reader.readByteArray("resTopicBytes");
+                reqId = reader.readLong("reqId");
 
                 if (!reader.isLastRead())
                     return false;
@@ -425,7 +449,7 @@ public class DataStreamerRequest implements Message {
                 reader.incrementState();
 
             case 9:
-                sampleClsName = reader.readString("sampleClsName");
+                resTopicBytes = reader.readByteArray("resTopicBytes");
 
                 if (!reader.isLastRead())
                     return false;
@@ -433,7 +457,7 @@ public class DataStreamerRequest implements Message {
                 reader.incrementState();
 
             case 10:
-                skipStore = reader.readBoolean("skipStore");
+                sampleClsName = reader.readString("sampleClsName");
 
                 if (!reader.isLastRead())
                     return false;
@@ -441,7 +465,7 @@ public class DataStreamerRequest implements Message {
                 reader.incrementState();
 
             case 11:
-                topVer = reader.readMessage("topVer");
+                skipStore = reader.readBoolean("skipStore");
 
                 if (!reader.isLastRead())
                     return false;
@@ -449,7 +473,7 @@ public class DataStreamerRequest implements Message {
                 reader.incrementState();
 
             case 12:
-                updaterBytes = reader.readByteArray("updaterBytes");
+                topVer = reader.readMessage("topVer");
 
                 if (!reader.isLastRead())
                     return false;
@@ -457,6 +481,14 @@ public class DataStreamerRequest implements Message {
                 reader.incrementState();
 
             case 13:
+                updaterBytes = reader.readByteArray("updaterBytes");
+
+                if (!reader.isLastRead())
+                    return false;
+
+                reader.incrementState();
+
+            case 14:
                 userVer = reader.readString("userVer");
 
                 if (!reader.isLastRead())
@@ -466,7 +498,7 @@ public class DataStreamerRequest implements Message {
 
         }
 
-        return true;
+        return reader.afterMessageRead(DataStreamerRequest.class);
     }
 
     /** {@inheritDoc} */
@@ -476,6 +508,6 @@ public class DataStreamerRequest implements Message {
 
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
-        return 14;
+        return 15;
     }
 }

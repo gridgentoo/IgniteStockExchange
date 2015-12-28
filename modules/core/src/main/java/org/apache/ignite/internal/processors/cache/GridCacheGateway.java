@@ -17,16 +17,18 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-
-import javax.cache.*;
-import java.util.concurrent.atomic.*;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.cache.CacheException;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteClientDisconnectedException;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.internal.IgniteInterruptedCheckedException;
+import org.apache.ignite.internal.util.GridSpinReadWriteLock;
+import org.apache.ignite.internal.util.tostring.GridToStringExclude;
+import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteFuture;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Cache gateway.
@@ -107,7 +109,6 @@ public class GridCacheGateway<K, V> {
         rwLock.readLock();
 
         return checkState(true, false);
-
     }
 
     /**
@@ -156,8 +157,7 @@ public class GridCacheGateway<K, V> {
             GridCachePreloader preldr = cache != null ? cache.preloader() : null;
 
             if (preldr == null)
-                throw new IllegalStateException("Grid is in invalid state to perform this operation. " +
-                    "It either not started yet or has already being or have stopped [gridName=" + ctx.gridName() + ']');
+                throw new IllegalStateException("Cache has been closed or destroyed: " + ctx.name());
 
             preldr.startFuture().get();
         }
@@ -177,7 +177,7 @@ public class GridCacheGateway<K, V> {
         try {
             return setOperationContextPerCall(opCtx);
         }
-        catch (RuntimeException e) {
+        catch (Throwable e) {
             rwLock.readUnlock();
 
             throw e;

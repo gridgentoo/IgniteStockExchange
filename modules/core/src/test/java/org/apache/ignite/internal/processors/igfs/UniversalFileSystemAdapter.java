@@ -17,8 +17,10 @@
 
 package org.apache.ignite.internal.processors.igfs;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Map;
 
 /**
  * Universal interface to an underlying filesystem.
@@ -26,7 +28,6 @@ import java.util.*;
  * To be used solely in tests.
  */
 public interface UniversalFileSystemAdapter {
-
     /**
      * Gets name of the FS.
      * @return name of this file system.

@@ -17,24 +17,32 @@
 
 package org.apache.ignite.testframework.junits.multijvm;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.cluster.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.io.File;
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentMap;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCluster;
+import org.apache.ignite.IgniteCompute;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.cluster.ClusterGroup;
+import org.apache.ignite.cluster.ClusterMetrics;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.cluster.ClusterStartNodeResult;
+import org.apache.ignite.internal.cluster.ClusterGroupEx;
+import org.apache.ignite.internal.cluster.IgniteClusterEx;
+import org.apache.ignite.lang.IgniteCallable;
+import org.apache.ignite.lang.IgniteFuture;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.resources.IgniteInstanceResource;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Proxy class for cluster at another JVM.
  */
 @SuppressWarnings("TransientFieldInNonSerializableClass")
 public class IgniteClusterProcessProxy implements IgniteClusterEx {
-    /** Grid id. */
-    private final UUID gridId;
-
     /** Compute. */
     private final transient IgniteCompute compute;
 
@@ -46,21 +54,11 @@ public class IgniteClusterProcessProxy implements IgniteClusterEx {
      */
     public IgniteClusterProcessProxy(IgniteProcessProxy proxy) {
         this.proxy = proxy;
-        gridId = proxy.getId();
         compute = proxy.remoteCompute();
     }
 
-    /**
-     * Returns cluster instance. Method to be called from closure at another JVM.
-     *
-     * @return Cache.
-     */
-    private IgniteClusterEx cluster() {
-        return (IgniteClusterEx)Ignition.ignite(gridId).cluster();
-    }
-
     /** {@inheritDoc} */
-    @Override public ClusterGroupEx forSubjectId(final UUID subjId) {
+    @Override public ClusterGroupEx forSubjectId(UUID subjId) {
         throw new UnsupportedOperationException("Operation is not supported yet.");
     }
 
@@ -72,11 +70,7 @@ public class IgniteClusterProcessProxy implements IgniteClusterEx {
 
     /** {@inheritDoc} */
     @Override public ClusterNode localNode() {
-        return compute.call(new IgniteCallable<ClusterNode>() {
-            @Override public ClusterNode call() throws Exception {
-                return cluster().localNode();
-            }
-        });
+        return compute.call(new LocalNodeTask());
     }
 
     /** {@inheritDoc} */
@@ -274,38 +268,22 @@ public class IgniteClusterProcessProxy implements IgniteClusterEx {
 
     /** {@inheritDoc} */
     @Override public Collection<ClusterNode> nodes() {
-        return compute.call(new IgniteCallable<Collection<ClusterNode>>() {
-            @Override public Collection<ClusterNode> call() throws Exception {
-                return cluster().nodes();
-            }
-        });
+        return compute.call(new NodesTask());
     }
 
     /** {@inheritDoc} */
-    @Override public ClusterNode node(final UUID nid) {
-        return compute.call(new IgniteCallable<ClusterNode>() {
-            @Override public ClusterNode call() throws Exception {
-                return cluster().node(nid);
-            }
-        });
+    @Override public ClusterNode node(UUID nid) {
+        return compute.call(new NodeTask(nid));
     }
 
     /** {@inheritDoc} */
     @Override public ClusterNode node() {
-        return compute.call(new IgniteCallable<ClusterNode>() {
-            @Override public ClusterNode call() throws Exception {
-                return cluster().node();
-            }
-        });
+        return compute.call(new NodeTask(null));
     }
 
     /** {@inheritDoc} */
     @Override public Collection<String> hostNames() {
-        return compute.call(new IgniteCallable<Collection<String>>() {
-            @Override public Collection<String> call() throws Exception {
-                return cluster().hostNames();
-            }
-        });
+        return compute.call(new HostNamesTask());
     }
 
     /** {@inheritDoc} */
@@ -321,5 +299,71 @@ public class IgniteClusterProcessProxy implements IgniteClusterEx {
     /** {@inheritDoc} */
     @Nullable @Override public IgniteFuture<?> clientReconnectFuture() {
         throw new UnsupportedOperationException("Operation is not supported yet.");
+    }
+
+    /**
+     *
+     */
+    private static class LocalNodeTask extends ClusterTaskAdapter<ClusterNode> {
+        /** {@inheritDoc} */
+        @Override public ClusterNode call() throws Exception {
+            return cluster().localNode();
+        }
+    }
+
+    /**
+     *
+     */
+    private static class NodesTask extends ClusterTaskAdapter<Collection<ClusterNode>> {
+        /** {@inheritDoc} */
+        @Override public Collection<ClusterNode> call() throws Exception {
+            return cluster().nodes();
+        }
+    }
+
+    /**
+     *
+     */
+    private static class NodeTask extends ClusterTaskAdapter<ClusterNode> {
+        /** Node id. */
+        private final UUID nodeId;
+
+        /**
+         * @param nodeId Node id.
+         */
+        public NodeTask(UUID nodeId) {
+            this.nodeId = nodeId;
+        }
+
+        /** {@inheritDoc} */
+        @Override public ClusterNode call() throws Exception {
+            return nodeId == null ? cluster().node() : cluster().node(nodeId);
+        }
+    }
+
+    /**
+     *
+     */
+    private static class HostNamesTask extends ClusterTaskAdapter<Collection<String>> {
+        /** {@inheritDoc} */
+        @Override public Collection<String> call() throws Exception {
+            return cluster().hostNames();
+        }
+    }
+
+    /**
+     *
+     */
+    private abstract static class ClusterTaskAdapter<R> implements IgniteCallable<R> {
+        /** Ignite. */
+        @IgniteInstanceResource
+        protected Ignite ignite;
+
+        /**
+         *
+         */
+        protected IgniteCluster cluster() {
+            return ignite.cluster();
+        }
     }
 }

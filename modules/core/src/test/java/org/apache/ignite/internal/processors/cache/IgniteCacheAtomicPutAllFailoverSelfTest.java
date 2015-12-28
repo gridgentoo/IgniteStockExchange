@@ -17,9 +17,9 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.cache.*;
+import org.apache.ignite.cache.CacheAtomicityMode;
 
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
+import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
 
 /**
  *
@@ -28,5 +28,10 @@ public class IgniteCacheAtomicPutAllFailoverSelfTest extends GridCachePutAllFail
     /** {@inheritDoc} */
     @Override protected CacheAtomicityMode atomicityMode() {
         return ATOMIC;
+    }
+
+    /** {@inheritDoc} */
+    @Override public void testPutAllFailoverColocatedNearEnabledTwoBackupsOffheapTieredSwap(){
+        fail("https://issues.apache.org/jira/browse/IGNITE-1584");
     }
 }

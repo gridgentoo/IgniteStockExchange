@@ -17,31 +17,56 @@
 
 package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
 
-import net.sf.json.*;
-import net.sf.json.processors.*;
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.rest.*;
-import org.apache.ignite.internal.processors.rest.client.message.*;
-import org.apache.ignite.internal.processors.rest.request.*;
-import org.apache.ignite.internal.processors.rest.request.RestQueryRequest.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.plugin.security.*;
-import org.eclipse.jetty.server.*;
-import org.eclipse.jetty.server.handler.*;
-import org.glassfish.json.*;
-import org.jetbrains.annotations.*;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.LineNumberReader;
+import java.net.InetSocketAddress;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import net.sf.json.JSON;
+import net.sf.json.JSONException;
+import net.sf.json.JSONSerializer;
+import net.sf.json.JsonConfig;
+import net.sf.json.processors.JsonValueProcessor;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.processors.rest.GridRestCommand;
+import org.apache.ignite.internal.processors.rest.GridRestProtocolHandler;
+import org.apache.ignite.internal.processors.rest.GridRestResponse;
+import org.apache.ignite.internal.processors.rest.client.message.GridClientTaskResultBean;
+import org.apache.ignite.internal.processors.rest.request.DataStructuresRequest;
+import org.apache.ignite.internal.processors.rest.request.GridRestCacheRequest;
+import org.apache.ignite.internal.processors.rest.request.GridRestLogRequest;
+import org.apache.ignite.internal.processors.rest.request.GridRestRequest;
+import org.apache.ignite.internal.processors.rest.request.GridRestTaskRequest;
+import org.apache.ignite.internal.processors.rest.request.GridRestTopologyRequest;
+import org.apache.ignite.internal.processors.rest.request.RestQueryRequest;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteClosure;
+import org.apache.ignite.plugin.security.SecurityCredentials;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.jetbrains.annotations.Nullable;
 
-import javax.servlet.*;
-import javax.servlet.http.*;
-import java.io.*;
-import java.net.*;
-import java.util.*;
-
-import static org.apache.ignite.internal.processors.rest.GridRestCommand.*;
-import static org.apache.ignite.internal.processors.rest.GridRestResponse.*;
+import static org.apache.ignite.internal.processors.rest.GridRestCommand.CACHE_CONTAINS_KEYS;
+import static org.apache.ignite.internal.processors.rest.GridRestCommand.CACHE_GET_ALL;
+import static org.apache.ignite.internal.processors.rest.GridRestCommand.CACHE_PUT_ALL;
+import static org.apache.ignite.internal.processors.rest.GridRestCommand.CACHE_REMOVE_ALL;
+import static org.apache.ignite.internal.processors.rest.GridRestCommand.EXECUTE_SQL_QUERY;
+import static org.apache.ignite.internal.processors.rest.GridRestResponse.STATUS_FAILED;
 
 /**
  * Jetty REST handler. The following URL format is supported:
@@ -62,6 +87,9 @@ public class GridJettyRestHandler extends AbstractHandler {
     /** Logger. */
     private final IgniteLogger log;
 
+    /** Authentication checker. */
+    private final IgniteClosure<String, Boolean> authChecker;
+
     /** Request handlers. */
     private GridRestProtocolHandler hnd;
 
@@ -70,9 +98,6 @@ public class GridJettyRestHandler extends AbstractHandler {
 
     /** Favicon. */
     private volatile byte[] favicon;
-
-    /** Authentication checker. */
-    private final IgniteClosure<String, Boolean> authChecker;
 
     /** Grid context. */
     GridKernalContext ctx;
@@ -114,6 +139,74 @@ public class GridJettyRestHandler extends AbstractHandler {
         }
         catch (IOException e) {
             U.warn(log, "Failed to initialize favicon: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Retrieves long value from parameters map.
+     *
+     * @param key Key.
+     * @param params Parameters map.
+     * @param dfltVal Default value.
+     * @return Long value from parameters map or {@code dfltVal} if null
+     *     or not exists.
+     * @throws IgniteCheckedException If parsing failed.
+     */
+    @Nullable private static Long longValue(String key, Map<String, Object> params, Long dfltVal) throws IgniteCheckedException {
+        assert key != null;
+
+        String val = (String) params.get(key);
+
+        try {
+            return val == null ? dfltVal : Long.valueOf(val);
+        }
+        catch (NumberFormatException ignore) {
+            throw new IgniteCheckedException("Failed to parse parameter of Long type [" + key + "=" + val + "]");
+        }
+    }
+
+    /**
+     * Retrieves int value from parameters map.
+     *
+     * @param key Key.
+     * @param params Parameters map.
+     * @param dfltVal Default value.
+     * @return Integer value from parameters map or {@code dfltVal} if null
+     *     or not exists.
+     * @throws IgniteCheckedException If parsing failed.
+     */
+    @Nullable private static Integer intValue(String key, Map<String, Object> params, Integer dfltVal) throws IgniteCheckedException {
+        assert key != null;
+
+        String val = (String) params.get(key);
+
+        try {
+            return val == null ? dfltVal : Integer.valueOf(val);
+        }
+        catch (NumberFormatException ignore) {
+            throw new IgniteCheckedException("Failed to parse parameter of Integer type [" + key + "=" + val + "]");
+        }
+    }
+
+    /**
+     * Retrieves UUID value from parameters map.
+     *
+     * @param key Key.
+     * @param params Parameters map.
+     * @return UUID value from parameters map or {@code null} if null
+     *     or not exists.
+     * @throws IgniteCheckedException If parsing failed.
+     */
+    @Nullable private static UUID uuidValue(String key, Map<String, Object> params) throws IgniteCheckedException {
+        assert key != null;
+
+        String val = (String) params.get(key);
+
+        try {
+            return val == null ? null : UUID.fromString(val);
+        }
+        catch (NumberFormatException ignore) {
+            throw new IgniteCheckedException("Failed to parse parameter of UUID type [" + key + "=" + val + "]");
         }
     }
 
@@ -411,6 +504,7 @@ public class GridJettyRestHandler extends AbstractHandler {
             case CACHE_CAS:
             case CACHE_METRICS:
             case CACHE_SIZE:
+            case CACHE_METADATA:
             case CACHE_REPLACE:
             case CACHE_APPEND:
             case CACHE_PREPEND: {
@@ -642,7 +736,7 @@ public class GridJettyRestHandler extends AbstractHandler {
             case EXECUTE_SQL_FIELDS_QUERY: {
                 RestQueryRequest restReq0 = new RestQueryRequest();
 
-                restReq0.sqlQuery((String) params.get("qry"));
+                restReq0.sqlQuery((String)params.get("qry"));
 
                 if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
                     Map o = parseRequest(req);
@@ -661,10 +755,10 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.cacheName((String)params.get("cacheName"));
 
-                if (cmd.equals(EXECUTE_SQL_QUERY))
-                    restReq0.queryType(QueryType.SQL);
+                if (cmd == EXECUTE_SQL_QUERY)
+                    restReq0.queryType(RestQueryRequest.QueryType.SQL);
                 else
-                    restReq0.queryType(QueryType.SQL_FIELDS);
+                    restReq0.queryType(RestQueryRequest.QueryType.SQL_FIELDS);
 
                 restReq = restReq0;
 
@@ -683,9 +777,9 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.cacheName((String)params.get("cacheName"));
 
-                restReq0.className((String)params.get("classname"));
+                restReq0.className((String)params.get("className"));
 
-                restReq0.queryType(QueryType.SCAN);
+                restReq0.queryType(RestQueryRequest.QueryType.SCAN);
 
                 restReq = restReq0;
 
@@ -773,74 +867,6 @@ public class GridJettyRestHandler extends AbstractHandler {
         }
 
         return restReq;
-    }
-
-    /**
-     * Retrieves long value from parameters map.
-     *
-     * @param key Key.
-     * @param params Parameters map.
-     * @param dfltVal Default value.
-     * @return Long value from parameters map or {@code dfltVal} if null
-     *     or not exists.
-     * @throws IgniteCheckedException If parsing failed.
-     */
-    @Nullable private static Long longValue(String key, Map<String, Object> params, Long dfltVal) throws IgniteCheckedException {
-        assert key != null;
-
-        String val = (String) params.get(key);
-
-        try {
-            return val == null ? dfltVal : Long.valueOf(val);
-        }
-        catch (NumberFormatException ignore) {
-            throw new IgniteCheckedException("Failed to parse parameter of Long type [" + key + "=" + val + "]");
-        }
-    }
-
-    /**
-     * Retrieves int value from parameters map.
-     *
-     * @param key Key.
-     * @param params Parameters map.
-     * @param dfltVal Default value.
-     * @return Integer value from parameters map or {@code dfltVal} if null
-     *     or not exists.
-     * @throws IgniteCheckedException If parsing failed.
-     */
-    @Nullable private static Integer intValue(String key, Map<String, Object> params, Integer dfltVal) throws IgniteCheckedException {
-        assert key != null;
-
-        String val = (String) params.get(key);
-
-        try {
-            return val == null ? dfltVal : Integer.valueOf(val);
-        }
-        catch (NumberFormatException ignore) {
-            throw new IgniteCheckedException("Failed to parse parameter of Integer type [" + key + "=" + val + "]");
-        }
-    }
-
-    /**
-     * Retrieves UUID value from parameters map.
-     *
-     * @param key Key.
-     * @param params Parameters map.
-     * @return UUID value from parameters map or {@code null} if null
-     *     or not exists.
-     * @throws IgniteCheckedException If parsing failed.
-     */
-    @Nullable private static UUID uuidValue(String key, Map<String, Object> params) throws IgniteCheckedException {
-        assert key != null;
-
-        String val = (String) params.get(key);
-
-        try {
-            return val == null ? null : UUID.fromString(val);
-        }
-        catch (NumberFormatException ignore) {
-            throw new IgniteCheckedException("Failed to parse parameter of UUID type [" + key + "=" + val + "]");
-        }
     }
 
     /**

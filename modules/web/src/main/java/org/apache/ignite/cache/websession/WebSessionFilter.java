@@ -17,28 +17,48 @@
 
 package org.apache.ignite.cache.websession;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.startup.servlet.*;
-import org.apache.ignite.transactions.*;
+import java.io.IOException;
+import java.util.Collection;
+import javax.cache.CacheException;
+import javax.cache.expiry.Duration;
+import javax.cache.expiry.ExpiryPolicy;
+import javax.cache.expiry.ModifiedExpiryPolicy;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
+import javax.servlet.http.HttpSession;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.IgniteTransactions;
+import org.apache.ignite.cluster.ClusterTopologyException;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.G;
+import org.apache.ignite.internal.util.typedef.T2;
+import org.apache.ignite.internal.util.typedef.X;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteClosure;
+import org.apache.ignite.lang.IgniteFuture;
+import org.apache.ignite.startup.servlet.ServletContextListenerStartup;
+import org.apache.ignite.transactions.Transaction;
 
-import javax.cache.*;
-import javax.cache.expiry.*;
-import javax.servlet.*;
-import javax.servlet.http.*;
-import java.io.*;
-import java.util.*;
-
-import static java.util.concurrent.TimeUnit.*;
-import static org.apache.ignite.cache.CacheAtomicityMode.*;
-import static org.apache.ignite.cache.CacheMode.*;
-import static org.apache.ignite.cache.CacheWriteSynchronizationMode.*;
-import static org.apache.ignite.transactions.TransactionConcurrency.*;
-import static org.apache.ignite.transactions.TransactionIsolation.*;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
+import static org.apache.ignite.cache.CacheMode.LOCAL;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_ASYNC;
+import static org.apache.ignite.transactions.TransactionConcurrency.PESSIMISTIC;
+import static org.apache.ignite.transactions.TransactionIsolation.REPEATABLE_READ;
 
 /**
  * Filter for web sessions caching.
@@ -173,6 +193,9 @@ public class WebSessionFilter implements Filter {
     /** Transactions enabled flag. */
     private boolean txEnabled;
 
+    /** */
+    private int retries;
+
     /** {@inheritDoc} */
     @Override public void init(FilterConfig cfg) throws ServletException {
         ctx = cfg.getServletContext();
@@ -188,8 +211,6 @@ public class WebSessionFilter implements Filter {
         String retriesStr = U.firstNotNull(
             cfg.getInitParameter(WEB_SES_MAX_RETRIES_ON_FAIL_NAME_PARAM),
             ctx.getInitParameter(WEB_SES_MAX_RETRIES_ON_FAIL_NAME_PARAM));
-
-        int retries;
 
         try {
             retries = retriesStr != null ? Integer.parseInt(retriesStr) : DFLT_MAX_RETRIES_ON_FAIL;
@@ -207,10 +228,6 @@ public class WebSessionFilter implements Filter {
         txs = webSesIgnite.transactions();
 
         log = webSesIgnite.log();
-
-        if (webSesIgnite == null)
-            throw new IgniteException("Grid for web sessions caching is not started (is it configured?): " +
-                gridName);
 
         cache = webSesIgnite.cache(cacheName);
 
@@ -391,40 +408,61 @@ public class WebSessionFilter implements Filter {
 
         WebSession cached = new WebSession(ses, true);
 
-        try {
-            while (true) {
-                try {
-                    IgniteCache<String, WebSession> cache0;
+        for (int i = 0; i < retries; i++) {
+            try {
+                IgniteCache<String, WebSession> cache0;
 
-                    if (cached.getMaxInactiveInterval() > 0) {
-                        long ttl = cached.getMaxInactiveInterval() * 1000;
+                if (cached.getMaxInactiveInterval() > 0) {
+                    long ttl = cached.getMaxInactiveInterval() * 1000;
 
-                        ExpiryPolicy plc = new ModifiedExpiryPolicy(new Duration(MILLISECONDS, ttl));
+                    ExpiryPolicy plc = new ModifiedExpiryPolicy(new Duration(MILLISECONDS, ttl));
 
-                        cache0 = cache.withExpiryPolicy(plc);
-                    }
-                    else
-                        cache0 = cache;
-
-                    WebSession old = cache0.getAndPutIfAbsent(sesId, cached);
-
-                    if (old != null) {
-                        cached = old;
-
-                        if (cached.isNew())
-                            cached = new WebSession(cached, false);
-                    }
-
-                    break;
+                    cache0 = cache.withExpiryPolicy(plc);
                 }
-                catch (CachePartialUpdateException e) {
+                else
+                    cache0 = cache;
+
+                WebSession old = cache0.getAndPutIfAbsent(sesId, cached);
+
+                if (old != null) {
+                    cached = old;
+
+                    if (cached.isNew())
+                        cached = new WebSession(cached, false);
+                }
+
+                break;
+            }
+            catch (CacheException | IgniteException e) {
+                if (log.isDebugEnabled())
+                    log.debug(e.getMessage());
+
+                if (i == retries - 1)
+                    throw new IgniteException("Failed to save session: " + sesId, e);
+                else {
                     if (log.isDebugEnabled())
-                        log.debug(e.getMessage());
+                        log.debug("Failed to save session (will retry): " + sesId);
+
+                    IgniteFuture<?> retryFut = null;
+
+                    if (X.hasCause(e, ClusterTopologyException.class)) {
+                        ClusterTopologyException cause = X.cause(e, ClusterTopologyException.class);
+
+                        assert cause != null : e;
+
+                        retryFut = cause.retryReadyFuture();
+                    }
+
+                    if (retryFut != null) {
+                        try {
+                            retryFut.get();
+                        }
+                        catch (IgniteException retryErr) {
+                            throw new IgniteException("Failed to save session: " + sesId, retryErr);
+                        }
+                    }
                 }
             }
-        }
-        catch (CacheException e) {
-            throw new IgniteException("Failed to save session: " + sesId, e);
         }
 
         return cached;

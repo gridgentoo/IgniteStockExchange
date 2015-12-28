@@ -17,15 +17,21 @@
 
 package org.apache.ignite.examples.datagrid.starschema;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.query.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.examples.*;
-
-import javax.cache.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+import javax.cache.Cache;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.query.QueryCursor;
+import org.apache.ignite.cache.query.SqlQuery;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.examples.ExampleNodeStartup;
 
 /**
  * <a href="http://en.wikipedia.org/wiki/Snowflake_schema">Snowflake Schema</a> is a logical
@@ -54,7 +60,7 @@ public class CacheStarSchemaExample {
     private static final String REPLICATED_CACHE_NAME = CacheStarSchemaExample.class.getSimpleName() + "Replicated";
 
     /** ID generator. */
-    private static int idGen = (int)System.currentTimeMillis();
+    private static int idGen;
 
     /** DimStore data. */
     private static Map<Integer, DimStore> dataStore = new HashMap<>();
@@ -69,9 +75,12 @@ public class CacheStarSchemaExample {
      */
     public static void main(String[] args) {
         try (Ignite ignite = Ignition.start("examples/config/example-ignite.xml")) {
-
             System.out.println();
             System.out.println(">>> Cache star schema example started.");
+
+            // Destroy caches to clean up the data if any left from previous runs.
+            ignite.destroyCache(PARTITIONED_CACHE_NAME);
+            ignite.destroyCache(REPLICATED_CACHE_NAME);
 
             CacheConfiguration<Integer, FactPurchase> factCacheCfg = new CacheConfiguration<>(PARTITIONED_CACHE_NAME);
 

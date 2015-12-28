@@ -17,15 +17,19 @@
 
 package org.apache.ignite.internal.processors.cache.transactions;
 
-import org.apache.ignite.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.transactions.*;
-import org.jetbrains.annotations.*;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.configuration.TransactionConfiguration;
+import org.apache.ignite.internal.IgniteTransactionsEx;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
+import org.apache.ignite.internal.util.typedef.internal.A;
+import org.apache.ignite.transactions.Transaction;
+import org.apache.ignite.transactions.TransactionConcurrency;
+import org.apache.ignite.transactions.TransactionIsolation;
+import org.apache.ignite.transactions.TransactionMetrics;
+import org.jetbrains.annotations.Nullable;
 
-import static org.apache.ignite.transactions.TransactionIsolation.*;
+import static org.apache.ignite.transactions.TransactionIsolation.SERIALIZABLE;
 
 /**
  * Grid transactions implementation.
@@ -138,23 +142,21 @@ public class IgniteTransactionsImpl<K, V> implements IgniteTransactionsEx {
      * @return Transaction.
      */
     @SuppressWarnings("unchecked")
-    private IgniteInternalTx txStart0(TransactionConcurrency concurrency, TransactionIsolation isolation,
-        long timeout, int txSize, @Nullable GridCacheContext sysCacheCtx) {
+    private IgniteInternalTx txStart0(
+        TransactionConcurrency concurrency,
+        TransactionIsolation isolation,
+        long timeout,
+        int txSize,
+        @Nullable GridCacheContext sysCacheCtx
+    ) {
         cctx.kernalContext().gateway().readLock();
 
         try {
-            TransactionConfiguration cfg = cctx.gridConfig().getTransactionConfiguration();
-
-            if (!cfg.isTxSerializableEnabled() && isolation == SERIALIZABLE)
-                throw new IllegalArgumentException("SERIALIZABLE isolation level is disabled (to enable change " +
-                    "'txSerializableEnabled' configuration property)");
-
             IgniteInternalTx tx = cctx.tm().userTx(sysCacheCtx);
 
             if (tx != null)
                 throw new IllegalStateException("Failed to start new transaction " +
                     "(current thread already has a transaction): " + tx);
-
             tx = cctx.tm().newTx(
                 false,
                 false,

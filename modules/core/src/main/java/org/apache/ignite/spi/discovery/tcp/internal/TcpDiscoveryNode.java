@@ -17,23 +17,37 @@
 
 package org.apache.ignite.spi.discovery.tcp.internal;
 
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.spi.discovery.*;
-import org.jetbrains.annotations.*;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serializable;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.cache.CacheMetrics;
+import org.apache.ignite.cluster.ClusterMetrics;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.ClusterMetricsSnapshot;
+import org.apache.ignite.internal.IgniteNodeAttributes;
+import org.apache.ignite.internal.processors.cache.CacheMetricsSnapshot;
+import org.apache.ignite.internal.util.lang.GridMetadataAwareAdapter;
+import org.apache.ignite.internal.util.tostring.GridToStringExclude;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.lang.IgniteProductVersion;
+import org.apache.ignite.spi.discovery.DiscoveryMetricsProvider;
+import org.jetbrains.annotations.Nullable;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
-
-import static org.apache.ignite.internal.IgniteNodeAttributes.*;
+import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_DAEMON;
+import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_NODE_CONSISTENT_ID;
 
 /**
  * Node for {@link org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi}.
@@ -89,8 +103,8 @@ public class TcpDiscoveryNode extends GridMetadataAwareAdapter implements Cluste
     @GridToStringExclude
     private volatile long lastUpdateTime = U.currentTimeMillis();
 
-    /** The most recent time when a data chunk was received from a node. */
-    private volatile long lastDataReceivedTime = U.currentTimeMillis();
+    /** The most recent time when node exchanged a message with a remote node. */
+    private volatile long lastExchangeTime = U.currentTimeMillis();
 
     /** Metrics provider (transient). */
     @GridToStringExclude
@@ -393,21 +407,21 @@ public class TcpDiscoveryNode extends GridMetadataAwareAdapter implements Cluste
     }
 
     /**
-     * Gets the last time a node received a data chunk from a remote node.
+     * Gets the last time a node exchanged a message with a remote node.
      *
      * @return Time in milliseconds.
      */
-    public long lastDataReceivedTime() {
-        return lastDataReceivedTime;
+    public long lastExchangeTime() {
+        return lastExchangeTime;
     }
 
     /**
-     * Sets the last time a node receive a data chunk from a remote node in a topology.
+     * Sets the last time a node exchanged a message with a remote node.
      *
-     * @param lastDataReceivedTime Time in milliseconds.
+     * @param lastExchangeTime Time in milliseconds.
      */
-    public void lastDataReceivedTime(long lastDataReceivedTime) {
-        this.lastDataReceivedTime = lastDataReceivedTime;
+    public void lastExchangeTime(long lastExchangeTime) {
+        this.lastExchangeTime = lastExchangeTime;
     }
 
     /**

@@ -17,23 +17,24 @@
 
 package org.apache.ignite.cache.hibernate;
 
-import org.apache.commons.dbcp.managed.*;
-import org.apache.ignite.cache.jta.*;
-import org.apache.ignite.configuration.*;
-import org.h2.jdbcx.*;
-import org.hibernate.cache.spi.access.*;
-import org.hibernate.engine.transaction.internal.jta.*;
+import java.util.Collections;
+import javax.cache.configuration.Factory;
+import javax.transaction.TransactionManager;
+import javax.transaction.UserTransaction;
+import org.apache.commons.dbcp.managed.BasicManagedDataSource;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.h2.jdbcx.JdbcDataSource;
+import org.hibernate.cache.spi.access.AccessType;
+import org.hibernate.engine.transaction.internal.jta.JtaTransactionFactory;
 import org.hibernate.engine.transaction.spi.TransactionFactory;
-import org.hibernate.service.*;
-import org.hibernate.service.jdbc.connections.internal.*;
-import org.hibernate.service.jdbc.connections.spi.*;
-import org.hibernate.service.jta.platform.internal.*;
-import org.hibernate.service.jta.platform.spi.*;
-import org.jetbrains.annotations.*;
-import org.objectweb.jotm.*;
-
-import javax.transaction.*;
-import java.util.*;
+import org.hibernate.service.ServiceRegistryBuilder;
+import org.hibernate.service.jdbc.connections.internal.DatasourceConnectionProviderImpl;
+import org.hibernate.service.jdbc.connections.spi.ConnectionProvider;
+import org.hibernate.service.jta.platform.internal.AbstractJtaPlatform;
+import org.hibernate.service.jta.platform.spi.JtaPlatform;
+import org.jetbrains.annotations.Nullable;
+import org.objectweb.jotm.Jotm;
 
 /**
  *
@@ -61,9 +62,12 @@ public class HibernateL2CacheTransactionalSelfTest extends HibernateL2CacheSelfT
     /**
      */
     @SuppressWarnings("PublicInnerClass")
-    public static class TestTmLookup implements CacheTmLookup {
+    public static class TestTmFactory implements Factory<TransactionManager> {
+        /** */
+        private static final long serialVersionUID = 0;
+
         /** {@inheritDoc} */
-        @Override public TransactionManager getTm() {
+        @Override public TransactionManager create() {
             return jotm.getTransactionManager();
         }
     }
@@ -86,10 +90,17 @@ public class HibernateL2CacheTransactionalSelfTest extends HibernateL2CacheSelfT
     }
 
     /** {@inheritDoc} */
+    @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
+        IgniteConfiguration cfg = super.getConfiguration(gridName);
+
+        cfg.getTransactionConfiguration().setTxManagerFactory(new TestTmFactory());
+
+        return cfg;
+    }
+
+    /** {@inheritDoc} */
     @Override protected CacheConfiguration transactionalRegionConfiguration(String regionName) {
         CacheConfiguration cfg = super.transactionalRegionConfiguration(regionName);
-
-        cfg.setTransactionManagerLookupClassName(TestTmLookup.class.getName());
 
         cfg.setNearConfiguration(null);
 

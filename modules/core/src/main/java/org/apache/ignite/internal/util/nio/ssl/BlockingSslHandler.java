@@ -17,18 +17,27 @@
 
 package org.apache.ignite.internal.util.nio.ssl;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.util.nio.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.channels.SocketChannel;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
+import javax.net.ssl.SSLEngineResult.Status;
+import javax.net.ssl.SSLException;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.internal.util.nio.GridNioException;
+import org.apache.ignite.internal.util.typedef.internal.U;
 
-import javax.net.ssl.*;
-import javax.net.ssl.SSLEngineResult.*;
-import java.io.*;
-import java.nio.*;
-import java.nio.channels.*;
-
-import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
-import static javax.net.ssl.SSLEngineResult.Status.*;
+import static javax.net.ssl.SSLEngineResult.HandshakeStatus.FINISHED;
+import static javax.net.ssl.SSLEngineResult.HandshakeStatus.NEED_TASK;
+import static javax.net.ssl.SSLEngineResult.HandshakeStatus.NEED_UNWRAP;
+import static javax.net.ssl.SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING;
+import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
+import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
+import static javax.net.ssl.SSLEngineResult.Status.OK;
 
 /**
  *
@@ -461,7 +470,7 @@ public class BlockingSslHandler {
             int read = ch.read(inNetBuf);
 
             if (read == -1)
-                throw new IgniteCheckedException("Failed to read remote node ID (connection closed).");
+                throw new IgniteCheckedException("Failed to read remote node response (connection closed).");
         }
         catch (IOException e) {
             throw new IgniteCheckedException("Failed to write byte to socket.", e);

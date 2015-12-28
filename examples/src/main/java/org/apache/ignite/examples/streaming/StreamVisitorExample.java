@@ -17,15 +17,22 @@
 
 package org.apache.ignite.examples.streaming;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.query.*;
-import org.apache.ignite.cache.query.annotations.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.examples.*;
-import org.apache.ignite.stream.*;
-
-import java.io.*;
-import java.util.*;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteDataStreamer;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.binary.BinaryObject;
+import org.apache.ignite.binary.BinaryObjectBuilder;
+import org.apache.ignite.cache.query.SqlFieldsQuery;
+import org.apache.ignite.cache.query.annotations.QuerySqlField;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.examples.ExampleNodeStartup;
+import org.apache.ignite.examples.ExamplesUtils;
+import org.apache.ignite.stream.StreamVisitor;
 
 /**
  * Stream random numbers into the streaming cache.
@@ -70,21 +77,39 @@ public class StreamVisitorExample {
                     // Instead we update the instruments in the 'instCache'.
                     // Since both, 'instCache' and 'mktCache' use the same key, updates are collocated.
                     mktStmr.receiver(new StreamVisitor<String, Double>() {
-                        @Override
-                        public void apply(IgniteCache<String, Double> cache, Map.Entry<String, Double> e) {
+                        @Override public void apply(IgniteCache<String, Double> cache, Map.Entry<String, Double> e) {
                             String symbol = e.getKey();
                             Double tick = e.getValue();
 
-                            Instrument inst = instCache.get(symbol);
+                            IgniteCache<String, BinaryObject> binInstCache = ignite.cache("instCache").withKeepBinary();
 
-                            if (inst == null)
-                                inst = new Instrument(symbol);
+                            BinaryObject inst = binInstCache.get(symbol);
 
-                            // Don't populate market cache, as we don't use it for querying.
-                            // Update cached instrument based on the latest market tick.
-                            inst.update(tick);
+                            BinaryObjectBuilder instBuilder;
 
-                            instCache.put(symbol, inst);
+                            if (inst == null) {
+                                instBuilder = ignite.binary().builder("Instrument");
+
+                                // Constructor logic.
+                                instBuilder.setField(
+                                    "symbol",
+                                    symbol);
+                            }
+                            else
+                                instBuilder = inst.toBuilder();
+
+                            // Instrument.update() logic.
+                            Double open = instBuilder.<Double>getField("open");
+
+                            if (open == null || open == 0)
+                                instBuilder.setField("open", tick);
+
+                            instBuilder.setField("latest", tick);
+
+                            // Build instrument object.
+                            inst = instBuilder.build();
+
+                            binInstCache.put(symbol, inst);
                         }
                     });
 

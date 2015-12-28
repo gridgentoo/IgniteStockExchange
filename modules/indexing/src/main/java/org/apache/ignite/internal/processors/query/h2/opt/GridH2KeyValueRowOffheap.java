@@ -17,15 +17,14 @@
 
 package org.apache.ignite.internal.processors.query.h2.opt;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.offheap.unsafe.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.h2.store.*;
-import org.h2.value.*;
-import org.jetbrains.annotations.*;
-
-import java.util.concurrent.locks.*;
+import java.util.concurrent.locks.Lock;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.util.GridStripedLock;
+import org.apache.ignite.internal.util.offheap.unsafe.GridUnsafeMemory;
+import org.apache.ignite.internal.util.typedef.internal.SB;
+import org.h2.store.Data;
+import org.h2.value.Value;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Offheap row.
@@ -217,12 +216,19 @@ public class GridH2KeyValueRowOffheap extends GridH2AbstractKeyValueRow {
 
     /** {@inheritDoc} */
     @SuppressWarnings("NonSynchronizedMethodOverridesSynchronizedMethod")
-    @Override protected synchronized Value updateWeakValue(Value upd) {
+    @Override protected synchronized Value updateWeakValue(Object valObj) throws IgniteCheckedException {
+        Value val = peekValue(VAL_COL);
+
+        if (val != null)
+            return val;
+
+        Value upd = desc.wrap(valObj, desc.valueType());
+
         setValue(VAL_COL, upd);
 
         notifyAll();
 
-        return null;
+        return upd;
     }
 
     /** {@inheritDoc} */

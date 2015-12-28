@@ -17,17 +17,27 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.preloader;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-
-import java.io.*;
-import java.nio.*;
-import java.util.*;
+import java.io.Externalizable;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.GridDirectCollection;
+import org.apache.ignite.internal.GridDirectTransient;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.GridCacheDeployable;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryInfo;
+import org.apache.ignite.internal.processors.cache.GridCacheMessage;
+import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
+import org.apache.ignite.internal.processors.cache.KeyCacheObject;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.plugin.extensions.communication.MessageCollectionItemType;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
 
 /**
  * Force keys response. Contains absent keys.
@@ -70,34 +80,29 @@ public class GridDhtForceKeysResponse extends GridCacheMessage implements GridCa
      * @param cacheId Cache ID.
      * @param futId Request id.
      * @param miniId Mini-future ID.
+     * @param addDepInfo Deployment info flag.
      */
-    public GridDhtForceKeysResponse(int cacheId, IgniteUuid futId, IgniteUuid miniId) {
+    public GridDhtForceKeysResponse(int cacheId, IgniteUuid futId, IgniteUuid miniId, boolean addDepInfo) {
         assert futId != null;
         assert miniId != null;
 
         this.cacheId = cacheId;
         this.futId = futId;
         this.miniId = miniId;
+        this.addDepInfo = addDepInfo;
     }
 
     /**
      * Sets error.
-     * @param err
+     * @param err Error.
      */
     public void error(IgniteCheckedException err){
         this.err = err;
     }
 
-    /**
-     * @return Error, if any.
-     */
-    public IgniteCheckedException error() {
-        return err;
-    }
-
     /** {@inheritDoc} */
-    @Override public boolean allowForStartup() {
-        return true;
+    @Override public IgniteCheckedException error() {
+        return err;
     }
 
     /**
@@ -183,6 +188,11 @@ public class GridDhtForceKeysResponse extends GridCacheMessage implements GridCa
         }
 
         err = ctx.marshaller().unmarshal(errBytes, ldr);
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean addDeploymentInfo() {
+        return addDepInfo;
     }
 
     /** {@inheritDoc} */
@@ -288,7 +298,7 @@ public class GridDhtForceKeysResponse extends GridCacheMessage implements GridCa
 
         }
 
-        return true;
+        return reader.afterMessageRead(GridDhtForceKeysResponse.class);
     }
 
     /** {@inheritDoc} */

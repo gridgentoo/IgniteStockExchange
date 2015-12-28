@@ -17,26 +17,54 @@
 
 package org.apache.ignite.internal.processors.cache.store;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.store.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.cache.transactions.*;
-import org.apache.ignite.internal.processors.cache.version.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.lang.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.lifecycle.*;
-import org.apache.ignite.transactions.*;
-import org.jetbrains.annotations.*;
-
-import javax.cache.*;
-import javax.cache.integration.*;
-import java.util.*;
+import java.util.AbstractCollection;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import javax.cache.Cache;
+import javax.cache.integration.CacheLoaderException;
+import javax.cache.integration.CacheWriterException;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cache.store.CacheStore;
+import org.apache.ignite.cache.store.CacheStoreSession;
+import org.apache.ignite.cache.store.CacheStoreSessionListener;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.processors.cache.CacheEntryImpl;
+import org.apache.ignite.internal.processors.cache.CacheStoreBalancingWrapper;
+import org.apache.ignite.internal.processors.cache.CacheStorePartialUpdateException;
+import org.apache.ignite.internal.processors.cache.GridCacheInternal;
+import org.apache.ignite.internal.processors.cache.GridCacheManagerAdapter;
+import org.apache.ignite.internal.processors.cache.KeyCacheObject;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.util.GridLeanMap;
+import org.apache.ignite.internal.util.GridSetWrapper;
+import org.apache.ignite.internal.util.lang.GridInClosure3;
+import org.apache.ignite.internal.util.lang.GridMetadataAwareAdapter;
+import org.apache.ignite.internal.util.tostring.GridToStringExclude;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.C1;
+import org.apache.ignite.internal.util.typedef.CI2;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.LT;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.SB;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiInClosure;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.apache.ignite.lang.IgniteClosure;
+import org.apache.ignite.lifecycle.LifecycleAware;
+import org.apache.ignite.transactions.Transaction;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Store manager.
@@ -85,7 +113,8 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
 
         store = cacheStoreWrapper(ctx, cfgStore, cfg);
 
-        singleThreadGate = store == null ? null : new CacheStoreBalancingWrapper<>(store);
+        singleThreadGate = store == null ? null : new CacheStoreBalancingWrapper<>(store,
+            cfg.getStoreConcurrentLoadAllThreshold());
 
         ThreadLocal<SessionData> sesHolder0 = null;
 
@@ -161,12 +190,24 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
 
         CacheConfiguration cfg = cctx.config();
 
-        if (cfgStore != null && !cfg.isWriteThrough() && !cfg.isReadThrough()) {
-            U.quietAndWarn(log,
-                "Persistence store is configured, but both read-through and write-through are disabled. This " +
-                "configuration makes sense if the store implements loadCache method only. If this is the " +
-                "case, ignore this warning. Otherwise, fix the configuration for cache: " + cfg.getName(),
-                "Persistence store is configured, but both read-through and write-through are disabled.");
+        if (cfgStore != null) {
+            if (!cfg.isWriteThrough() && !cfg.isReadThrough()) {
+                U.quietAndWarn(log,
+                    "Persistence store is configured, but both read-through and write-through are disabled. This " +
+                    "configuration makes sense if the store implements loadCache method only. If this is the " +
+                    "case, ignore this warning. Otherwise, fix the configuration for the cache: " + cfg.getName(),
+                    "Persistence store is configured, but both read-through and write-through are disabled " +
+                    "for cache: " + cfg.getName());
+            }
+
+            if (!cfg.isWriteThrough() && cfg.isWriteBehindEnabled()) {
+                U.quietAndWarn(log,
+                    "To enable write-behind mode for the cache store it's also required to set " +
+                    "CacheConfiguration.setWriteThrough(true) property, otherwise the persistence " +
+                    "store will be never updated. Consider fixing configuration for the cache: " + cfg.getName(),
+                    "Write-behind mode for the cache store also requires CacheConfiguration.setWriteThrough(true) " +
+                    "property. Fix configuration for the cache: " + cfg.getName());
+            }
         }
 
         sesLsnrs = CU.startStoreSessionListeners(cctx.kernalContext(), cfg.getCacheStoreSessionListenerFactories());
@@ -242,10 +283,7 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
                 // Never load internal keys from store as they are never persisted.
                 return null;
 
-            Object storeKey = key.value(cctx.cacheObjectContext(), false);
-
-            if (convertPortable())
-                storeKey = cctx.unwrapPortableIfNeeded(storeKey, false);
+            Object storeKey = cctx.unwrapBinaryIfNeeded(key, !convertBinary());
 
             if (log.isDebugEnabled())
                 log.debug("Loading value from store for key: " + storeKey);
@@ -369,22 +407,12 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
                 return;
             }
 
-            Collection<Object> keys0;
-
-            if (convertPortable()) {
-                keys0 = F.viewReadOnly(keys, new C1<KeyCacheObject, Object>() {
+            Collection<Object> keys0 = F.viewReadOnly(keys,
+                new C1<KeyCacheObject, Object>() {
                     @Override public Object apply(KeyCacheObject key) {
-                        return cctx.unwrapPortableIfNeeded(key.value(cctx.cacheObjectContext(), false), false);
+                        return cctx.unwrapBinaryIfNeeded(key, !convertBinary());
                     }
                 });
-            }
-            else {
-                keys0 = F.viewReadOnly(keys, new C1<KeyCacheObject, Object>() {
-                    @Override public Object apply(KeyCacheObject key) {
-                        return key.value(cctx.cacheObjectContext(), false);
-                    }
-                });
-            }
 
             if (log.isDebugEnabled())
                 log.debug("Loading values from store for keys: " + keys0);
@@ -505,10 +533,8 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
             if (key instanceof GridCacheInternal)
                 return true;
 
-            if (convertPortable()) {
-                key = cctx.unwrapPortableIfNeeded(key, false);
-                val = cctx.unwrapPortableIfNeeded(val, false);
-            }
+            key = cctx.unwrapBinaryIfNeeded(key, !convertBinary());
+            val = cctx.unwrapBinaryIfNeeded(val, !convertBinary());
 
             if (log.isDebugEnabled())
                 log.debug("Storing value in cache store [key=" + key + ", val=" + val + ']');
@@ -610,8 +636,7 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
             if (key instanceof GridCacheInternal)
                 return false;
 
-            if (convertPortable())
-                key = cctx.unwrapPortableIfNeeded(key, false);
+            key = cctx.unwrapBinaryIfNeeded(key, !convertBinary());
 
             if (log.isDebugEnabled())
                 log.debug("Removing value from cache store [key=" + key + ']');
@@ -659,7 +684,7 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
         }
 
         if (store != null) {
-            Collection<Object> keys0 = convertPortable() ? cctx.unwrapPortablesIfNeeded(keys, false) : keys;
+            Collection<Object> keys0 = cctx.unwrapBinariesIfNeeded(keys, !convertBinary());
 
             if (log.isDebugEnabled())
                 log.debug("Removing values from cache store [keys=" + keys0 + ']');
@@ -746,7 +771,7 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
         assert e != null;
 
         if (e.getMessage() != null) {
-            throw new IgniteCheckedException("Cache store must work with portable objects if portables are " +
+            throw new IgniteCheckedException("Cache store must work with binary objects if binary are " +
                 "enabled for cache [cacheName=" + cctx.namex() + ']', e);
         }
         else
@@ -829,11 +854,6 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
      * @return Cache configuration.
      */
     protected abstract CacheConfiguration cacheConfiguration();
-
-    /**
-     * @return Convert-portable flag.
-     */
-    protected abstract boolean convertPortable();
 
     /**
      *
@@ -1071,15 +1091,13 @@ public abstract class GridCacheStoreManagerAdapter extends GridCacheManagerAdapt
 
                         Object k = e.getKey();
 
-                        if (rmvd != null && rmvd.contains(k))
-                            continue;
-
                         Object v = locStore ? e.getValue() : e.getValue().get1();
 
-                        if (convertPortable()) {
-                            k = cctx.unwrapPortableIfNeeded(k, false);
-                            v = cctx.unwrapPortableIfNeeded(v, false);
-                        }
+                        k = cctx.unwrapBinaryIfNeeded(k, !convertBinary());
+                        v = cctx.unwrapBinaryIfNeeded(v, !convertBinary());
+
+                        if (rmvd != null && rmvd.contains(k))
+                            continue;
 
                         next = new CacheEntryImpl<>(k, v);
 

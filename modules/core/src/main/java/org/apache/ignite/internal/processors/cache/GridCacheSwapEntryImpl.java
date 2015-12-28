@@ -17,14 +17,16 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import org.apache.ignite.internal.processors.cache.version.*;
-import org.apache.ignite.internal.util.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.jetbrains.annotations.*;
-import sun.misc.*;
-
-import java.nio.*;
+import java.nio.ByteBuffer;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersionEx;
+import org.apache.ignite.internal.util.GridUnsafe;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.apache.ignite.lang.IgniteUuid;
+import org.jetbrains.annotations.Nullable;
+import sun.misc.Unsafe;
 
 /**
  * Swap entry.
@@ -92,8 +94,6 @@ public class GridCacheSwapEntryImpl implements GridCacheSwapEntry {
         long expireTime,
         @Nullable IgniteUuid keyClsLdrId,
         @Nullable IgniteUuid valClsLdrId) {
-        assert ver != null;
-
         this.valBytes = valBytes;
         this.type = type;
         this.ver = ver;
@@ -124,9 +124,9 @@ public class GridCacheSwapEntryImpl implements GridCacheSwapEntry {
      * @return Version.
      */
     public static GridCacheVersion version(byte[] bytes) {
-        int off = VERSION_OFFSET; // Skip ttl, expire time.
+        long off = BYTE_ARR_OFF + VERSION_OFFSET; // Skip ttl, expire time.
 
-        boolean verEx = bytes[off++] != 0;
+        boolean verEx = UNSAFE.getByte(bytes, off++) != 0;
 
         return U.readVersion(bytes, off, verEx);
     }
@@ -153,26 +153,6 @@ public class GridCacheSwapEntryImpl implements GridCacheSwapEntry {
         UNSAFE.copyMemory(bytes, off, valBytes, BYTE_ARR_OFF, arrLen);
 
         return new IgniteBiTuple<>(valBytes, type);
-    }
-
-    /**
-     * @param bytes Entry bytes.
-     * @return Value bytes offset.
-     */
-    public static int valueOffset(byte[] bytes) {
-        assert bytes.length > 40 : bytes.length;
-
-        int off = VERSION_OFFSET; // Skip ttl, expire time.
-
-        boolean verEx = bytes[off++] != 0;
-
-        off += verEx ? VERSION_EX_SIZE : VERSION_SIZE;
-
-        off += 5; // Byte array flag + array size.
-
-        assert bytes.length >= off;
-
-        return off;
     }
 
     /** {@inheritDoc} */
@@ -286,9 +266,36 @@ public class GridCacheSwapEntryImpl implements GridCacheSwapEntry {
 
     /**
      * @param arr Entry bytes.
+     * @param valOnly If {@code true} unmarshalls only entry value.
      * @return Entry.
      */
-    public static GridCacheSwapEntryImpl unmarshal(byte[] arr) {
+    public static GridCacheSwapEntryImpl unmarshal(byte[] arr, boolean valOnly) {
+        if (valOnly) {
+            long off = BYTE_ARR_OFF + VERSION_OFFSET; // Skip ttl, expire time.
+
+            boolean verEx = UNSAFE.getByte(arr, off++) != 0;
+
+            off += verEx ? VERSION_EX_SIZE : VERSION_SIZE;
+
+            int arrLen = UNSAFE.getInt(arr, off);
+
+            off += 4;
+
+            byte type = UNSAFE.getByte(arr, off++);
+
+            byte[] valBytes = new byte[arrLen];
+
+            UNSAFE.copyMemory(arr, off, valBytes, BYTE_ARR_OFF, arrLen);
+
+            return new GridCacheSwapEntryImpl(ByteBuffer.wrap(valBytes),
+                type,
+                null,
+                0L,
+                0L,
+                null,
+                null);
+        }
+
         long off = BYTE_ARR_OFF;
 
         long ttl = UNSAFE.getLong(arr, off);

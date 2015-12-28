@@ -32,8 +32,10 @@
     <moduleSets>
         <moduleSet>
             <includes>
+                <include>org.apache.ignite:ignite-spark</include>
                 <include>org.apache.ignite:ignite-spring</include>
                 <include>org.apache.ignite:ignite-log4j</include>
+                <include>org.apache.ignite:ignite-indexing</include>
             </includes>
             <sources>
                 <includeModuleDirectory>true</includeModuleDirectory>

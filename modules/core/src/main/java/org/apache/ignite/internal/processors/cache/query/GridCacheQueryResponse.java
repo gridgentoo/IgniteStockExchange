@@ -17,19 +17,26 @@
 
 package org.apache.ignite.internal.processors.cache.query;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.query.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-import org.jetbrains.annotations.*;
-
-import java.io.*;
-import java.nio.*;
-import java.util.*;
+import java.io.Externalizable;
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.GridDirectCollection;
+import org.apache.ignite.internal.GridDirectTransient;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.GridCacheDeployable;
+import org.apache.ignite.internal.processors.cache.GridCacheMessage;
+import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
+import org.apache.ignite.internal.processors.query.GridQueryFieldMetadata;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.plugin.extensions.communication.MessageCollectionItemType;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Query request.
@@ -83,23 +90,28 @@ public class GridCacheQueryResponse extends GridCacheMessage implements GridCach
      * @param reqId Request id.
      * @param finished Last response or not.
      * @param fields Fields query or not.
+     * @param addDepInfo Deployment info flag.
      */
-    public GridCacheQueryResponse(int cacheId, long reqId, boolean finished, boolean fields) {
+    public GridCacheQueryResponse(int cacheId, long reqId, boolean finished, boolean fields, boolean addDepInfo) {
         this.cacheId = cacheId;
         this.reqId = reqId;
         this.finished = finished;
         this.fields = fields;
+        this.addDepInfo = addDepInfo;
     }
 
     /**
      * @param cacheId Cache ID.
      * @param reqId Request id.
      * @param err Error.
+     * @param addDepInfo Deployment info flag.
      */
-    public GridCacheQueryResponse(int cacheId, long reqId, Throwable err) {
+    public GridCacheQueryResponse(int cacheId, long reqId, Throwable err, boolean addDepInfo) {
         this.cacheId = cacheId;
         this.reqId = reqId;
         this.err = err;
+        this.addDepInfo = addDepInfo;
+
         finished = true;
     }
 
@@ -108,19 +120,21 @@ public class GridCacheQueryResponse extends GridCacheMessage implements GridCach
     @Override public void prepareMarshal(GridCacheSharedContext ctx) throws IgniteCheckedException {
         super.prepareMarshal(ctx);
 
+        GridCacheContext cctx = ctx.cacheContext(cacheId);
+
         if (err != null)
             errBytes = ctx.marshaller().marshal(err);
 
-        metaDataBytes = marshalCollection(metadata, ctx);
-        dataBytes = marshalCollection(data, ctx);
+        metaDataBytes = marshalCollection(metadata, cctx);
+        dataBytes = marshalCollection(data, cctx);
 
-        if (ctx.deploymentEnabled() && !F.isEmpty(data)) {
+        if (addDepInfo && !F.isEmpty(data)) {
             for (Object o : data) {
                 if (o instanceof Map.Entry) {
                     Map.Entry e = (Map.Entry)o;
 
-                    prepareObject(e.getKey(), ctx);
-                    prepareObject(e.getValue(), ctx);
+                    prepareObject(e.getKey(), cctx);
+                    prepareObject(e.getValue(), cctx);
                 }
             }
         }
@@ -135,6 +149,11 @@ public class GridCacheQueryResponse extends GridCacheMessage implements GridCach
 
         metadata = unmarshalCollection(metaDataBytes, ctx, ldr);
         data = unmarshalCollection(dataBytes, ctx, ldr);
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean addDeploymentInfo() {
+        return addDepInfo;
     }
 
     /**
@@ -187,10 +206,8 @@ public class GridCacheQueryResponse extends GridCacheMessage implements GridCach
         return reqId;
     }
 
-    /**
-     * @return Error.
-     */
-    public Throwable error() {
+    /** {@inheritDoc} */
+    @Override public Throwable error() {
         return err;
     }
 
@@ -318,7 +335,7 @@ public class GridCacheQueryResponse extends GridCacheMessage implements GridCach
 
         }
 
-        return true;
+        return reader.afterMessageRead(GridCacheQueryResponse.class);
     }
 
     /** {@inheritDoc} */

@@ -17,13 +17,16 @@
 
 package org.apache.ignite.spi.discovery.tcp.ipfinder;
 
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.resources.*;
-import org.apache.ignite.testframework.junits.common.*;
-
-import java.lang.reflect.*;
-import java.net.*;
-import java.util.*;
+import java.lang.reflect.Field;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.resources.LoggerResource;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
 /**
  * Abstract test for ip finder.
@@ -78,7 +81,7 @@ public abstract class TcpDiscoveryIpFinderAbstractSelfTest<T extends TcpDiscover
         for (InetSocketAddress addr : initAddrs)
             assert addrs.contains(addr) : "Address is missing (got inconsistent addrs collection): " + addr;
 
-        finder.unregisterAddresses(Collections.singletonList(node1));
+        finder.unregisterAddresses(Collections.singletonList(node2));
 
         addrs = finder.getRegisteredAddresses();
 

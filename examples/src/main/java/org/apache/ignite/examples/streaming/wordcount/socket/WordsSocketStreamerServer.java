@@ -17,17 +17,24 @@
 
 package org.apache.ignite.examples.streaming.wordcount.socket;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.affinity.*;
-import org.apache.ignite.examples.*;
-import org.apache.ignite.examples.streaming.wordcount.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.stream.*;
-import org.apache.ignite.stream.socket.*;
+import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.util.Map;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteDataStreamer;
+import org.apache.ignite.IgniteException;
+import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.affinity.AffinityUuid;
+import org.apache.ignite.examples.ExampleNodeStartup;
+import org.apache.ignite.examples.ExamplesUtils;
+import org.apache.ignite.examples.streaming.wordcount.CacheConfig;
+import org.apache.ignite.examples.streaming.wordcount.QueryWords;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.apache.ignite.stream.StreamSingleTupleExtractor;
+import org.apache.ignite.stream.socket.SocketMessageConverter;
+import org.apache.ignite.stream.socket.SocketStreamer;
 
 /**
  * Example demonstrates streaming of data from external components into Ignite cache.
@@ -102,7 +109,7 @@ public class WordsSocketStreamerServer {
             }
         });
 
-        sockStmr.setTupleExtractor(new StreamTupleExtractor<String, AffinityUuid, String>() {
+        sockStmr.setSingleTupleExtractor(new StreamSingleTupleExtractor<String, AffinityUuid, String>() {
             @Override public Map.Entry<AffinityUuid, String> extract(String word) {
                 // By using AffinityUuid we ensure that identical
                 // words are processed on the same cluster node.

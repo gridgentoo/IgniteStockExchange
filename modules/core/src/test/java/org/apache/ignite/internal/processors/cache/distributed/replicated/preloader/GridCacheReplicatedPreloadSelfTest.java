@@ -17,31 +17,44 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.replicated.preloader;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.affinity.*;
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.events.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.spi.eventstorage.memory.*;
-import org.apache.ignite.testframework.*;
-import org.apache.ignite.testframework.junits.common.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CachePeekMode;
+import org.apache.ignite.cache.CacheRebalanceMode;
+import org.apache.ignite.cache.affinity.AffinityFunction;
+import org.apache.ignite.cache.affinity.AffinityFunctionContext;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.events.Event;
+import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.binary.BinaryMarshaller;
+import org.apache.ignite.internal.processors.cache.GridCacheAdapter;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.spi.eventstorage.memory.MemoryEventStorageSpi;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
-import java.io.*;
-import java.util.*;
-
-import static org.apache.ignite.cache.CacheMode.*;
-import static org.apache.ignite.cache.CacheRebalanceMode.*;
-import static org.apache.ignite.cache.CacheWriteSynchronizationMode.*;
-import static org.apache.ignite.configuration.DeploymentMode.*;
-import static org.apache.ignite.events.EventType.*;
+import static org.apache.ignite.cache.CacheMode.REPLICATED;
+import static org.apache.ignite.cache.CacheRebalanceMode.ASYNC;
+import static org.apache.ignite.cache.CacheRebalanceMode.SYNC;
+import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
+import static org.apache.ignite.configuration.DeploymentMode.CONTINUOUS;
+import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_STARTED;
+import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_STOPPED;
 
 /**
  * Tests for replicated cache preloader.
@@ -77,8 +90,6 @@ public class GridCacheReplicatedPreloadSelfTest extends GridCommonAbstractTest {
         cfg.setDiscoverySpi(disco);
 
         cfg.setCacheConfiguration(cacheConfiguration(gridName));
-        cfg.setPeerClassLoadingLocalClassPathExclude(GridCacheReplicatedPreloadSelfTest.class.getName(),
-            TestValue.class.getName());
 
         cfg.setDeploymentMode(CONTINUOUS);
 
@@ -89,6 +100,9 @@ public class GridCacheReplicatedPreloadSelfTest extends GridCommonAbstractTest {
         spi.setExpireCount(50_000);
 
         cfg.setEventStorageSpi(spi);
+
+        if (getTestGridName(1).equals(gridName) || cfg.getMarshaller() instanceof BinaryMarshaller)
+            cfg.setClassLoader(getExternalClassLoader());
 
         return cfg;
     }
@@ -119,26 +133,6 @@ public class GridCacheReplicatedPreloadSelfTest extends GridCommonAbstractTest {
 
         try {
             startGrid(1);
-        }
-        finally {
-            stopAllGrids();
-        }
-    }
-
-    /**
-     * @throws Exception If failed.
-     */
-    public void testSingleZeroPoolSize() throws Exception {
-        preloadMode = SYNC;
-        poolSize = 0;
-
-        try {
-            startGrid(1);
-
-            assert false : "Grid should have been failed to start.";
-        }
-        catch (IgniteCheckedException e) {
-            info("Caught expected exception: " + e);
         }
         finally {
             stopAllGrids();
@@ -221,12 +215,9 @@ public class GridCacheReplicatedPreloadSelfTest extends GridCommonAbstractTest {
             IgniteCache<Integer, Object> cache1 = g1.cache(null);
             IgniteCache<Integer, Object> cache2 = g2.cache(null);
 
-            ClassLoader ldr = new GridTestClassLoader(
-                GridCacheReplicatedPreloadSelfTest.class.getName(),
-                TestValue.class.getName(),
-                TestAffinityFunction.class.getName());
+            ClassLoader ldr = grid(1).configuration().getClassLoader();
 
-            Object v1 = ldr.loadClass(TestValue.class.getName()).newInstance();
+            Object v1 = ldr.loadClass("org.apache.ignite.tests.p2p.CacheDeploymentTestValue3").newInstance();
 
             cache1.put(1, v1);
 
@@ -239,7 +230,8 @@ public class GridCacheReplicatedPreloadSelfTest extends GridCommonAbstractTest {
             assert v2 != null;
             assert v2.toString().equals(v1.toString());
             assert !v2.getClass().getClassLoader().equals(getClass().getClassLoader());
-            assert v2.getClass().getClassLoader().getClass().getName().contains("GridDeploymentClassLoader");
+            assert v2.getClass().getClassLoader().getClass().getName().contains("GridDeploymentClassLoader") ||
+                grid(2).configuration().getMarshaller() instanceof BinaryMarshaller;
 
             stopGrid(1);
 
@@ -256,7 +248,8 @@ public class GridCacheReplicatedPreloadSelfTest extends GridCommonAbstractTest {
             assert v3 != null;
             assert v3.toString().equals(v1.toString());
             assert !v3.getClass().getClassLoader().equals(getClass().getClassLoader());
-            assert v3.getClass().getClassLoader().getClass().getName().contains("GridDeploymentClassLoader");
+            assert v3.getClass().getClassLoader().getClass().getName().contains("GridDeploymentClassLoader")||
+                grid(3).configuration().getMarshaller() instanceof BinaryMarshaller;
         }
         finally {
             stopAllGrids();
@@ -504,27 +497,6 @@ public class GridCacheReplicatedPreloadSelfTest extends GridCommonAbstractTest {
         }
         finally {
             stopAllGrids();
-        }
-    }
-
-    /**
-     *
-     */
-    @SuppressWarnings({"PublicInnerClass"})
-    public static class TestValue implements Serializable {
-        /** */
-        private String val = "test-" + System.currentTimeMillis();
-
-        /**
-         * @return Value
-         */
-        public String getValue() {
-            return val;
-        }
-
-        /** {@inheritDoc} */
-        @Override public String toString() {
-            return S.toString(TestValue.class, this);
         }
     }
 

@@ -17,18 +17,27 @@
 
 package org.apache.ignite.internal.client;
 
-import org.apache.ignite.internal.client.balancer.*;
-import org.apache.ignite.internal.client.marshaller.*;
-import org.apache.ignite.internal.client.marshaller.optimized.*;
-import org.apache.ignite.internal.client.ssl.*;
-import org.apache.ignite.internal.util.typedef.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.plugin.security.*;
-import org.jetbrains.annotations.*;
-
-import java.net.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import org.apache.ignite.internal.client.balancer.GridClientLoadBalancer;
+import org.apache.ignite.internal.client.balancer.GridClientRandomBalancer;
+import org.apache.ignite.internal.client.balancer.GridClientRoundRobinBalancer;
+import org.apache.ignite.internal.client.marshaller.GridClientMarshaller;
+import org.apache.ignite.internal.client.marshaller.optimized.GridClientOptimizedMarshaller;
+import org.apache.ignite.internal.client.ssl.GridSslBasicContextFactory;
+import org.apache.ignite.internal.client.ssl.GridSslContextFactory;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
+import org.apache.ignite.plugin.security.SecurityCredentials;
+import org.apache.ignite.plugin.security.SecurityCredentialsBasicProvider;
+import org.apache.ignite.plugin.security.SecurityCredentialsProvider;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Java client configuration.
@@ -606,7 +615,7 @@ public class GridClientConfiguration {
      * Options, that can be used out-of-the-box:
      * <ul>
      *     <li>{@link GridClientOptimizedMarshaller} (default) - Ignite's optimized marshaller.</li>
-     *     <li>{@code GridClientPortableMarshaller} - Marshaller that supports portable objects.</li>
+     *     <li>{@code GridClientBinaryMarshaller} - Marshaller that supports binary objects.</li>
      *     <li>{@link org.apache.ignite.internal.client.marshaller.jdk.GridClientJdkMarshaller} - JDK marshaller (not recommended).</li>
      * </ul>
      *

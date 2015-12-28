@@ -17,14 +17,16 @@
 
 package org.apache.ignite.spi.discovery.tcp.messages;
 
-import org.apache.ignite.cluster.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.lang.*;
-import org.apache.ignite.spi.discovery.tcp.internal.*;
-import org.jetbrains.annotations.*;
-
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteUuid;
+import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Message telling nodes that new node should be added to topology.
@@ -46,9 +48,16 @@ public class TcpDiscoveryNodeAddedMessage extends TcpDiscoveryAbstractMessage {
     /** Discarded message ID. */
     private IgniteUuid discardMsgId;
 
+    /** Discarded message ID. */
+    private IgniteUuid discardCustomMsgId;
+
     /** Current topology. Initialized by coordinator. */
     @GridToStringInclude
     private Collection<TcpDiscoveryNode> top;
+
+    /** */
+    @GridToStringInclude
+    private transient Collection<TcpDiscoveryNode> clientTop;
 
     /** Topology snapshots history. */
     private Map<Long, Collection<ClusterNode>> topHist;
@@ -88,6 +97,24 @@ public class TcpDiscoveryNodeAddedMessage extends TcpDiscoveryAbstractMessage {
     }
 
     /**
+     * @param msg Message.
+     */
+    public TcpDiscoveryNodeAddedMessage(TcpDiscoveryNodeAddedMessage msg) {
+        super(msg);
+
+        this.node = msg.node;
+        this.msgs = msg.msgs;
+        this.discardMsgId = msg.discardMsgId;
+        this.discardCustomMsgId = msg.discardCustomMsgId;
+        this.top = msg.top;
+        this.clientTop = msg.clientTop;
+        this.topHist = msg.topHist;
+        this.newNodeDiscoData = msg.newNodeDiscoData;
+        this.oldNodesDiscoData = msg.oldNodesDiscoData;
+        this.gridStartTime = msg.gridStartTime;
+    }
+
+    /**
      * Gets newly added node.
      *
      * @return New node.
@@ -115,14 +142,29 @@ public class TcpDiscoveryNodeAddedMessage extends TcpDiscoveryAbstractMessage {
     }
 
     /**
+     * Gets discarded custom message ID.
+     *
+     * @return Discarded message ID.
+     */
+    @Nullable public IgniteUuid discardedCustomMessageId() {
+        return discardCustomMsgId;
+    }
+
+    /**
      * Sets pending messages to send to new node.
      *
      * @param msgs Pending messages to send to new node.
      * @param discardMsgId Discarded message ID.
+     * @param discardCustomMsgId Discarded custom message ID.
      */
-    public void messages(@Nullable Collection<TcpDiscoveryAbstractMessage> msgs, @Nullable IgniteUuid discardMsgId) {
+    public void messages(
+        @Nullable Collection<TcpDiscoveryAbstractMessage> msgs,
+        @Nullable IgniteUuid discardMsgId,
+        @Nullable IgniteUuid discardCustomMsgId
+    ) {
         this.msgs = msgs;
         this.discardMsgId = discardMsgId;
+        this.discardCustomMsgId = discardCustomMsgId;
     }
 
     /**
@@ -141,6 +183,22 @@ public class TcpDiscoveryNodeAddedMessage extends TcpDiscoveryAbstractMessage {
      */
     public void topology(@Nullable Collection<TcpDiscoveryNode> top) {
         this.top = top;
+    }
+
+    /**
+     * @param top Topology at the moment when client joined.
+     */
+    public void clientTopology(Collection<TcpDiscoveryNode> top) {
+        assert top != null && !top.isEmpty() : top;
+
+        this.clientTop = top;
+    }
+
+    /**
+     * @return Topology at the moment when client joined.
+     */
+    public Collection<TcpDiscoveryNode> clientTopology() {
+        return clientTop;
     }
 
     /**

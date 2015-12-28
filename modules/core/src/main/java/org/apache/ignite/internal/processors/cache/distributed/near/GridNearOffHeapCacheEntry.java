@@ -17,7 +17,9 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.near;
 
-import org.apache.ignite.internal.processors.cache.*;
+import org.apache.ignite.internal.processors.cache.CacheObject;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 
 /**
  * Near cache entry for off-heap tiered or off-heap values modes.
@@ -31,16 +33,14 @@ public class GridNearOffHeapCacheEntry extends GridNearCacheEntry {
      * @param key   Cache key.
      * @param hash  Key hash value.
      * @param val   Entry value.
-     * @param next  Next entry in the linked list.
-     * @param hdrId Header id.
      */
-    public GridNearOffHeapCacheEntry(GridCacheContext ctx,
+    public GridNearOffHeapCacheEntry(
+        GridCacheContext ctx,
         KeyCacheObject key,
         int hash,
-        CacheObject val,
-        GridCacheMapEntry next,
-        int hdrId) {
-        super(ctx, key, hash, val, next, hdrId);
+        CacheObject val
+    ) {
+        super(ctx, key, hash, val);
     }
 
     /** {@inheritDoc} */
