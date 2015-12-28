@@ -279,7 +279,8 @@ public class GridQueryProcessor extends GridProcessorAdapter {
                             altTypeId = new TypeId(ccfg.getName(), valCls);
                     }
                     else if (ctx.json().jsonType(desc.keyClass()) || ctx.json().jsonType(desc.valueClass())) {
-                        processJsonMeta(meta, desc);
+                        // TODO IGNITE-961
+                        // processJsonMeta(meta, desc);
 
                         typeId = new TypeId(ccfg.getName(), valCls);
 
@@ -1489,79 +1490,6 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * Processes declarative metadata for json object.
-     *
-     * @param meta Declared metadata.
-     * @param d Type descriptor.
-     * @throws IgniteCheckedException If failed.
-     */
-    private void processJsonMeta(CacheTypeMetadata meta, TypeDescriptor d)
-        throws IgniteCheckedException {
-        for (Map.Entry<String, Class<?>> entry : meta.getAscendingFields().entrySet()) {
-            JsonProperty prop = buildJsonProperty(entry.getKey(), entry.getValue());
-
-            d.addProperty(prop, false);
-
-            String idxName = prop.name() + "_idx";
-
-            d.addIndex(idxName, idx.isGeometryClass(prop.type()) ? GEO_SPATIAL : SORTED);
-
-            d.addFieldToIndex(idxName, prop.name(), 0, false);
-        }
-
-        for (Map.Entry<String, Class<?>> entry : meta.getDescendingFields().entrySet()) {
-            JsonProperty prop = buildJsonProperty(entry.getKey(), entry.getValue());
-
-            d.addProperty(prop, false);
-
-            String idxName = prop.name() + "_idx";
-
-            d.addIndex(idxName, idx.isGeometryClass(prop.type()) ? GEO_SPATIAL : SORTED);
-
-            d.addFieldToIndex(idxName, prop.name(), 0, true);
-        }
-
-        for (String txtIdx : meta.getTextFields()) {
-            JsonProperty prop = buildJsonProperty(txtIdx, String.class);
-
-            d.addProperty(prop, false);
-
-            d.addFieldToTextIndex(prop.name());
-        }
-
-        Map<String, LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>>> grps = meta.getGroups();
-
-        if (grps != null) {
-            for (Map.Entry<String, LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>>> entry : grps.entrySet()) {
-                String idxName = entry.getKey();
-
-                LinkedHashMap<String, IgniteBiTuple<Class<?>, Boolean>> idxFields = entry.getValue();
-
-                int order = 0;
-
-                for (Map.Entry<String, IgniteBiTuple<Class<?>, Boolean>> idxField : idxFields.entrySet()) {
-                    JsonProperty prop = buildJsonProperty(idxField.getKey(), idxField.getValue().get1());
-
-                    d.addProperty(prop, false);
-
-                    Boolean descending = idxField.getValue().get2();
-
-                    d.addFieldToIndex(idxName, prop.name(), order, descending != null && descending);
-
-                    order++;
-                }
-            }
-        }
-
-        for (Map.Entry<String, Class<?>> entry : meta.getQueryFields().entrySet()) {
-            JsonProperty prop = buildJsonProperty(entry.getKey(), entry.getValue());
-
-            if (!d.props.containsKey(prop.name()))
-                d.addProperty(prop, false);
-        }
-    }
-
-    /**
      * Builds portable object property.
      *
      * @param pathStr String representing path to the property. May contains dots '.' to identify
@@ -2030,9 +1958,9 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     }
 
     /**
-     *
+     * TODO IGNITE-961
      */
-    private class JsonProperty extends Property {
+    private class JsonProperty extends GridQueryProperty {
         /** Property name. */
         private String propName;
 

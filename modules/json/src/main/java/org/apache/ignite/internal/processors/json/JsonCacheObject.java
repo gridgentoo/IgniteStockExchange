@@ -24,7 +24,7 @@ import org.jetbrains.annotations.*;
 import javax.json.*;
 
 /**
- *
+ * TODO IGNITE-961
  */
 public class JsonCacheObject extends CacheObjectAdapter implements KeyCacheObject {
     /**
@@ -42,7 +42,14 @@ public class JsonCacheObject extends CacheObjectAdapter implements KeyCacheObjec
     }
 
     /** {@inheritDoc} */
-    @Override public byte type() {
+    @Override public boolean isPlatformType() {
+        // TODO IGNITE-961
+        return false;
+    }
+
+    /** {@inheritDoc} */
+    @Override public byte cacheObjectType() {
+        // TODO IGNITE-961
         return 10;
     }
 
@@ -103,13 +110,13 @@ public class JsonCacheObject extends CacheObjectAdapter implements KeyCacheObjec
 
     /** {@inheritDoc}*/
     @Override public int hashCode() {
-        //TODO: do correct
+        // TODO IGNITE-961
         return val.hashCode();
     }
 
     /** {@inheritDoc}*/
     @Override public boolean equals(Object obj) {
-        //TODO: do correct
+        // TODO IGNITE-961
         if (obj == null || !(obj instanceof JsonCacheObject))
             return false;
 

@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.internal.util.lang.GridAbsClosure;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -87,8 +88,11 @@ public final class GridJavaProcess {
      * @return Wrapper around {@link Process}
      * @throws Exception If any problem occurred.
      */
-    public static GridJavaProcess exec(Class cls, String params, @Nullable IgniteLogger log,
-        @Nullable IgniteInClosure<String> printC, @Nullable GridAbsClosure procKilledC) throws Exception {
+    public static GridJavaProcess exec(Class cls,
+        String params,
+        @Nullable IgniteLogger log,
+        @Nullable IgniteInClosure<String> printC,
+        @Nullable GridAbsClosure procKilledC) throws Exception {
         return exec(cls.getCanonicalName(), params, log, printC, procKilledC, null, null, null);
     }
 
@@ -105,9 +109,13 @@ public final class GridJavaProcess {
      * @return Wrapper around {@link Process}
      * @throws Exception If any problem occurred.
      */
-    public static GridJavaProcess exec(Class cls, String params, @Nullable IgniteLogger log,
-        @Nullable IgniteInClosure<String> printC, @Nullable GridAbsClosure procKilledC,
-        @Nullable Collection<String> jvmArgs, @Nullable String cp) throws Exception {
+    public static GridJavaProcess exec(Class cls,
+        String params,
+        @Nullable IgniteLogger log,
+        @Nullable IgniteInClosure<String> printC,
+        @Nullable GridAbsClosure procKilledC,
+        @Nullable Collection<String> jvmArgs,
+        @Nullable String cp) throws Exception {
         return exec(cls.getCanonicalName(), params, log, printC, procKilledC, null, jvmArgs, cp);
     }
 
@@ -183,9 +191,11 @@ public final class GridJavaProcess {
      * @return Wrapper around {@link Process}
      * @throws Exception If any problem occurred.
      */
-    public static GridJavaProcess exec(List<String> cmd, Map<String, String> env, @Nullable IgniteLogger log,
-        @Nullable IgniteInClosure<String> printC, @Nullable GridAbsClosure procKilledC)
-        throws Exception {
+    public static GridJavaProcess exec(List<String> cmd,
+        Map<String, String> env,
+        @Nullable IgniteLogger log,
+        @Nullable IgniteInClosure<String> printC,
+        @Nullable GridAbsClosure procKilledC) throws Exception {
         ProcessBuilder builder = new ProcessBuilder(cmd);
 
         builder.redirectErrorStream(true);

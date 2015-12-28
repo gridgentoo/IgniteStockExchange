@@ -119,7 +119,7 @@ public class IgniteScriptingCommandHandler extends GridRestCommandHandlerAdapter
             init = true;
         }
         catch (IgniteCheckedException e) {
-            ctx.log().error(e.getMessage());
+            ctx.log(getClass()).error(e.getMessage());
         }
     }
 

@@ -24,7 +24,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -52,13 +54,16 @@ import org.apache.ignite.internal.processors.rest.request.GridRestLogRequest;
 import org.apache.ignite.internal.processors.rest.request.GridRestRequest;
 import org.apache.ignite.internal.processors.rest.request.GridRestTaskRequest;
 import org.apache.ignite.internal.processors.rest.request.GridRestTopologyRequest;
+import org.apache.ignite.internal.processors.rest.request.RestMapReduceScriptRequest;
 import org.apache.ignite.internal.processors.rest.request.RestQueryRequest;
+import org.apache.ignite.internal.processors.rest.request.RestRunScriptRequest;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteClosure;
 import org.apache.ignite.plugin.security.SecurityCredentials;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.glassfish.json.JsonProviderImpl;
 import org.jetbrains.annotations.Nullable;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.CACHE_CONTAINS_KEYS;
@@ -75,11 +80,11 @@ import static org.apache.ignite.internal.processors.rest.GridRestResponse.STATUS
 public class GridJettyRestHandler extends AbstractHandler {
     /** JSON value processor that does not transform input object. */
     private static final JsonValueProcessor SKIP_STR_VAL_PROC = new JsonValueProcessor() {
-        @Override public Object processArrayValue(Object o, JsonConfig jsonConfig) {
+        @Override public Object processArrayValue(Object o, JsonConfig jsonCfg) {
             return o;
         }
 
-        @Override public Object processObjectValue(String s, Object o, JsonConfig jsonConfig) {
+        @Override public Object processObjectValue(String s, Object o, JsonConfig jsonCfg) {
             return o;
         }
     };
