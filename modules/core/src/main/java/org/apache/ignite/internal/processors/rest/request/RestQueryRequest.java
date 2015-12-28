@@ -42,7 +42,7 @@ public class RestQueryRequest extends GridRestRequest {
     private String typeName;
 
     /** Predicate class name for scan query. */
-    private String className;
+    private String clsName;
 
     /** Query type. */
     private QueryType type;
@@ -135,14 +135,14 @@ public class RestQueryRequest extends GridRestRequest {
      * @return Predicate class name for scan query.
      */
     public String className() {
-        return className;
+        return clsName;
     }
 
     /**
-     * @param className Predicate class name for scan query.
+     * @param clsName Predicate class name for scan query.
      */
-    public void className(String className) {
-        this.className = className;
+    public void className(String clsName) {
+        this.clsName = clsName;
     }
 
     /**

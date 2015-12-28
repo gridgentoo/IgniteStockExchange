@@ -20,10 +20,13 @@ package org.apache.ignite.internal.processors.rest;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
+import java.io.PrintStream;
 import java.io.Serializable;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -34,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import net.sf.json.JSONNull;
 import net.sf.json.JSONObject;
+import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.CachePeekMode;
@@ -44,6 +48,7 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.internal.processors.cache.IgniteCacheProxy;
 import org.apache.ignite.internal.processors.cache.query.GridCacheSqlIndexMetadata;
 import org.apache.ignite.internal.processors.cache.query.GridCacheSqlMetadata;
+import org.apache.ignite.internal.processors.json.IgniteJsonString;
 import org.apache.ignite.internal.processors.rest.handlers.GridRestCommandHandler;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -52,11 +57,7 @@ import org.apache.ignite.lang.IgniteBiPredicate;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.testframework.GridTestUtils;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.regex.*;
+import static org.apache.ignite.IgniteSystemProperties.IGNITE_JETTY_PORT;
 
 /**
  * Tests for Jetty REST protocol.
@@ -91,12 +92,6 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
     @Override protected int gridCount() {
         return GRID_CNT;
     }
-
-    /**
-     * @return Signature.
-     * @throws Exception If failed.
-     */
-    protected abstract String signature() throws Exception;
 
     /**
      * @return Port to use for rest. Needs to be changed over time
@@ -1568,7 +1563,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         params.put("cmd", GridRestCommand.EXECUTE_SCAN_QUERY.key());
         params.put("pageSize", "10");
         params.put("cacheName", "person");
-        params.put("classname", ScanFilter.class.getName() + 1);
+        params.put("className", ScanFilter.class.getName() + 1);
 
         String ret = content(params);
 
@@ -1774,8 +1769,11 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertFalse(queryCursorFound());
     }
 
+    /**
+     * @return Signature.
+     * @throws Exception If failed.
+     */
     protected abstract String signature() throws Exception;
-
 
     /**
      * @throws Exception If failed.
