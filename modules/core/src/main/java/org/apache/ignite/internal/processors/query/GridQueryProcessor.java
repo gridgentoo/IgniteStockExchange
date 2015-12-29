@@ -145,6 +145,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     private final GridQueryIndexing idx;
 
     /** */
+    // TODO IGNITE-961
     private TypeId jsonTypeId;
 
     /**
@@ -670,6 +671,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
 
             TypeDescriptor desc;
 
+            // TODO IGNITE-961
             if (ctx.json().jsonObject(val) && jsonTypeId != null) {
                 desc = types.get(jsonTypeId);
 

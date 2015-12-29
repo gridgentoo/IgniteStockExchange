@@ -50,26 +50,23 @@ public class IgniteJsonCacheTest extends GridCommonAbstractTest {
 
         CacheConfiguration ccfg = new CacheConfiguration();
 
-        CacheTypeMetadata meta = new CacheTypeMetadata();
+        QueryEntity qryEntity = new QueryEntity();
 
-        meta.setValueType(JsonObject.class);
+        qryEntity.setValueType(JsonObject.class.getName());
 
-        Map<String, Class<?>> ascFields = new HashMap<>();
+        qryEntity.setIndexes(Arrays.asList(
+            new QueryIndex("name"),
+            new QueryIndex("id"),
+            new QueryIndex("address.street")));
 
-        ascFields.put("name", String.class);
-        ascFields.put("id", Integer.class);
-        ascFields.put("address.street", String.class);
+        LinkedHashMap<String, String> fields = new LinkedHashMap<>();
 
-        meta.setAscendingFields(ascFields);
+        fields.put("salary", Integer.class.getName());
+        fields.put("address", JsonObject.class.getName());
 
-        Map<String, Class<?>> qryFields = new HashMap<>();
+        qryEntity.setFields(fields);
 
-        qryFields.put("salary", Integer.class);
-        qryFields.put("address", JsonObject.class);
-
-        meta.setQueryFields(qryFields);
-
-        ccfg.setTypeMetadata(Collections.singleton(meta));
+        ccfg.setQueryEntities(Collections.singleton(qryEntity));
 
         cfg.setCacheConfiguration(ccfg);
 

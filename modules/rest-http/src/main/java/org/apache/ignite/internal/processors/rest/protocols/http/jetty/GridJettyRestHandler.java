@@ -723,7 +723,6 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.mapFunction((String) params.get("map"));
 
-
                 if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
                     Map o = parseRequest(req);
                     restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
@@ -746,7 +745,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
                     Map o = parseRequest(req);
-                    List args = (List) ctx.scripting().toScriptObject(o.get("arg"));
+                    List args = (List)ctx.scripting().toScriptObject(o.get("arg"));
                     restReq0.arguments(args.toArray());
                 }
                 else
@@ -949,7 +948,7 @@ public class GridJettyRestHandler extends AbstractHandler {
      * @return JSON object.
      * @throws IgniteCheckedException If failed.
      */
-    private Map parseRequest(HttpServletRequest req) throws IgniteCheckedException{
+    private Map parseRequest(HttpServletRequest req) throws IgniteCheckedException {
         try {
             return new JsonProviderImpl().createReader(req.getInputStream()).readObject();
         }

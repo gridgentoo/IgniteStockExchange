@@ -133,9 +133,13 @@ public final class GridJavaProcess {
      * @return Wrapper around {@link Process}
      * @throws Exception If any problem occurred.
      */
-    public static GridJavaProcess exec(String clsName, String params, @Nullable IgniteLogger log,
-        @Nullable IgniteInClosure<String> printC, @Nullable GridAbsClosure procKilledC,
-        @Nullable String javaHome, @Nullable Collection<String> jvmArgs, @Nullable String cp) throws Exception {
+    public static GridJavaProcess exec(String clsName,
+        String params,
+        @Nullable IgniteLogger log,
+        @Nullable IgniteInClosure<String> printC,
+        @Nullable GridAbsClosure procKilledC,
+        @Nullable String javaHome,
+        @Nullable Collection<String> jvmArgs, @Nullable String cp) throws Exception {
         if (!(U.isLinux() || U.isMacOs() || U.isWindows()))
             throw new Exception("Your OS is not supported.");
 
@@ -215,8 +219,10 @@ public final class GridJavaProcess {
      * @throws Exception If any problem occurred.
      */
     private static GridJavaProcess startProcess(ProcessBuilder builder,
-        @Nullable IgniteLogger log, @Nullable IgniteInClosure<String> printC,
-        @Nullable GridAbsClosure procKilledC) throws Exception {
+        @Nullable IgniteLogger log,
+        @Nullable IgniteInClosure<String> printC,
+        @Nullable GridAbsClosure procKilledC)
+        throws Exception {
         if (!(U.isLinux() || U.isMacOs() || U.isWindows()))
             throw new Exception("Your OS is not supported.");
 
