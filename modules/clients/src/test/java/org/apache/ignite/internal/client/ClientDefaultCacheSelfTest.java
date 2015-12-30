@@ -23,9 +23,6 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.UUID;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -42,7 +39,7 @@ import static org.apache.ignite.IgniteSystemProperties.IGNITE_JETTY_PORT;
  * Tests that client is able to connect to a grid with only default cache enabled.
  */
 public class ClientDefaultCacheSelfTest extends GridCommonAbstractTest {
-    /** Path to jetty config configured with SSL. */
+    /** Path to jetty config. */
     private static final String REST_JETTY_CFG = "modules/clients/src/test/resources/jetty/rest-jetty.xml";
 
     /** IP finder. */
@@ -50,9 +47,6 @@ public class ClientDefaultCacheSelfTest extends GridCommonAbstractTest {
 
     /** Host. */
     private static final String HOST = "127.0.0.1";
-
-    /** Cached local node id. */
-    private UUID locNodeId;
 
     /** Http port. */
     private static final int HTTP_PORT = 8081;
@@ -81,11 +75,6 @@ public class ClientDefaultCacheSelfTest extends GridCommonAbstractTest {
     }
 
     /** {@inheritDoc} */
-    @Override protected void beforeTest() throws Exception {
-        locNodeId = grid().localNode().id();
-    }
-
-    /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
 
@@ -103,57 +92,41 @@ public class ClientDefaultCacheSelfTest extends GridCommonAbstractTest {
 
         cfg.setDiscoverySpi(disco);
 
-        CacheConfiguration cLocal = new CacheConfiguration();
+        CacheConfiguration cLoc = new CacheConfiguration();
 
-        cLocal.setName(LOCAL_CACHE);
+        cLoc.setName(LOCAL_CACHE);
 
-        cLocal.setCacheMode(CacheMode.LOCAL);
+        cLoc.setCacheMode(CacheMode.LOCAL);
 
-        cLocal.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+        cLoc.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
 
-        cfg.setCacheConfiguration(defaultCacheConfiguration(), cLocal);
+        cfg.setCacheConfiguration(defaultCacheConfiguration(), cLoc);
 
         return cfg;
     }
 
     /**
-     * Builds list of connection strings with few different ports.
-     * Used to avoid possible failures in case of port range active.
-     *
-     * @param startPort Port to start list from.
-     * @return List of client connection strings.
-     */
-    private Collection<String> getServerList(int startPort) {
-        Collection<String> srvs = new ArrayList<>();
-
-        for (int i = startPort; i < startPort + 10; i++)
-            srvs.add(HOST + ":" + i);
-
-        return srvs;
-    }
-
-    /*
      * Send HTTP request to Jetty server of node and process result.
      *
-     * @param query Send query parameters.
+     * @param qry Send query parameters.
      * @return Processed response string.
      */
-    private String sendHttp(String query) {
+    private String sendHttp(String qry) {
         String res = "No result";
 
         try {
-            URLConnection connection = new URL(TEST_URL + "?" + query).openConnection();
+            URLConnection conn = new URL(TEST_URL + "?" + qry).openConnection();
 
-            connection.setRequestProperty("Accept-Charset", CHARSET);
+            conn.setRequestProperty("Accept-Charset", CHARSET);
 
-            BufferedReader r = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 
             res = r.readLine();
 
             r.close();
         }
         catch (IOException e) {
-            error("Failed to send HTTP request: " + TEST_URL + "?" + query, e);
+            error("Failed to send HTTP request: " + TEST_URL + "?" + qry, e);
         }
 
         // Cut node id from response.

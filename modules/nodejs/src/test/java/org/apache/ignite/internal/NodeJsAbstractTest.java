@@ -45,7 +45,7 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
     public static final String CACHE_NAME = "mycache";
 
     /** Failed message. */
-    public static final String SCRIPT_FAILED = "node js test failed:";
+    public static final String SCRIPT_FAILED = "node js test failed";
 
     /** Ok message. */
     public static final String SCRIPT_FINISHED = "node js test finished.";
@@ -95,7 +95,7 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
      * @return Cache configuration.
      */
     protected CacheConfiguration cacheConfiguration() {
-        CacheConfiguration ccfg = new CacheConfiguration();
+        CacheConfiguration<Object, Object> ccfg = new CacheConfiguration<>();
 
         ccfg.setName(CACHE_NAME);
         ccfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
@@ -182,9 +182,11 @@ public class NodeJsAbstractTest extends GridCommonAbstractTest {
 
             assertTrue(readyLatch.await(60, SECONDS));
 
-            proc.getProcess().waitFor();
+            int exitCode = proc.getProcess().waitFor();
 
             assertEquals(errors.toString(), 0, errors.size());
+
+            assertEquals(0, exitCode);
         }
         finally {
             if (proc != null)

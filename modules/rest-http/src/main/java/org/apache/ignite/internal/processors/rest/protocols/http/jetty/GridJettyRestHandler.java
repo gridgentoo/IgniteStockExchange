@@ -429,8 +429,7 @@ public class GridJettyRestHandler extends AbstractHandler {
      */
     private void createResponse(HttpServletRequest req, GridRestCommand cmd,
         GridRestResponse cmdRes) {
-        if (cmdRes.getResponse() == null || !(req.getHeader("Content-Type") != null &&
-            req.getHeader("Content-Type").contains("json")))
+        if (cmdRes.getResponse() == null || !jsonRequest(req))
             return;
 
         if (cmd == CACHE_GET_ALL) {
@@ -518,14 +517,14 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 String cacheName = (String)params.get("cacheName");
 
-                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
+                if (jsonRequest(req)) {
                     Object o = ctx.scripting().toJavaObject(parseRequest(req));
-
-                    Map<Object, Object> map = new HashMap<>();
 
                     switch (cmd) {
                         case CACHE_PUT_ALL: {
                             List entries = (List)ctx.scripting().getField("entries", o);
+
+                            Map<Object, Object> map = U.newHashMap(entries.size());
 
                             for (Object entry : entries) {
                                 Object key = ctx.scripting().getField("key", entry);
@@ -547,6 +546,8 @@ public class GridJettyRestHandler extends AbstractHandler {
                             Object cacheObj = ctx.scripting().toJavaObject(o);
 
                             List keys = (List)ctx.scripting().getField("keys", cacheObj);
+
+                            Map<Object, Object> map = U.newHashMap(keys.size());
 
                             for (Object key : keys)
                                 map.put(key, null);
@@ -577,6 +578,7 @@ public class GridJettyRestHandler extends AbstractHandler {
                             restReq0.key(ctx.scripting().getField("key", cacheObj));
                             restReq0.value(ctx.scripting().getField("val", cacheObj));
                             restReq0.value2(ctx.scripting().getField("oldVal", cacheObj));
+
                             break;
                         }
 
@@ -683,7 +685,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.script((String)params.get("func"));
 
-                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
+                if (jsonRequest(req)) {
                     Map o = parseRequest(req);
                     restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
                 }
@@ -701,7 +703,7 @@ public class GridJettyRestHandler extends AbstractHandler {
                 restReq0.script((String)params.get("func"));
                 restReq0.cacheName((String) params.get("cacheName"));
 
-                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
+                if (jsonRequest(req)) {
                     Map o = parseRequest(req);
                     restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
 
@@ -723,7 +725,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.mapFunction((String) params.get("map"));
 
-                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
+                if (jsonRequest(req)) {
                     Map o = parseRequest(req);
                     restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
                 }
@@ -743,7 +745,7 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 restReq0.sqlQuery((String)params.get("qry"));
 
-                if (req.getHeader("Content-Type") != null && req.getHeader("Content-Type").contains("json")) {
+                if (jsonRequest(req)) {
                     Map o = parseRequest(req);
                     List args = (List)ctx.scripting().toScriptObject(o.get("arg"));
                     restReq0.arguments(args.toArray());
@@ -875,13 +877,23 @@ public class GridJettyRestHandler extends AbstractHandler {
     }
 
     /**
+     * @param req Request.
+     * @return {@code True} if request contains json data.
+     */
+    private static boolean jsonRequest(HttpServletRequest req) {
+        String hdr = req.getHeader("Content-Type");
+
+        return hdr != null && hdr.contains("json");
+    }
+
+    /**
      * Gets values referenced by sequential keys, e.g. {@code key1...keyN}.
      *
      * @param keyPrefix Key prefix, e.g. {@code key} for {@code key1...keyN}.
      * @param params Parameters map.
      * @return Values.
      */
-    @Nullable protected List<Object> values(String keyPrefix, Map<String, Object> params) {
+    protected List<Object> values(String keyPrefix, Map<String, Object> params) {
         assert keyPrefix != null;
 
         List<Object> vals = new LinkedList<>();

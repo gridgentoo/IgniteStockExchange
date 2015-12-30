@@ -77,7 +77,7 @@ testDestroyCache = function() {
             cache0.put("1", "1").then(function() {
                 assert(false, "Do not get an error.");
             }).catch(function(err){
-                assert(err !== null, "Do nto get an error");
+                assert(err !== null, "Do not get an error");
                 assert(err.indexOf("Failed to find cache for given cache name") > -1, "Incorrect error message: " + err);
 
                 TestUtils.testDone();

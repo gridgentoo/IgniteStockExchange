@@ -36,7 +36,7 @@ TestRunner.runTest = function() {
     var functionName = process.argv[3].toString().trim();
 
     if (!global[functionName]) {
-        console.log("node js test failed: function with name " + functionName + " not found");
+        console.log("Node JS test failed: function with name " + functionName + " not found");
         return;
     }
 

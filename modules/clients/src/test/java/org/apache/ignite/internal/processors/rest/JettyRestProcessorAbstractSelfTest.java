@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import javax.json.JsonObject;
 import net.sf.json.JSONNull;
 import net.sf.json.JSONObject;
 import org.apache.ignite.Ignite;
@@ -1764,7 +1765,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         assertTrue(queryCursorFound());
 
-        U.sleep(10000);
+        U.sleep(10_000);
 
         assertFalse(queryCursorFound());
     }
@@ -1800,6 +1801,50 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertTrue(!ret.isEmpty());
 
         jsonEquals(ret, stringPattern("hello", true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRunScriptCacheGet() throws Exception {
+        grid(0).cache(null).put("tk1", "tv1");
+
+        String f = "function(){return ignite.cache(null).get('tk1');}";
+
+        String ret = content(F.asMap("cmd", GridRestCommand.RUN_SCRIPT.key(), "func",
+            URLEncoder.encode(f, "UTF-8"), "arg", "hello"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, stringPattern("tv1", true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRunScriptCachePut() throws Exception {
+        String f = "function(){" +
+            "ignite.cache(null).put('tk1', 'tv1');" +
+            "ignite.cache(null).put('tk2', {'a': '1', 'b': '2'});" +
+            "return 'ok';" +
+            "}";
+
+        String ret = content(F.asMap("cmd", GridRestCommand.RUN_SCRIPT.key(), "func",
+            URLEncoder.encode(f, "UTF-8"), "arg", "hello"));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, stringPattern("ok", true));
+
+        assertEquals("tv1", ignite(0).cache(null).get("tk1"));
+
+        JsonObject val = (JsonObject)ignite(0).cache(null).get("tk2");
+
+        assertNotNull(val);
+        assertEquals("1", val.getString("a"));
+        assertEquals("2", val.getString("b"));
     }
 
     /**

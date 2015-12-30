@@ -17,89 +17,69 @@
 
 package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
 
-import net.sf.json.*;
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.processors.json.*;
-import org.apache.ignite.internal.processors.scripting.*;
-import org.apache.ignite.json.*;
-
-import javax.cache.*;
-import javax.json.*;
-import javax.json.spi.*;
-import java.math.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.cache.Cache;
+import javax.json.JsonNumber;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import javax.json.JsonString;
+import javax.json.JsonValue;
+import javax.json.spi.JsonProvider;
+import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.processors.cache.CacheEntryImpl;
+import org.apache.ignite.internal.processors.scripting.IgniteScriptingConverter;
+import org.apache.ignite.json.IgniteJson;
 
 /**
  * Converter for glassfish objects.
  */
-public class RestGlassFishScriptingConverter extends IgniteScriptingConverter {
-    /** Grid kernal context. */
-    GridKernalContext ctx;
+public class ScriptingConverter extends IgniteScriptingConverter {
+    /** Json provider */
+    private final JsonProvider provider;
+
+    /** */
+    private Class<?> scriptObjCls;
 
     /**
      * @param ctx Grid context.
      */
-    public RestGlassFishScriptingConverter(GridKernalContext ctx) {
-        this.ctx = ctx;
+    public ScriptingConverter(GridKernalContext ctx) {
+        provider = IgniteJson.jsonProvider(ctx.grid());
+
+        try {
+            scriptObjCls = Class.forName("sun.org.mozilla.javascript.internal.NativeObject");
+        }
+        catch(ClassNotFoundException e) {
+            // Ignore.
+        }
     }
 
     /** {@inheritDoc} */
-    @Override public JsonValue toJavaObject(Object o) {
+    @Override public Object toJavaObject(Object o) {
         if (o == null)
             return null;
 
-        if (o instanceof Map) {
-            Map o1 = (Map)o;
-
-            JsonProvider provider = IgniteJson.jsonProvider(ctx.grid());
-
+        // TODO IGNITE-961.
+        if (o.getClass() == scriptObjCls && (o instanceof Map)) {
             JsonObjectBuilder bld = provider.createObjectBuilder();
 
-            for (Object key : o1.keySet()) {
-                assert (key instanceof String) || (key instanceof JSONString);
+            Map<Object, Object> map = (Map<Object, Object>)o;
 
-                if (key instanceof JSONString)
-                    bld.add(((JsonString) key).getString(), toJavaObject(o1.get(key)));
-                else
-                    bld.add((String)key, toJavaObject(o1.get(key)));
+            for (Map.Entry<Object, Object> e : map.entrySet()) {
+                String name = e.getKey().toString();
+
+                Object val = e.getValue();
+
+                bld.add(name, val.toString());
             }
 
             return bld.build();
         }
-        else if (o instanceof List) {
-            List o1 = (List) o;
 
-            JsonProvider provider = IgniteJson.jsonProvider(ctx.grid());
-
-            JsonArrayBuilder bld = provider.createArrayBuilder();
-
-            for (Object v : o1)
-                bld.add(toJavaObject(v));
-
-            return bld.build();
-        }
-        else if (o instanceof JsonString)
-            return new IgniteJsonString(((JsonString) o).getString());
-        else if (o instanceof JsonNumber)
-            return new IgniteJsonNumber(((JsonNumber) o).bigDecimalValue());
-        else if (o.equals(JsonValue.FALSE))
-            return JsonValue.FALSE;
-        else if (o.equals(JsonValue.TRUE))
-            return JsonValue.TRUE;
-        else if (o.equals(JsonValue.NULL))
-            return JsonValue.NULL;
-        else if (o instanceof String)
-            return new IgniteJsonString((String)o);
-        else if (o instanceof Integer)
-            return new IgniteJsonNumber(new BigDecimal((Integer)o));
-        else if (o instanceof Long)
-            return new IgniteJsonNumber(new BigDecimal((Long)o));
-        else if (o instanceof Double)
-            return new IgniteJsonNumber(new BigDecimal((Double)o));
-
-        throw new IgniteException("Do not support type: " + o.getClass());
+        return o;
     }
 
     /** {@inheritDoc} */

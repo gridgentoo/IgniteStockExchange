@@ -39,13 +39,13 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
 
     /** Rest converter. */
     private static final String REST_CONV_CLS =
-        "org.apache.ignite.internal.processors.rest.protocols.http.jetty.RestGlassFishScriptingConverter";
+        "org.apache.ignite.internal.processors.rest.protocols.http.jetty.ScriptingConverter";
 
     /** Javascript engine. */
     private ScriptEngine jsEngine;
 
     /** Ignite scripting converter. */
-    IgniteScriptingConverter converter;
+    private IgniteScriptingConverter converter;
 
     /**
      * @param ctx Kernal context.
@@ -150,7 +150,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
             return invocable.invokeFunction("__internalCall", src, arg, arg2);
         }
         catch (ScriptException e) {
-            throw new IgniteCheckedException("Function evaluation failed [funcName=" + src +
+            throw new IgniteCheckedException("Function evaluation failed [func=" + src +
                 ", err= " + e.getMessage() + "].");
         }
         catch (NoSuchMethodException e) {

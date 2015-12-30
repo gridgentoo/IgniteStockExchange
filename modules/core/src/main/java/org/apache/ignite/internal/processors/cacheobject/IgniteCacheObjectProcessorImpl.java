@@ -184,7 +184,7 @@ public class IgniteCacheObjectProcessorImpl extends GridProcessorAdapter impleme
         if (obj == null || obj instanceof CacheObject)
             return (CacheObject)obj;
 
-        CacheObject cacheObj = this.ctx.json().toCacheKeyObject(ctx, obj, userObj);
+        CacheObject cacheObj = this.ctx.json().toCacheObject(ctx, obj, userObj);
 
         if (cacheObj != null)
             return cacheObj;
