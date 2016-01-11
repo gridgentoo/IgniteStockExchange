@@ -140,6 +140,7 @@ public class IgniteScriptingProcessor extends GridProcessorAdapter {
     /**
      * @param src Script src.
      * @param arg Argument.
+     * @param arg2 Second argument.
      * @return Result of the function.
      * @throws IgniteCheckedException If script failed.
      */

@@ -188,6 +188,9 @@ testComputeCacheExecute = function() {
 
                         var val1 = ignite.cache("mycache").get(args1.get(0));
 
+                        if (!val1)
+                            throw "Unexpected null value [key=" + args1.get(0) + "]";
+
                         if (val1["age"] !== 12) {
                             throw "Incorrect age [expected=12, val=" + val + "]";
                         }
@@ -221,12 +224,12 @@ testComputeCacheExecute = function() {
 
             return ignite.compute().mapReduce(map, reduce, [key1, val1]);
         }).then(function(res) {
-            assert(TestUtils.compareObject({"1": 1}, res),
-                "Incorrect result [exp= {1:1}, val=" + res);
+            assert(TestUtils.compareObject({"1": 1}, res), "Incorrect result [exp= {1:1}, val=" + res);
 
             return cache.size();
         }).then(function(size){
             assert(size === 3, "Incorrect size [size=" + 3 + ", res=" + size + "]");
+
             TestUtils.testDone();
         }).catch(function (err) {
             assert(err === null, err);
@@ -388,11 +391,11 @@ testComputeRunScriptRemoveOperations = function() {
         cache.put(key0, val0);
 
         if (cache.removeValue(key0, val1) === true) {
-            throw "Incorrect removeValue from empty map [key=" + JSON.stringify(key0) + "]";
+            throw "Incorrect removeValue result [key=" + JSON.stringify(key0) + "]";
         }
 
         if (cache.remove(key0) === false) {
-            throw "Incorrect remove from empty map [key=" + JSON.stringify(key0) + "]";
+            throw "Incorrect remove result [key=" + JSON.stringify(key0) + "]";
         }
 
         cache.put(key0, val0);
@@ -403,7 +406,7 @@ testComputeRunScriptRemoveOperations = function() {
 
         var prevVal = cache.getAndReplace(key0, val1);
 
-        if (prevVal.valName !== val0.valName) {
+        if (prevVal.valName != val0.valName) {
             throw "Incorrect getAndReplace result [key=" + JSON.stringify(key0) +
              ", prevVal=" + prevVal.valName +
              ", expected=" + val0.valName + "]";
@@ -411,8 +414,10 @@ testComputeRunScriptRemoveOperations = function() {
 
         prevVal = cache.get(key0);
 
-        if (prevVal.valName !== val1.valName) {
-            throw "Incorrect getAndReplace result [key=" + JSON.stringify(key0) + "]";
+        if (prevVal.valName != val1.valName) {
+            throw "Incorrect value after getAndReplace [key=" + JSON.stringify(key0) +
+                ", val=" + prevVal.valName +
+                ", expected=" + val1.valName + "]";
         }
 
         cache.removeAllFromCache();
@@ -423,14 +428,28 @@ testComputeRunScriptRemoveOperations = function() {
 
         cache.putAll(entries);
 
+        prevVal = cache.get(key0);
+
+        if (!prevVal)
+            throw "No value after putAll [key=" + JSON.stringify(key0) + "]";
+
+        if (prevVal.valName != val0.valName) {
+            throw "Incorrect value after putAll [key=" +
+                JSON.stringify(key1) +
+                ", val=" + prevVal.valName +
+                ", expected=" + val0.valName + "]";
+        }
+
         if (cache.replace(key1, val0) !== true) {
             throw "Incorrect replace result";
         }
 
         prevVal = cache.get(key1);
 
-        if (prevVal.valName !== val0.valName) {
-            throw "Incorrect replace [key=" + JSON.stringify(key1) + "]";
+        if (prevVal.valName != val0.valName) {
+            throw "Incorrect value after replace [key=" + JSON.stringify(key1) +
+                ", val=" + prevVal.valName +
+                ", expected=" + val0.valName + "]";
         }
 
         cache.removeAll(keys);

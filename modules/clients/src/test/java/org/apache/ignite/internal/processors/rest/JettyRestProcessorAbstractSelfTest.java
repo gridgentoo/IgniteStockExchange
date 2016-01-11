@@ -36,6 +36,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import javax.json.spi.JsonProvider;
 import net.sf.json.JSONNull;
 import net.sf.json.JSONObject;
 import org.apache.ignite.Ignite;
@@ -49,11 +51,11 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.internal.processors.cache.IgniteCacheProxy;
 import org.apache.ignite.internal.processors.cache.query.GridCacheSqlIndexMetadata;
 import org.apache.ignite.internal.processors.cache.query.GridCacheSqlMetadata;
-import org.apache.ignite.internal.processors.json.IgniteJsonString;
 import org.apache.ignite.internal.processors.rest.handlers.GridRestCommandHandler;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.internal.util.typedef.P1;
+import org.apache.ignite.json.IgniteJson;
 import org.apache.ignite.lang.IgniteBiPredicate;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.testframework.GridTestUtils;
@@ -413,7 +415,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
      * @throws Exception If failed.
      */
     public void testGetPost() throws Exception {
-        jcache().put(new IgniteJsonString("key0"), new IgniteJsonString("val0"));
+        jcache().put("key0", "val0");
 
         String val = "{\"key\":\"key0\"}";
         String ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_GET.key()), val);
@@ -430,7 +432,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
      * @throws Exception If failed.
      */
     public void testReplacePost() throws Exception {
-        jcache().put(new IgniteJsonString("key0"), new IgniteJsonString("val0"));
+        jcache().put("key0", "val0");
 
         String val = "{\"key\":\"key0\", \"val\":\"val2\", \"oldVal\":\"val1\"}";
         String ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_REPLACE_VALUE.key()), val);
@@ -448,7 +450,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         jsonEquals(ret, cachePattern("val0", true));
 
-        assertEquals(new IgniteJsonString("val2"), grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertEquals("val2", grid(0).cache(null).get("key0"));
 
         val = "{\"key\":\"key0\", \"val\":\"val3\"}";
         ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_REPLACE.key()), val);
@@ -458,14 +460,14 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         info("Get command result: " + ret);
 
-        assertEquals(new IgniteJsonString("val3"), grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertEquals("val3", grid(0).cache(null).get("key0"));
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testRemovePost() throws Exception {
-        jcache().put(new IgniteJsonString("key0"), new IgniteJsonString("val0"));
+        jcache().put("key0", "val0");
 
         String val = "{\"key\":\"key0\", \"val\":\"val2\"}";
         String ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_REMOVE_VALUE.key()), val);
@@ -477,22 +479,22 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         jsonEquals(ret, cachePattern(false, true));
 
-        assertEquals(new IgniteJsonString("val0"), grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertEquals("val0", grid(0).cache(null).get("key0"));
 
         val = "{\"key\":\"key0\"}";
         ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_GET_AND_REMOVE.key()), val);
 
         jsonEquals(ret, cachePattern("val0", true));
 
-        assertNull(grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertNull(grid(0).cache(null).get("key0"));
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testRemoveAllPost() throws Exception {
-        jcache().put(new IgniteJsonString("key0"), new IgniteJsonString("val0"));
-        jcache().put(new IgniteJsonString("key1"), new IgniteJsonString("val1"));
+        jcache().put("key0", "val0");
+        jcache().put("key1", "val1");
 
         String val = "{\"keys\": [\"key0\", \"key1\"]}";
         String ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_REMOVE_ALL.key()), val);
@@ -516,7 +518,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         info("Result: " + ret);
 
         assertEquals(1, grid(0).cache(null).size());
-        assertNotNull(grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertNotNull(grid(0).cache(null).get("key0"));
 
         val = "{\"key\":\"key0\"}";
         ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_CONTAINS_KEY.key()), val);
@@ -525,6 +527,54 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertTrue(!ret.isEmpty());
 
         jsonEquals(ret, cachePattern(true, true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testPutJsonKey() throws Exception {
+        String val = "{\"key\":{\"id\": \"1\"},\"val\":\"val0\"}";
+        String ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_PUT.key()), val);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        info("Result: " + ret);
+
+        JsonProvider provider = IgniteJson.jsonProvider(ignite(0));
+
+        JsonObjectBuilder builder = provider.createObjectBuilder();
+
+        builder.add("id", "1");
+
+        JsonObject key = builder.build();
+
+        assertEquals("val0", grid(0).cache(null).get(key));
+
+        val = "{\"key\":{\"id\": \"1\"}}";
+        ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_CONTAINS_KEY.key()), val);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        jsonEquals(ret, cachePattern(true, true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testPutJsonValue() throws Exception {
+        String cmd = "{\"key\":\"key0\",\"val\":{\"id\": \"1\"}}";
+        String ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_PUT.key()), cmd);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        info("Result: " + ret);
+
+        JsonObject val = (JsonObject)grid(0).cache(null).get("key0");
+
+        assertEquals("1", val.getString("id"));
     }
 
     /**
@@ -551,7 +601,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         jsonEquals(ret, cacheNullPattern(true));
 
-        assertNotNull(grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertNotNull(grid(0).cache(null).get("key0"));
 
         val = "{\"key\": \"key0\", \"val\":\"val1\"}";
         ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_GET_AND_PUT_IF_ABSENT.key()), val);
@@ -561,7 +611,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         jsonEquals(ret, cachePattern("val0", true));
 
-        assertEquals(new IgniteJsonString("val0"), grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertEquals("val0", grid(0).cache(null).get("key0"));
 
         val = "{\"key\": \"key0\"}";
         ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_REMOVE.key()), val);
@@ -569,7 +619,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
 
-        assertNull(grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertNull(grid(0).cache(null).get("key0"));
 
         val = "{\"key\": \"key0\", \"val\":\"val1\"}";
         ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_PUT_IF_ABSENT.key()), val);
@@ -579,7 +629,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
 
         jsonEquals(ret, cachePattern(true, true));
 
-        assertEquals(new IgniteJsonString("val1"), grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertEquals("val1", grid(0).cache(null).get("key0"));
     }
 
     /**
@@ -592,7 +642,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
 
-        assertNotNull(grid(0).cache(null).get(new IgniteJsonString("key0")));
+        assertNotNull(grid(0).cache(null).get("key0"));
 
         val = "{\"keys\": [\"key0\",\"key1\"]}";
         ret = makePostRequest(F.asMap("cmd", GridRestCommand.CACHE_CONTAINS_KEYS.key()), val);
@@ -1781,7 +1831,10 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
      */
     public void testRunScriptPost() throws Exception {
         String f = "function(param){return param;}";
-        String ret = makePostRequest(F.asMap("cmd", GridRestCommand.RUN_SCRIPT.key(), "func", URLEncoder.encode(f)), "{\"arg\":\"hello\"}");
+
+        String ret = makePostRequest(F.asMap("cmd", GridRestCommand.RUN_SCRIPT.key(),
+            "func", URLEncoder.encode(f)),
+            "{\"arg\":\"hello\"}");
 
         assertNotNull(ret);
         assertTrue(!ret.isEmpty());
@@ -1851,7 +1904,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
      * @throws Exception If failed.
      */
     public void testRunAffinityScriptPost() throws Exception {
-        ClusterNode node = grid(0).affinity(null).mapKeyToNode(new IgniteJsonString("key0"));
+        ClusterNode node = grid(0).affinity(null).mapKeyToNode("key0");
 
         Ignite ignite = null;
 

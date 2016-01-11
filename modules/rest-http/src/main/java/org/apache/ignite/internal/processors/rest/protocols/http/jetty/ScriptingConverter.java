@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,11 +51,49 @@ public class ScriptingConverter extends IgniteScriptingConverter {
         provider = IgniteJson.jsonProvider(ctx.grid());
 
         try {
-            scriptObjCls = Class.forName("sun.org.mozilla.javascript.internal.NativeObject");
+            scriptObjCls = Class.forName("jdk.nashorn.api.scripting.ScriptObjectMirror");
         }
-        catch(ClassNotFoundException e) {
-            // Ignore.
+        catch(ClassNotFoundException e1) {
+            try {
+                scriptObjCls = Class.forName("sun.org.mozilla.javascript.internal.NativeObject");
+            }
+            catch (ClassNotFoundException e2) {
+                // Ignore.
+            }
         }
+    }
+
+    /**
+     * @param o Object.
+     * @return {@code True} if object is script engine wrapper.
+     */
+    private boolean scriptObject(Object o) {
+        return o.getClass() == scriptObjCls && (o instanceof Map);
+    }
+
+    /**
+     * @param o Object.
+     * @return Builder.
+     */
+    private JsonObjectBuilder toBuilder(Object o) {
+        assert scriptObject(o) : o;
+
+        JsonObjectBuilder bld = provider.createObjectBuilder();
+
+        Map<Object, Object> map = (Map<Object, Object>)o;
+
+        for (Map.Entry<Object, Object> e : map.entrySet()) {
+            String name = e.getKey().toString();
+
+            Object val = e.getValue();
+
+            if (scriptObject(val))
+                bld.add(name, toBuilder(val));
+            else
+                bld.add(name, val.toString());
+        }
+
+        return bld;
     }
 
     /** {@inheritDoc} */
@@ -63,20 +102,17 @@ public class ScriptingConverter extends IgniteScriptingConverter {
             return null;
 
         // TODO IGNITE-961.
-        if (o.getClass() == scriptObjCls && (o instanceof Map)) {
-            JsonObjectBuilder bld = provider.createObjectBuilder();
+        if (scriptObject(o))
+            return toBuilder(o).build();
+        else if (o instanceof Collection) {
+            Collection col = (Collection)o;
 
-            Map<Object, Object> map = (Map<Object, Object>)o;
+            List<Object> res = new ArrayList<>(col.size());
 
-            for (Map.Entry<Object, Object> e : map.entrySet()) {
-                String name = e.getKey().toString();
+            for (Object o1 : col)
+                res.add(toJavaObject(o1));
 
-                Object val = e.getValue();
-
-                bld.add(name, val.toString());
-            }
-
-            return bld.build();
+            return res;
         }
 
         return o;

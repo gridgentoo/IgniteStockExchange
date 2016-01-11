@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.scripting;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -115,7 +116,7 @@ public class ScriptingJsCache {
      * @param entries Entries.
      */
     public void putAll(List entries) {
-        List cacheKeys = (List)proc.toJavaObject(entries);
+        Collection cacheKeys = (Collection)proc.toJavaObject(entries);
 
         Map<Object, Object> cacheEntries = U.newHashMap(entries.size());
 

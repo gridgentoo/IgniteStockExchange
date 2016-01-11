@@ -18,6 +18,7 @@
 package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,8 +26,8 @@ import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +39,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import net.sf.json.JSON;
 import net.sf.json.JSONException;
+import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 import net.sf.json.JsonConfig;
 import net.sf.json.processors.JsonValueProcessor;
@@ -63,7 +65,6 @@ import org.apache.ignite.lang.IgniteClosure;
 import org.apache.ignite.plugin.security.SecurityCredentials;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.glassfish.json.JsonProviderImpl;
 import org.jetbrains.annotations.Nullable;
 
 import static org.apache.ignite.internal.processors.rest.GridRestCommand.CACHE_CONTAINS_KEYS;
@@ -433,22 +434,14 @@ public class GridJettyRestHandler extends AbstractHandler {
             return;
 
         if (cmd == CACHE_GET_ALL) {
-            Map o = (Map)cmdRes.getResponse();
+            Map<?, ?> o = (Map)cmdRes.getResponse();
 
-            List<Object> res = new ArrayList<>();
+            List<Object> res = new ArrayList<>(o.size());
 
-            for (Object k : o.keySet()) {
-                res.add(ctx.scripting().createScriptingEntry(ctx.scripting().toScriptObject(k),
-                    ctx.scripting().toScriptObject(o.get(k))));
-            }
+            for (Map.Entry<?, ?> entry : o.entrySet())
+                res.add(new CacheEntry(entry.getKey(), entry.getValue()));
 
             cmdRes.setResponse(res);
-
-        }
-        else {
-            Object o = cmdRes.getResponse();
-
-            cmdRes.setResponse(ctx.scripting().toScriptObject(o));
         }
     }
 
@@ -518,17 +511,17 @@ public class GridJettyRestHandler extends AbstractHandler {
                 String cacheName = (String)params.get("cacheName");
 
                 if (jsonRequest(req)) {
-                    Object o = ctx.scripting().toJavaObject(parseRequest(req));
+                    Map<String, Object> reqMap = parseRequest(req);
 
                     switch (cmd) {
                         case CACHE_PUT_ALL: {
-                            List entries = (List)ctx.scripting().getField("entries", o);
+                            Collection entries = (Collection)reqMap.get("entries");
 
                             Map<Object, Object> map = U.newHashMap(entries.size());
 
                             for (Object entry : entries) {
-                                Object key = ctx.scripting().getField("key", entry);
-                                Object val = ctx.scripting().getField("value", entry);
+                                Object key = ((Map)entry).get("key");
+                                Object val = ((Map)entry).get("value");
 
                                 map.put(key, val);
                             }
@@ -543,9 +536,7 @@ public class GridJettyRestHandler extends AbstractHandler {
                         case CACHE_GET_ALL:
                         case CACHE_REMOVE_ALL:
                         case CACHE_CONTAINS_KEYS: {
-                            Object cacheObj = ctx.scripting().toJavaObject(o);
-
-                            List keys = (List)ctx.scripting().getField("keys", cacheObj);
+                            Collection keys = (Collection)reqMap.get("keys");
 
                             Map<Object, Object> map = U.newHashMap(keys.size());
 
@@ -571,13 +562,11 @@ public class GridJettyRestHandler extends AbstractHandler {
                         case CACHE_REPLACE:
                         case CACHE_GET_AND_REPLACE:
                         case CACHE_REPLACE_VALUE: {
-                            Object cacheObj = ctx.scripting().toJavaObject(o);
-
                             restReq0.cacheName(F.isEmpty(cacheName) ? null : cacheName);
 
-                            restReq0.key(ctx.scripting().getField("key", cacheObj));
-                            restReq0.value(ctx.scripting().getField("val", cacheObj));
-                            restReq0.value2(ctx.scripting().getField("oldVal", cacheObj));
+                            restReq0.key(reqMap.get("key"));
+                            restReq0.value(reqMap.get("val"));
+                            restReq0.value2(reqMap.get("oldVal"));
 
                             break;
                         }
@@ -687,7 +676,8 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (jsonRequest(req)) {
                     Map o = parseRequest(req);
-                    restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
+
+                    restReq0.argument(o.get("arg"));
                 }
                 else
                     restReq0.argument(params.get("arg"));
@@ -705,10 +695,9 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (jsonRequest(req)) {
                     Map o = parseRequest(req);
-                    restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
 
-                    Object cacheObj = ctx.scripting().toJavaObject(o.get("key"));
-                    restReq0.affinityKey(cacheObj);
+                    restReq0.argument(o.get("arg"));
+                    restReq0.affinityKey(o.get("key"));
                 }
                 else {
                     restReq0.argument(params.get("arg"));
@@ -727,7 +716,8 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (jsonRequest(req)) {
                     Map o = parseRequest(req);
-                    restReq0.argument(ctx.scripting().toScriptObject(o.get("arg")));
+
+                    restReq0.argument(o.get("arg"));
                 }
                 else
                     restReq0.argument(params.get("arg"));
@@ -747,7 +737,9 @@ public class GridJettyRestHandler extends AbstractHandler {
 
                 if (jsonRequest(req)) {
                     Map o = parseRequest(req);
-                    List args = (List)ctx.scripting().toScriptObject(o.get("arg"));
+
+                    Collection args = (Collection)o.get("arg");
+
                     restReq0.arguments(args.toArray());
                 }
                 else
@@ -956,16 +948,75 @@ public class GridJettyRestHandler extends AbstractHandler {
     }
 
     /**
+     * TODO IGNITE-961: move to JsonProcessor.
+     *
      * @param req Request.
      * @return JSON object.
      * @throws IgniteCheckedException If failed.
      */
     private Map parseRequest(HttpServletRequest req) throws IgniteCheckedException {
         try {
-            return new JsonProviderImpl().createReader(req.getInputStream()).readObject();
+            BufferedReader reader = req.getReader();
+
+            StringBuilder str = new StringBuilder();
+
+            String line;
+
+            while ((line = reader.readLine()) != null)
+                str.append(line);
+
+            return JSONObject.fromObject(str.toString());
         }
         catch (IOException e) {
             throw new IgniteCheckedException(e);
+        }
+    }
+
+    /**
+     * Scripting cache entry.
+     */
+    public static class CacheEntry {
+        /** Key. */
+        private Object key;
+
+        /** Value. */
+        private Object val;
+
+        /**
+         * @param key Key.
+         * @param val Value.
+         */
+        public CacheEntry(Object key, Object val) {
+            this.key = key;
+            this.val = val;
+        }
+
+        /**
+         * @return Key.
+         */
+        public Object getKey() {
+            return key;
+        }
+
+        /**
+         * @param key Key.
+         */
+        public void setKey(Object key) {
+            this.key = key;
+        }
+
+        /**
+         * @return Value.
+         */
+        public Object getValue() {
+            return val;
+        }
+
+        /**
+         * @param val Value.
+         */
+        public void setValue(Object val) {
+            this.val = val;
         }
     }
 }
