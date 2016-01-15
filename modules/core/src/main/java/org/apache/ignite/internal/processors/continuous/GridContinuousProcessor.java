@@ -231,7 +231,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
                                     }
                                 }
 
-                                routine.handler().updateCounters(msg.updateCounters());
+                                routine.handler().updateCounters(topVer, msg.updateCounters());
                             }
 
                             fut.onRemoteRegistered();

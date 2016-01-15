@@ -148,6 +148,9 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
     /** */
     private Map<Integer, Long> initUpdCntrs;
 
+    /** */
+    private AffinityTopologyVersion initTopVer;
+
     /**
      * Required by {@link Externalizable}.
      */
@@ -238,8 +241,9 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
     }
 
     /** {@inheritDoc} */
-    @Override public void updateCounters(Map<Integer, Long> cntrs) {
+    @Override public void updateCounters(AffinityTopologyVersion topVer, Map<Integer, Long> cntrs) {
         this.initUpdCntrs = cntrs;
+        this.initTopVer = topVer;
     }
 
     /** {@inheritDoc} */
@@ -384,7 +388,9 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
                         if (!internal) {
                             entry.markBackup();
 
-                            backupQueue.add(entry);
+                            // Skip init query and expire entries.
+                            if (entry.updateCounter() != -1)
+                                backupQueue.add(entry);
                         }
                     }
                 }
@@ -483,7 +489,7 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
 
                     e = buf.skipEntry(e);
 
-                    if (e != null)
+                    if (e != null && !ctx.localNodeId().equals(nodeId))
                         ctx.continuous().addNotification(nodeId, routineId, e, topic, sync, true);
                 }
                 catch (ClusterTopologyCheckedException ex) {
@@ -650,7 +656,7 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
         PartitionRecovery rec = rcvs.get(e.partition());
 
         if (rec == null) {
-            rec = new PartitionRecovery(ctx.log(getClass()), cacheContext(ctx).topology().topologyVersion(),
+            rec = new PartitionRecovery(ctx.log(getClass()), initTopVer,
                 initUpdCntrs == null ? null : initUpdCntrs.get(e.partition()));
 
             PartitionRecovery oldRec = rcvs.putIfAbsent(e.partition(), rec);
