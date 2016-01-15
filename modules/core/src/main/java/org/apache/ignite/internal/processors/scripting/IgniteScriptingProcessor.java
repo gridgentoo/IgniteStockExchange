@@ -34,14 +34,14 @@ import static javax.script.ScriptContext.ENGINE_SCOPE;
  * Ignite scripting processor.
  */
 public class IgniteScriptingProcessor extends GridProcessorAdapter {
-    /** Javascript engine name. */
+    /** JavaScript engine name. */
     public static final String JAVA_SCRIPT_ENGINE_NAME = "JavaScript";
 
-    /** Rest converter. */
+    /** REST converter. */
     private static final String REST_CONV_CLS =
         "org.apache.ignite.internal.processors.rest.protocols.http.jetty.ScriptingConverter";
 
-    /** Javascript engine. */
+    /** JavaScript engine. */
     private ScriptEngine jsEngine;
 
     /** Ignite scripting converter. */

@@ -36,7 +36,7 @@ import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParserFactory;
 
 /**
- * Json provider implementation.
+ * JSON provider implementation.
  */
 public class IgniteJsonProvider extends JsonProvider {
     /** {@inheritDoc} */
@@ -50,7 +50,7 @@ public class IgniteJsonProvider extends JsonProvider {
     }
 
     /** {@inheritDoc} */
-    @Override public JsonParserFactory createParserFactory(Map<String, ?> config) {
+    @Override public JsonParserFactory createParserFactory(Map<String, ?> cfg) {
         return null;
     }
 
@@ -65,7 +65,7 @@ public class IgniteJsonProvider extends JsonProvider {
     }
 
     /** {@inheritDoc} */
-    @Override public JsonGeneratorFactory createGeneratorFactory(Map<String, ?> config) {
+    @Override public JsonGeneratorFactory createGeneratorFactory(Map<String, ?> cfg) {
         return null;
     }
 
@@ -90,12 +90,12 @@ public class IgniteJsonProvider extends JsonProvider {
     }
 
     /** {@inheritDoc} */
-    @Override public JsonWriterFactory createWriterFactory(Map<String, ?> config) {
+    @Override public JsonWriterFactory createWriterFactory(Map<String, ?> cfg) {
         return null;
     }
 
     /** {@inheritDoc} */
-    @Override public JsonReaderFactory createReaderFactory(Map<String, ?> config) {
+    @Override public JsonReaderFactory createReaderFactory(Map<String, ?> cfg) {
         return null;
     }
 
@@ -110,7 +110,7 @@ public class IgniteJsonProvider extends JsonProvider {
     }
 
     /** {@inheritDoc} */
-    @Override public JsonBuilderFactory createBuilderFactory(Map<String, ?> config) {
+    @Override public JsonBuilderFactory createBuilderFactory(Map<String, ?> cfg) {
         return null;
     }
 }

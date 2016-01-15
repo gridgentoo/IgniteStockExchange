@@ -19,7 +19,6 @@ package org.apache.ignite.internal.processors.rest.protocols.http.jetty;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.cache.Cache;
@@ -32,13 +31,15 @@ import javax.json.spi.JsonProvider;
 import org.apache.ignite.internal.GridKernalContext;
 import org.apache.ignite.internal.processors.cache.CacheEntryImpl;
 import org.apache.ignite.internal.processors.scripting.IgniteScriptingConverter;
+import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.json.IgniteJson;
 
 /**
  * Converter for glassfish objects.
  */
+@SuppressWarnings("unused")
 public class ScriptingConverter extends IgniteScriptingConverter {
-    /** Json provider */
+    /** JSON provider */
     private final JsonProvider provider;
 
     /** */
@@ -75,10 +76,11 @@ public class ScriptingConverter extends IgniteScriptingConverter {
      * @param o Object.
      * @return Builder.
      */
+    @SuppressWarnings("unchecked")
     private JsonObjectBuilder toBuilder(Object o) {
         assert scriptObject(o) : o;
 
-        JsonObjectBuilder bld = provider.createObjectBuilder();
+        JsonObjectBuilder builder = provider.createObjectBuilder();
 
         Map<Object, Object> map = (Map<Object, Object>)o;
 
@@ -88,12 +90,12 @@ public class ScriptingConverter extends IgniteScriptingConverter {
             Object val = e.getValue();
 
             if (scriptObject(val))
-                bld.add(name, toBuilder(val));
+                builder.add(name, toBuilder(val));
             else
-                bld.add(name, val.toString());
+                builder.add(name, val.toString());
         }
 
-        return bld;
+        return builder;
     }
 
     /** {@inheritDoc} */
@@ -119,37 +121,38 @@ public class ScriptingConverter extends IgniteScriptingConverter {
     }
 
     /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
     @Override public Object toScriptObject(Object o) {
         if (o == null)
             return null;
 
         if (o instanceof Map) {
-            Map o1 = (Map)o;
+            Map<Object, Object> map = (Map<Object, Object>)o;
 
-            Map<Object, Object> res = new HashMap<>();
+            Map<Object, Object> res = U.newHashMap(map.size());
 
-            for (Object key : o1.keySet())
-                res.put(toScriptObject(key), toScriptObject(o1.get(key)));
+            for (Map.Entry<Object, Object> e : map.entrySet())
+                res.put(toScriptObject(e.getKey()), toScriptObject(e.getValue()));
 
             return res;
         }
         else if (o instanceof List) {
-            List o1 = (List) o;
+            List list = (List) o;
 
-            List<Object> res = new ArrayList<>();
+            List<Object> res = new ArrayList<>(list.size());
 
-            for (Object v : o1)
+            for (Object v : list)
                 res.add(toScriptObject(v));
 
             return res;
         }
         else if (o instanceof Cache.Entry)
-            return new CacheEntryImpl<>(toScriptObject(((Cache.Entry) o).getKey()),
-                toScriptObject(((Cache.Entry) o).getValue()));
+            return new CacheEntryImpl<>(toScriptObject(((Cache.Entry)o).getKey()),
+                toScriptObject(((Cache.Entry)o).getValue()));
         else if (o instanceof JsonString)
-            return ((JsonString) o).getString();
+            return ((JsonString)o).getString();
         else if (o instanceof JsonNumber)
-            return ((JsonNumber) o).intValue();
+            return ((JsonNumber)o).intValue();
         else if (o.equals(JsonValue.FALSE))
             return false;
         else if (o.equals(JsonValue.TRUE))
@@ -159,7 +162,6 @@ public class ScriptingConverter extends IgniteScriptingConverter {
 
         return o;
     }
-
 
     /** {@inheritDoc} */
     @Override public Object getField(String key, Object o) {

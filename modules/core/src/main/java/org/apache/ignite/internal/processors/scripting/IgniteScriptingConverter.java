@@ -18,12 +18,12 @@
 package org.apache.ignite.internal.processors.scripting;
 
 /**
- * Convert json object ot java objects.
+ * Convert JSON objects to Java objects.
  */
 public class IgniteScriptingConverter {
     /**
      * @param o Object.
-     * @return  Object for Ignite cache.
+     * @return Object for Ignite cache.
      */
     public Object toJavaObject(Object o) {
         return o;

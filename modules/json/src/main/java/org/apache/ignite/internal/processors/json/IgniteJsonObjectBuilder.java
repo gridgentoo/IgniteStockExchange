@@ -27,15 +27,15 @@ import javax.json.JsonValue;
 import org.apache.ignite.internal.util.typedef.internal.A;
 
 /**
- * Json object builder implementation.
+ * JSON object builder implementation.
  */
 public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
-    /** Json object map. */
+    /** JSON object map. */
     private Map<String, JsonValue> jsonMap = new HashMap<>();
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder add(String name, JsonValue val) {
-        A.notNull(name, "key", val, "value");
+        A.notNull(name, "name", val, "val");
 
         jsonMap.put(name, val);
 
@@ -44,7 +44,7 @@ public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder add(String name, String val) {
-        A.notNull(name, "key", val, "value");
+        A.notNull(name, "name", val, "val");
 
         jsonMap.put(name, new IgniteJsonString(val));
 
@@ -53,7 +53,7 @@ public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder add(String name, BigInteger val) {
-        A.notNull(name, "key", val, "value");
+        A.notNull(name, "name", val, "val");
 
         //TODO: optimize for value
         jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
@@ -63,7 +63,7 @@ public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder add(String name, BigDecimal val) {
-        A.notNull(name, "key", val, "value");
+        A.notNull(name, "name", val, "val");
 
         //TODO: optimize for value
         jsonMap.put(name, new IgniteJsonNumber(val));
@@ -73,7 +73,7 @@ public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder add(String name, int val) {
-        A.notNull(name, "key");
+        A.notNull(name, "name");
 
         //TODO: optimize for value
         jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
@@ -83,17 +83,17 @@ public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder add(String name, long val) {
-        A.notNull(name, "key");
+        A.notNull(name, "name");
 
-            //TODO: optimize for value
-            jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
+        //TODO: optimize for value
+        jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder add(String name, double val) {
-        A.notNull(name, "key");
+        A.notNull(name, "name");
 
         //TODO: optimize for value
         jsonMap.put(name, new IgniteJsonNumber(new BigDecimal(val)));
@@ -103,7 +103,7 @@ public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder add(String name, boolean val) {
-        A.notNull(name, "key");
+        A.notNull(name, "name");
 
         jsonMap.put(name, val ? JsonValue.TRUE : JsonValue.FALSE);
 
@@ -112,7 +112,7 @@ public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder addNull(String name) {
-        A.notNull(name, "key");
+        A.notNull(name, "name");
 
         jsonMap.put(name, JsonValue.NULL);
 
@@ -120,19 +120,19 @@ public class IgniteJsonObjectBuilder implements JsonObjectBuilder {
     }
 
     /** {@inheritDoc} */
-    @Override public JsonObjectBuilder add(String name, JsonObjectBuilder bld) {
-        A.notNull(name, "key", bld, "value");
+    @Override public JsonObjectBuilder add(String name, JsonObjectBuilder builder) {
+        A.notNull(name, "name", builder, "builder");
 
-        jsonMap.put(name, bld.build());
+        jsonMap.put(name, builder.build());
 
         return this;
     }
 
     /** {@inheritDoc} */
-    @Override public JsonObjectBuilder add(String name, JsonArrayBuilder bld) {
-        A.notNull(name, "key", bld, "value");
+    @Override public JsonObjectBuilder add(String name, JsonArrayBuilder builder) {
+        A.notNull(name, "name", builder, "builder");
 
-        jsonMap.put(name, bld.build());
+        jsonMap.put(name, builder.build());
 
         return this;
     }
