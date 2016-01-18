@@ -15,43 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.internal.processors.continuous;
+package org.apache.ignite.stream.storm;
 
-import java.util.UUID;
-import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
-import org.apache.ignite.lang.IgniteUuid;
+import junit.framework.TestSuite;
 
 /**
- *
+ * Apache Storm streamer tests.
  */
-public abstract class AbstractContinuousMessage implements DiscoveryCustomMessage {
-    /** Routine ID. */
-    protected final UUID routineId;
-
-    /** Custom message ID. */
-    private final IgniteUuid id = IgniteUuid.randomUuid();
+public class IgniteStormStreamerSelfTestSuite extends TestSuite {
 
     /**
-     * @param id Id.
+     * @return Test suite.
+     * @throws Exception Thrown in case of the failure.
      */
-    protected AbstractContinuousMessage(UUID id) {
-        routineId = id;
-    }
+    public static TestSuite suite() throws Exception {
+        TestSuite suite = new TestSuite("Apache Storm streamer Test Suite");
 
-    /** {@inheritDoc} */
-    @Override public IgniteUuid id() {
-        return id;
-    }
+        suite.addTest(new TestSuite(StormIgniteStreamerSelfTest.class));
 
-    /**
-     * @return Routine ID.
-     */
-    public UUID routineId() {
-        return routineId;
-    }
-
-    /** {@inheritDoc} */
-    @Override public boolean isMutable() {
-        return false;
+        return suite;
     }
 }
