@@ -387,11 +387,12 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
                     }
                     else {
                         if (!internal) {
-                            entry.markBackup();
-
                             // Skip init query and expire entries.
-                            if (entry.updateCounter() != -1L)
+                            if (entry.updateCounter() != -1L) {
+                                entry.markBackup();
+
                                 backupQueue.add(entry);
+                            }
                         }
                     }
                 }
@@ -730,6 +731,8 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
          * @param initCntr Update counters.
          */
         public PartitionRecovery(IgniteLogger log, AffinityTopologyVersion topVer, @Nullable Long initCntr) {
+            assert topVer.topologyVersion() > 0 : topVer;
+
             this.log = log;
 
             if (initCntr != null) {
@@ -751,15 +754,6 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
             List<CacheContinuousQueryEntry> entries;
 
             synchronized (pendingEvts) {
-                // Received first event.
-                if (curTop == AffinityTopologyVersion.NONE) {
-                    lastFiredEvt = entry.updateCounter();
-
-                    curTop = entry.topologyVersion();
-
-                    return F.asList(entry);
-                }
-
                 if (curTop.compareTo(entry.topologyVersion()) < 0) {
                     if (entry.updateCounter() == 1L && !entry.isBackup()) {
                         entries = new ArrayList<>(pendingEvts.size());
