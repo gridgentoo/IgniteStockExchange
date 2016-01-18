@@ -37,6 +37,7 @@ import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
 import static javax.cache.configuration.FactoryBuilder.factoryOf;
 import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
 import static org.apache.ignite.cache.CacheMode.PARTITIONED;
 import static org.apache.ignite.cache.CacheRebalanceMode.SYNC;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.PRIMARY_SYNC;
@@ -50,6 +51,9 @@ public class CacheContinuousQueryLostPartitionTest extends GridCommonAbstractTes
 
     /** Cache name. */
     public static final String CACHE_NAME = "test_cache";
+
+    /** Cache name. */
+    public static final String TX_CACHE_NAME = "tx_test_cache";
 
     /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
@@ -66,12 +70,41 @@ public class CacheContinuousQueryLostPartitionTest extends GridCommonAbstractTes
     /**
      * @throws Exception If failed.
      */
-    public void testEvent() throws Exception {
-        IgniteCache<Integer, String> cache1 = grid(0).getOrCreateCache(CACHE_NAME);
+    public void testTxEvent() throws Exception {
+        testEvent(TX_CACHE_NAME, false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testAtomicEvent() throws Exception {
+        testEvent(CACHE_NAME, false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxClientEvent() throws Exception {
+        testEvent(TX_CACHE_NAME, true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testAtomicClientEvent() throws Exception {
+        testEvent(CACHE_NAME, true);
+    }
+
+    /**
+     * @param cacheName Cache name.
+     * @throws Exception If failed.
+     */
+    public void testEvent(String cacheName, boolean client) throws Exception {
+        IgniteCache<Integer, String> cache1 = grid(0).getOrCreateCache(cacheName);
 
         final AllEventListener<Integer, String> lsnr1 = registerCacheListener(cache1);
 
-        IgniteCache<Integer, String> cache2 = grid(1).getOrCreateCache(CACHE_NAME);
+        IgniteCache<Integer, String> cache2 = grid(1).getOrCreateCache(cacheName);
 
         Integer key = primaryKey(cache1);
 
@@ -79,7 +112,17 @@ public class CacheContinuousQueryLostPartitionTest extends GridCommonAbstractTes
 
         // Note the issue is only reproducible if the second registration is done right
         // here, after the first put() above.
-        final AllEventListener<Integer, String> lsnr2 = registerCacheListener(cache2);
+        AllEventListener<Integer, String> lsnr20;
+
+        if (client) {
+            IgniteCache<Integer, String> clnCache = startGrid(3).getOrCreateCache(cacheName);
+
+            lsnr20 = registerCacheListener(clnCache);
+        }
+        else
+            lsnr20 = registerCacheListener(cache2);
+
+        final AllEventListener<Integer, String> lsnr2 = lsnr20;
 
         assert GridTestUtils.waitForCondition(new PA() {
             @Override public boolean apply() {
@@ -127,36 +170,46 @@ public class CacheContinuousQueryLostPartitionTest extends GridCommonAbstractTes
      * @param cache Cache.
      * @return Event listener.
      */
-    private AllEventListener<Integer, String> registerCacheListener(
-        IgniteCache<Integer, String> cache) {
+    private AllEventListener<Integer, String> registerCacheListener(IgniteCache<Integer, String> cache) {
         AllEventListener<Integer, String> lsnr = new AllEventListener<>();
+
         cache.registerCacheEntryListener(
             new MutableCacheEntryListenerConfiguration<>(factoryOf(lsnr), null, true, false));
+
         return lsnr;
     }
 
     /** {@inheritDoc} */
-    @Override protected IgniteConfiguration getConfiguration() throws Exception {
-        IgniteConfiguration cfg = super.getConfiguration();
+    @Override protected IgniteConfiguration getConfiguration(String name) throws Exception {
+        IgniteConfiguration cfg = super.getConfiguration(name);
 
         TcpDiscoverySpi spi = new TcpDiscoverySpi();
 
         spi.setIpFinder(ipFinder);
 
         cfg.setDiscoverySpi(spi);
-        cfg.setCacheConfiguration(cache());
+        cfg.setCacheConfiguration(cache(TX_CACHE_NAME), cache(CACHE_NAME));
+
+        if (name.endsWith("3"))
+            cfg.setClientMode(true);
 
         return cfg;
     }
 
     /**
+     * @param cacheName Cache name.
      * @return Cache configuration.
      */
-    protected CacheConfiguration<Integer, String> cache() {
-        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(CACHE_NAME);
+    protected CacheConfiguration<Integer, String> cache(String cacheName) {
+        CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(cacheName);
 
         cfg.setCacheMode(PARTITIONED);
-        cfg.setAtomicityMode(ATOMIC);
+
+        if (cacheName.equals(CACHE_NAME))
+            cfg.setAtomicityMode(ATOMIC);
+        else
+            cfg.setAtomicityMode(TRANSACTIONAL);
+
         cfg.setRebalanceMode(SYNC);
         cfg.setWriteSynchronizationMode(PRIMARY_SYNC);
         cfg.setBackups(0);
