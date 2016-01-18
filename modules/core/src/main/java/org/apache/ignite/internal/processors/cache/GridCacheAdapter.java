@@ -812,6 +812,124 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
     }
 
     /**
+     * Peeks entry verion locally.
+     *
+     * @param key Entry key.
+     * @param peekModes Peek modes.
+     * @return Entry version.
+     * @throws IgniteCheckedException If failed.
+     */
+    @SuppressWarnings("ForLoopReplaceableByForEach")
+    @Nullable public GridCacheVersion peekVersion(K key, CachePeekMode[] peekModes)
+        throws IgniteCheckedException {
+        A.notNull(key, "key");
+
+        if (keyCheck)
+            validateCacheKey(key);
+
+        ctx.checkSecurity(SecurityPermission.CACHE_READ);
+
+        PeekModes modes = parsePeekModes(peekModes, false);
+
+        try {
+            KeyCacheObject cacheKey = ctx.toCacheKeyObject(key);
+
+            if (!ctx.isLocal()) {
+                AffinityTopologyVersion topVer = ctx.affinity().affinityTopologyVersion();
+
+                int part = ctx.affinity().partition(cacheKey);
+
+                boolean nearKey;
+
+                if (!(modes.near && modes.primary && modes.backup)) {
+                    boolean keyPrimary = ctx.affinity().primary(ctx.localNode(), part, topVer);
+
+                    if (keyPrimary) {
+                        if (!modes.primary)
+                            return null;
+
+                        nearKey = false;
+                    }
+                    else {
+                        boolean keyBackup = ctx.affinity().belongs(ctx.localNode(), part, topVer);
+
+                        if (keyBackup) {
+                            if (!modes.backup)
+                                return null;
+
+                            nearKey = false;
+                        }
+                        else {
+                            if (!modes.near)
+                                return null;
+
+                            nearKey = true;
+
+                            // Swap and offheap are disabled for near cache.
+                            modes.offheap = false;
+                            modes.swap = false;
+                        }
+                    }
+                }
+                else {
+                    nearKey = !ctx.affinity().belongs(ctx.localNode(), part, topVer);
+
+                    if (nearKey) {
+                        // Swap and offheap are disabled for near cache.
+                        modes.offheap = false;
+                        modes.swap = false;
+                    }
+                }
+
+                if (nearKey && !ctx.isNear())
+                    return null;
+
+                if (modes.heap) {
+                    GridCacheEntryEx e = nearKey ? peekEx(cacheKey) :
+                        (ctx.isNear() ? ctx.near().dht().peekEx(cacheKey) : peekEx(cacheKey));
+
+                    if (e != null)
+                        return e.version();
+                }
+
+                if (modes.offheap || modes.swap) {
+                    GridCacheSwapManager swapMgr = ctx.isNear() ? ctx.near().dht().context().swap() : ctx.swap();
+
+                    GridCacheSwapEntry e = swapMgr.read(cacheKey, false,  modes.offheap, modes.swap, false);
+
+                    if (e != null)
+                        return e.version();
+                }
+            }
+            else {
+                if (modes.heap) {
+                    GridCacheEntryEx e = peekEx(key);
+
+                    if (e != null)
+                        return e.version();
+                }
+
+                if (modes.offheap || modes.swap) {
+                    GridCacheSwapManager swapMgr = ctx.isNear() ? ctx.near().dht().context().swap() : ctx.swap();
+
+                    GridCacheSwapEntry e = swapMgr.read(cacheKey, false, modes.offheap, modes.swap, false);
+
+                    if (e != null)
+                        return e.version();
+                }
+            }
+
+            return null;
+        }
+        catch (GridCacheEntryRemovedException ignore) {
+            if (log.isDebugEnabled())
+                log.debug("Got removed entry during 'peek': " + key);
+
+            return null;
+        }
+    }
+
+    /**
      * @param key Key.
      * @param heap Read heap flag.
      * @param offheap Read offheap flag.
@@ -3838,7 +3956,7 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         if (!ctx0.isSwapOrOffheapEnabled() && ctx0.kernalContext().discovery().size() == 1)
             return localIteratorHonorExpirePolicy(opCtx);
 
-        CacheQueryFuture<Map.Entry<K, V>> fut = ctx0.queries().createScanQuery(null, null, ctx.keepBinary())
+        CacheQueryFuture<Map.Entry<K, V>> fut = ctx0.queries().createScanQuery(null, null, false, ctx.keepBinary())
             .keepAll(false)
             .execute();
 

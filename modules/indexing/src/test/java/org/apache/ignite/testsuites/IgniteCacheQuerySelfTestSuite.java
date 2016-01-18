@@ -94,6 +94,15 @@ import org.apache.ignite.internal.processors.cache.reducefields.GridCacheReduceF
 import org.apache.ignite.internal.processors.cache.reducefields.GridCacheReduceFieldsQueryLocalSelfTest;
 import org.apache.ignite.internal.processors.cache.reducefields.GridCacheReduceFieldsQueryPartitionedSelfTest;
 import org.apache.ignite.internal.processors.cache.reducefields.GridCacheReduceFieldsQueryReplicatedSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesLocalTransactionalSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesPartitionedAtomicOffHeapSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesPartitionedAtomicSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesPartitionedTransactionalOffHeapSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesPartitionedTransactionalSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesReplicatedAtomicOffHeapSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesReplicatedAtomicSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesReplicatedTransactionalOffHeapSelfTest;
+import org.apache.ignite.internal.processors.cache.version.CacheVersionedEntryQueriesReplicatedTransactionalSelfTest;
 import org.apache.ignite.internal.processors.query.IgniteSqlSchemaIndexingTest;
 import org.apache.ignite.internal.processors.query.IgniteSqlSplitterSelfTest;
 import org.apache.ignite.internal.processors.query.h2.sql.BaseH2CompareQueryTest;
@@ -216,6 +225,19 @@ public class IgniteCacheQuerySelfTestSuite extends TestSuite {
         //Unmarshallig query test.
         suite.addTestSuite(IgniteCacheP2pUnmarshallingQueryErrorTest.class);
         suite.addTestSuite(IgniteCacheNoClassQuerySelfTest.class);
+
+        // Versioned entry tests
+        suite.addTestSuite(CacheVersionedEntryQueriesLocalTransactionalSelfTest.class);
+
+        suite.addTestSuite(CacheVersionedEntryQueriesPartitionedAtomicSelfTest.class);
+        suite.addTestSuite(CacheVersionedEntryQueriesPartitionedAtomicOffHeapSelfTest.class);
+        suite.addTestSuite(CacheVersionedEntryQueriesReplicatedAtomicSelfTest.class);
+        suite.addTestSuite(CacheVersionedEntryQueriesReplicatedAtomicOffHeapSelfTest.class);
+
+        suite.addTestSuite(CacheVersionedEntryQueriesPartitionedTransactionalSelfTest.class);
+        suite.addTestSuite(CacheVersionedEntryQueriesPartitionedTransactionalOffHeapSelfTest.class);
+        suite.addTestSuite(CacheVersionedEntryQueriesReplicatedTransactionalSelfTest.class);
+        suite.addTestSuite(CacheVersionedEntryQueriesReplicatedTransactionalOffHeapSelfTest.class);
 
         return suite;
     }

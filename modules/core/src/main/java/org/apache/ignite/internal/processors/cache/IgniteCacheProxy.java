@@ -67,6 +67,7 @@ import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.query.CacheQuery;
 import org.apache.ignite.internal.processors.cache.query.CacheQueryFuture;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersionAware;
 import org.apache.ignite.internal.processors.query.GridQueryProcessor;
 import org.apache.ignite.internal.util.GridCloseableIteratorAdapter;
 import org.apache.ignite.internal.util.GridEmptyIterator;
@@ -458,10 +459,12 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
 
         boolean isKeepBinary = opCtx != null && opCtx.isKeepBinary();
 
+        final boolean incEntryVer = filter.isLocal();
+
         if (filter instanceof ScanQuery) {
             IgniteBiPredicate<K, V> p = ((ScanQuery)filter).getFilter();
 
-            qry = ctx.queries().createScanQuery(p, ((ScanQuery)filter).getPartition(), isKeepBinary);
+            qry = ctx.queries().createScanQuery(p, ((ScanQuery)filter).getPartition(), incEntryVer, isKeepBinary);
 
             if (grp != null)
                 qry.projection(grp);
@@ -476,7 +479,7 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
         else if (filter instanceof TextQuery) {
             TextQuery p = (TextQuery)filter;
 
-            qry = ctx.queries().createFullTextQuery(p.getType(), p.getText(), isKeepBinary);
+            qry = ctx.queries().createFullTextQuery(p.getType(), p.getText(), incEntryVer, isKeepBinary);
 
             if (grp != null)
                 qry.projection(grp);
@@ -521,7 +524,10 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
 
                 cur = null;
 
-                return new CacheEntryImpl<>(e.getKey(), e.getValue());
+                if (incEntryVer)
+                    return new CacheEntryImpl<>(e.getKey(), e.getValue(), ((GridCacheVersionAware)e).version());
+                else
+                    return new CacheEntryImpl<>(e.getKey(), e.getValue());
             }
 
             @Override protected boolean onHasNext() throws IgniteCheckedException {

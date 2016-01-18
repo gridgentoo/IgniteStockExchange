@@ -185,7 +185,8 @@ public class GridCacheReplicatedPreloadLifecycleSelfTest extends GridCachePreloa
             for (int j = 0; j < G.allGrids().size(); j++) {
                 GridCacheAdapter<Object, MyValue> c2 = ((IgniteKernal)grid(j)).internalCache("two");
 
-                CacheQuery<Map.Entry<Object, MyValue>> qry = c2.context().queries().createScanQuery(null, null, false);
+                CacheQuery<Map.Entry<Object, MyValue>> qry = c2.context().queries().createScanQuery(null, null, false,
+                    false);
 
                 final int i0 = j;
                 final int j0 = i;

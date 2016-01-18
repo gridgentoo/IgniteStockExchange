@@ -69,6 +69,8 @@ import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheA
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtLocalPartition;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtUnreservedPartitionException;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.processors.cache.version.GridCacheVersionAware;
+import org.apache.ignite.internal.processors.cache.version.VersionedMapEntry;
 import org.apache.ignite.internal.processors.datastructures.GridSetQueryPredicate;
 import org.apache.ignite.internal.processors.datastructures.SetItemKey;
 import org.apache.ignite.internal.processors.platform.cache.PlatformCacheEntryFilter;
@@ -611,7 +613,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                             taskName));
                     }
 
-                    iter = qryProc.queryText(space, qry.clause(), qry.queryClassName(), filter(qry));
+                    iter = qryProc.queryText(space, qry.clause(), qry.queryClassName(), filter(qry),
+                        qry.includeEntryVersion());
 
                     break;
 
@@ -892,6 +895,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                     private void advance() {
                         IgniteBiTuple<K, V> next0 = null;
 
+                        GridCacheVersion ver = null;
+
                         while (iter.hasNext()) {
                             next0 = null;
 
@@ -906,6 +911,9 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                                     entry != null ? entry.peek(true, false, false, topVer, expiryPlc) : null;
 
                                 val = (V)cctx.cacheObjectContext().unwrapBinaryIfNeeded(cacheVal, true);
+
+                                if (qry.includeEntryVersion())
+                                    ver = entry.version();
                             }
                             catch (GridCacheEntryRemovedException e) {
                                 val = null;
@@ -934,7 +942,8 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                         }
 
                         next = next0 != null ?
-                            new IgniteBiTuple<>(next0.getKey(), next0.getValue()) :
+                            (ver != null ? new VersionedMapEntry<>(next0.getKey(), next0.getValue(), ver) :
+                            new IgniteBiTuple<>(next0.getKey(), next0.getValue())) :
                             null;
 
                         if (next == null)
@@ -1041,7 +1050,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         Iterator<Map.Entry<byte[], byte[]>> it = part == null ? cctx.swap().rawSwapIterator(true, backups) :
             cctx.swap().rawSwapIterator(part);
 
-        return scanIterator(it, filter, qry.keepBinary());
+        return scanIterator(it, filter, qry.keepBinary(), qry.includeEntryVersion());
     }
 
     /**
@@ -1060,7 +1069,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
         else {
             Iterator<Map.Entry<byte[], byte[]>> it = cctx.swap().rawOffHeapIterator(qry.partition(), true, backups);
 
-            return scanIterator(it, filter, qry.keepBinary());
+            return scanIterator(it, filter, qry.keepBinary(), qry.includeEntryVersion());
         }
     }
 
@@ -1068,12 +1077,14 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * @param it Lazy swap or offheap iterator.
      * @param filter Scan filter.
      * @param keepBinary Keep binary flag.
+     * @param incVerEntry Include versioned entry flag.
      * @return Iterator.
      */
     private GridIteratorAdapter<IgniteBiTuple<K, V>> scanIterator(
         @Nullable final Iterator<Map.Entry<byte[], byte[]>> it,
         @Nullable final IgniteBiPredicate<K, V> filter,
-        final boolean keepBinary) {
+        final boolean keepBinary,
+        final boolean incVerEntry) {
         if (it == null)
             return new GridEmptyCloseableIterator<>();
 
@@ -1117,7 +1128,10 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                             continue;
                     }
 
-                    next = new IgniteBiTuple<>(e.key(), e.value());
+                    if (incVerEntry)
+                        next = new VersionedMapEntry<>(e.key(), e.value(), e.version());
+                    else
+                        next = new IgniteBiTuple<>(e.key(), e.value());
 
                     break;
                 }
@@ -1549,8 +1563,20 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
                             continue;
                     }
 
-                    data.add(trans != null ? trans.apply(entry) :
-                        !loc ? new GridCacheQueryResponseEntry<>(key, val) : F.t(key, val));
+                    Object ret;
+
+                    if (trans != null)
+                        ret = trans.apply(entry);
+                    else if (!loc)
+                        ret = new GridCacheQueryResponseEntry<>(key, val);
+                    else {
+                        if (qry.includeEntryVersion() && row instanceof GridCacheVersionAware)
+                            ret = new VersionedMapEntry<K, V>(key, val, ((GridCacheVersionAware)row).version());
+                        else
+                            ret = F.t(key, val);
+                    }
+
+                    data.add(ret);
 
                     if (!loc) {
                         if (++cnt == pageSize || !iter.hasNext()) {
@@ -3051,6 +3077,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             null,
             null,
             false,
+            false,
             keepBinary);
     }
 
@@ -3059,11 +3086,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      *
      * @param filter Scan filter.
      * @param part Partition.
+     * @param incVerEntry Include versioned entry flag.
      * @param keepBinary Keep binary flag.
      * @return Created query.
      */
     public CacheQuery<Map.Entry<K, V>> createScanQuery(@Nullable IgniteBiPredicate<K, V> filter,
-        @Nullable Integer part, boolean keepBinary) {
+        @Nullable Integer part, boolean incVerEntry, boolean keepBinary) {
 
         return new GridCacheQueryAdapter<>(cctx,
             SCAN,
@@ -3072,6 +3100,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             (IgniteBiPredicate<Object, Object>)filter,
             part,
             false,
+            incVerEntry,
             keepBinary);
     }
 
@@ -3081,11 +3110,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      *
      * @param clsName Query class name.
      * @param search Search clause.
+     * @param incVerEntry Include versioned entry flag.
      * @param keepBinary Keep binary flag.
      * @return Created query.
      */
     public CacheQuery<Map.Entry<K, V>> createFullTextQuery(String clsName,
-        String search, boolean keepBinary) {
+        String search, boolean incVerEntry, boolean keepBinary) {
         A.notNull("clsName", clsName);
         A.notNull("search", search);
 
@@ -3096,6 +3126,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             null,
             null,
             false,
+            incVerEntry,
             keepBinary);
     }
 
@@ -3104,10 +3135,11 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * documentation.
      *
      * @param qry Query.
+     * @param incVerEntry Include versioned entry flag.
      * @param keepBinary Keep binary flag.
      * @return Created query.
      */
-    public CacheQuery<List<?>> createSqlFieldsQuery(String qry, boolean keepBinary) {
+    public CacheQuery<List<?>> createSqlFieldsQuery(String qry, boolean incVerEntry, boolean keepBinary) {
         A.notNull(qry, "qry");
 
         return new GridCacheQueryAdapter<>(cctx,
@@ -3117,6 +3149,7 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
             null,
             null,
             false,
+            incVerEntry,
             keepBinary);
     }
 }

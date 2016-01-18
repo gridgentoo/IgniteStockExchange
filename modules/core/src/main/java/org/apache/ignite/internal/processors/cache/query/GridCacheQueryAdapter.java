@@ -89,6 +89,9 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
     private final boolean incMeta;
 
     /** */
+    private final boolean incEntryVer;
+
+    /** */
     private volatile GridCacheQueryMetricsAdapter metrics;
 
     /** */
@@ -126,6 +129,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
      * @param filter Scan filter.
      * @param part Partition.
      * @param incMeta Include metadata flag.
+     * @param incEntryVer Include versioned entry flag.
      * @param keepBinary Keep binary flag.
      */
     public GridCacheQueryAdapter(GridCacheContext<?, ?> cctx,
@@ -135,6 +139,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
         @Nullable IgniteBiPredicate<Object, Object> filter,
         @Nullable Integer part,
         boolean incMeta,
+        boolean incEntryVer,
         boolean keepBinary) {
         assert cctx != null;
         assert type != null;
@@ -147,6 +152,7 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
         this.filter = filter;
         this.part = part;
         this.incMeta = incMeta;
+        this.incEntryVer = incEntryVer;
         this.keepBinary = keepBinary;
 
         log = cctx.logger(getClass());
@@ -207,6 +213,9 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
         this.keepBinary = keepBinary;
         this.subjId = subjId;
         this.taskHash = taskHash;
+
+        // Versioned entry is never included for distributed queries.
+        incEntryVer = false;
     }
 
     /**
@@ -235,6 +244,13 @@ public class GridCacheQueryAdapter<T> implements CacheQuery<T> {
      */
     public boolean includeMetadata() {
         return incMeta;
+    }
+
+    /**
+     * @return Include versioned entry flag.
+     */
+    public boolean includeEntryVersion() {
+        return incEntryVer;
     }
 
     /**

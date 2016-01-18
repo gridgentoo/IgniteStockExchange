@@ -180,7 +180,8 @@ public class GridCachePartitionedPreloadLifecycleSelfTest extends GridCachePrelo
             for (int j = 0; j < G.allGrids().size(); j++) {
                 GridCacheAdapter<Object, MyValue> c2 = ((IgniteKernal)grid(j)).internalCache("two");
 
-                CacheQuery<Map.Entry<Object, MyValue>> qry = c2.context().queries().createScanQuery(null, null, false);
+                CacheQuery<Map.Entry<Object, MyValue>> qry = c2.context().queries().createScanQuery(null, null, false,
+                    false);
 
                 int totalCnt = F.sumInt(qry.execute(new EntryIntegerIgniteReducer()).get());
 

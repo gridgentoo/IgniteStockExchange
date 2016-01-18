@@ -18,13 +18,12 @@
 package org.apache.ignite.internal.processors.cache.version;
 
 import org.apache.ignite.cache.CacheMemoryMode;
-import org.apache.ignite.configuration.CacheConfiguration;
 
 /**
  *
  */
-public class CacheVersionedEntryReplicatedTransactionalOffHeapSelfTest extends
-    CacheVersionedEntryReplicatedTransactionalSelfTest {
+public class CacheVersionedEntryQueriesReplicatedTransactionalOffHeapSelfTest extends
+    CacheVersionedEntryQueriesReplicatedTransactionalSelfTest {
     /** {@inheritDoc} */
     @Override protected CacheMemoryMode memoryMode() {
         return CacheMemoryMode.OFFHEAP_TIERED;

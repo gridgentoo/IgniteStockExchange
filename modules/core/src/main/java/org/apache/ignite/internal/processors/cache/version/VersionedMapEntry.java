@@ -17,30 +17,33 @@
 
 package org.apache.ignite.internal.processors.cache.version;
 
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.lang.IgniteBiTuple;
+import org.jetbrains.annotations.Nullable;
 
 /**
+ * {@link IgniteBiTuple} implementation that implements {@link GridCacheVersionAware} interface.
  *
+ * @param <K> Entry key type.
+ * @param <V> Entry value type.
  */
-public class CacheVersionedEntryLocalAtomicSwapDisabledSelfTest extends CacheVersionedEntryAbstractTest {
-    /** {@inheritDoc} */
-    @Override protected int gridCount() {
-        return 1;
+public class VersionedMapEntry<K, V> extends IgniteBiTuple<K, V> implements GridCacheVersionAware {
+    /** Entry version. */
+    private final GridCacheVersion ver;
+
+    /**
+     * Constructor.
+     *
+     * @param val1 Entry key.
+     * @param val2 Entry value.
+     * @param ver Entry version.
+     */
+    public VersionedMapEntry(@Nullable K val1, @Nullable V val2, GridCacheVersion ver) {
+        super(val1, val2);
+        this.ver = ver;
     }
 
     /** {@inheritDoc} */
-    @Override protected CacheMode cacheMode() {
-        return CacheMode.LOCAL;
-    }
-
-    /** {@inheritDoc} */
-    @Override protected CacheAtomicityMode atomicityMode() {
-        return CacheAtomicityMode.ATOMIC;
-    }
-
-    /** {@inheritDoc} */
-    @Override protected boolean swapEnabled() {
-        return false;
+    @Override public GridCacheVersion version() {
+        return ver;
     }
 }

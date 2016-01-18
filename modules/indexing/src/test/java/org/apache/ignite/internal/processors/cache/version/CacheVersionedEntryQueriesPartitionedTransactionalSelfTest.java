@@ -17,16 +17,20 @@
 
 package org.apache.ignite.internal.processors.cache.version;
 
-import org.apache.ignite.cache.CacheMemoryMode;
-import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMode;
 
 /**
  *
  */
-public class CacheVersionedEntryReplicatedTransactionalOffHeapSelfTest extends
-    CacheVersionedEntryReplicatedTransactionalSelfTest {
+public class CacheVersionedEntryQueriesPartitionedTransactionalSelfTest extends CacheVersionedEntryQueriesAbstractTest {
     /** {@inheritDoc} */
-    @Override protected CacheMemoryMode memoryMode() {
-        return CacheMemoryMode.OFFHEAP_TIERED;
+    @Override protected CacheMode cacheMode() {
+        return CacheMode.PARTITIONED;
+    }
+
+    /** {@inheritDoc} */
+    @Override protected CacheAtomicityMode atomicityMode() {
+        return CacheAtomicityMode.TRANSACTIONAL;
     }
 }

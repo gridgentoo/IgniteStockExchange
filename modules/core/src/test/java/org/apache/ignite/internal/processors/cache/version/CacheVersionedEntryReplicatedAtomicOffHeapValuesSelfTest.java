@@ -23,10 +23,9 @@ import org.apache.ignite.configuration.CacheConfiguration;
 /**
  *
  */
-public class CacheVersionedEntryReplicatedTransactionalOffHeapSelfTest extends
-    CacheVersionedEntryReplicatedTransactionalSelfTest {
+public class CacheVersionedEntryReplicatedAtomicOffHeapValuesSelfTest extends CacheVersionedEntryReplicatedAtomicSelfTest {
     /** {@inheritDoc} */
     @Override protected CacheMemoryMode memoryMode() {
-        return CacheMemoryMode.OFFHEAP_TIERED;
+        return CacheMemoryMode.OFFHEAP_VALUES;
     }
 }

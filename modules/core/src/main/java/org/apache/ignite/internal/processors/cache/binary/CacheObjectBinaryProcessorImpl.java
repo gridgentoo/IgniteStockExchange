@@ -250,7 +250,7 @@ public class CacheObjectBinaryProcessorImpl extends IgniteCacheObjectProcessorIm
                 GridCacheQueryManager qryMgr = metaDataCache.context().queries();
 
                 CacheQuery<Map.Entry<BinaryMetadataKey, BinaryMetadata>> qry =
-                    qryMgr.createScanQuery(new MetaDataPredicate(), null, false);
+                    qryMgr.createScanQuery(new MetaDataPredicate(), null, false, false);
 
                 qry.keepAll(false);
 

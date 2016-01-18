@@ -23,7 +23,7 @@ import org.apache.ignite.cache.CacheMode;
 /**
  *
  */
-public class CacheVersionedEntryLocalTransactionalSelfTest extends CacheVersionedEntryAbstractTest {
+public class CacheVersionedEntryLocalTransactionalSelfTest extends CacheVersionedEntryBasicTest {
     /** {@inheritDoc} */
     @Override protected int gridCount() {
         return 1;

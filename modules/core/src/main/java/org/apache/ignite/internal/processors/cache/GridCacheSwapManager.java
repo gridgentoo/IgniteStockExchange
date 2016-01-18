@@ -779,6 +779,30 @@ public class GridCacheSwapManager extends GridCacheManagerAdapter {
     }
 
     /**
+     * @param key Key to read swap entry for.
+     * @param locked {@code True} if cache entry is locked.
+     * @param readOffheap Read offheap flag.
+     * @param readSwap Read swap flag.
+     * @param valOnly If {@code true} unmarshals only entry value.
+     * @return Read value.
+     * @throws IgniteCheckedException If read failed.
+     */
+    @Nullable GridCacheSwapEntry read(KeyCacheObject key,
+        boolean locked,
+        boolean readOffheap,
+        boolean readSwap,
+        boolean valOnly)
+        throws IgniteCheckedException
+    {
+        if (!offheapEnabled && !swapEnabled)
+            return null;
+
+        int part = cctx.affinity().partition(key);
+
+        return read(key, key.valueBytes(cctx.cacheObjectContext()), part, locked, readOffheap, readSwap, valOnly);
+    }
+
+    /**
      * @param entry Entry to read.
      * @return Read value address.
      * @throws IgniteCheckedException If read failed.

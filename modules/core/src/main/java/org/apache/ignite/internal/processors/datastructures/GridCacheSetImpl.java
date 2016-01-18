@@ -150,7 +150,7 @@ public class GridCacheSetImpl<T> extends AbstractCollection<T> implements Ignite
             }
 
             CacheQuery qry = new GridCacheQueryAdapter<>(ctx, SET, null, null,
-                new GridSetQueryPredicate<>(id, collocated), null, false, false);
+                new GridSetQueryPredicate<>(id, collocated), null, false, false, false);
 
             Collection<ClusterNode> nodes = dataNodes(ctx.affinity().affinityTopologyVersion());
 
@@ -381,7 +381,7 @@ public class GridCacheSetImpl<T> extends AbstractCollection<T> implements Ignite
     private GridCloseableIterator<T> iterator0() {
         try {
             CacheQuery qry = new GridCacheQueryAdapter<>(ctx, SET, null, null,
-                new GridSetQueryPredicate<>(id, collocated), null, false, false);
+                new GridSetQueryPredicate<>(id, collocated), null, false, false, false);
 
             Collection<ClusterNode> nodes = dataNodes(ctx.affinity().affinityTopologyVersion());
 

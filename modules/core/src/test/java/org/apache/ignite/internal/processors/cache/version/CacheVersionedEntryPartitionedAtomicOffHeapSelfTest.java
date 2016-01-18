@@ -18,18 +18,13 @@
 package org.apache.ignite.internal.processors.cache.version;
 
 import org.apache.ignite.cache.CacheMemoryMode;
-import org.apache.ignite.configuration.CacheConfiguration;
 
 /**
  *
  */
 public class CacheVersionedEntryPartitionedAtomicOffHeapSelfTest extends CacheVersionedEntryPartitionedAtomicSelfTest {
     /** {@inheritDoc} */
-    @Override protected CacheConfiguration cacheConfiguration(String gridName) throws Exception {
-        CacheConfiguration cfg = super.cacheConfiguration(gridName);
-
-        cfg.setMemoryMode(CacheMemoryMode.OFFHEAP_TIERED);
-
-        return cfg;
+    @Override protected CacheMemoryMode memoryMode() {
+        return CacheMemoryMode.OFFHEAP_TIERED;
     }
 }

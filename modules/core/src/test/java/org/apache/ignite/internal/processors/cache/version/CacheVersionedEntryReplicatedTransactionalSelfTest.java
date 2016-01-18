@@ -23,7 +23,7 @@ import org.apache.ignite.cache.CacheMode;
 /**
  *
  */
-public class CacheVersionedEntryReplicatedTransactionalSelfTest extends CacheVersionedEntryAbstractTest {
+public class CacheVersionedEntryReplicatedTransactionalSelfTest extends CacheVersionedEntryBasicTest {
     /** {@inheritDoc} */
     @Override protected CacheMode cacheMode() {
         return CacheMode.REPLICATED;
