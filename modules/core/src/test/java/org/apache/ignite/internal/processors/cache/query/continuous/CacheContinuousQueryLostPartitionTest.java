@@ -25,14 +25,7 @@ import javax.cache.event.CacheEntryEvent;
 import javax.cache.event.CacheEntryExpiredListener;
 import javax.cache.event.CacheEntryRemovedListener;
 import javax.cache.event.CacheEntryUpdatedListener;
-import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.cache.CacheRebalanceMode;
-import org.apache.ignite.cache.CacheWriteSynchronizationMode;
-import org.apache.ignite.cache.affinity.Affinity;
-import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.util.typedef.PA;
@@ -43,11 +36,15 @@ import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
 import static javax.cache.configuration.FactoryBuilder.factoryOf;
+import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
+import static org.apache.ignite.cache.CacheMode.PARTITIONED;
+import static org.apache.ignite.cache.CacheRebalanceMode.SYNC;
+import static org.apache.ignite.cache.CacheWriteSynchronizationMode.PRIMARY_SYNC;
 
 /**
  * Test from https://issues.apache.org/jira/browse/IGNITE-2384.
  */
-public class CacheContinuousIssueSelfTest extends GridCommonAbstractTest {
+public class CacheContinuousQueryLostPartitionTest extends GridCommonAbstractTest {
     /** */
     static public TcpDiscoveryIpFinder ipFinder = new TcpDiscoveryVmIpFinder(true);
 
@@ -59,8 +56,6 @@ public class CacheContinuousIssueSelfTest extends GridCommonAbstractTest {
         super.beforeTest();
 
         startGridsMultiThreaded(2);
-
-        awaitPartitionMapExchange();
     }
 
     /** {@inheritDoc} */
@@ -78,8 +73,9 @@ public class CacheContinuousIssueSelfTest extends GridCommonAbstractTest {
 
         IgniteCache<Integer, String> cache2 = grid(1).getOrCreateCache(CACHE_NAME);
 
-        int key = affinityKeyForNode(1, grid(0));
-        cache1.put(key, "vodka");
+        Integer key = primaryKey(cache1);
+
+        cache1.put(key, "1");
 
         // Note the issue is only reproducible if the second registration is done right
         // here, after the first put() above.
@@ -87,46 +83,44 @@ public class CacheContinuousIssueSelfTest extends GridCommonAbstractTest {
 
         assert GridTestUtils.waitForCondition(new PA() {
             @Override public boolean apply() {
-                return lsnr1.createdCount.get() == 1;
+                return lsnr1.createdCnt.get() == 1;
             }
-        }, 2000L) : "Unexpected number of events: " + lsnr1.createdCount.get();
+        }, 2000L) : "Unexpected number of events: " + lsnr1.createdCnt.get();
 
         // Sanity check.
         assert GridTestUtils.waitForCondition(new PA() {
             @Override public boolean apply() {
-                return lsnr2.createdCount.get() == 0;
+                return lsnr2.createdCnt.get() == 0;
             }
-        }, 2000L) : "Expected no create events, but got: " + lsnr2.createdCount.get();
+        }, 2000L) : "Expected no create events, but got: " + lsnr2.createdCnt.get();
 
         // node2 now becomes the primary for the key.
         grid(0).close();
 
-        awaitPartitionMapExchange();
-
-        cache2.put(key, "peevo");
+        cache2.put(key, "2");
 
         // Sanity check.
         assert GridTestUtils.waitForCondition(new PA() {
             @Override public boolean apply() {
-                return lsnr1.createdCount.get() == 1;
+                return lsnr1.createdCnt.get() == 1;
             }
-        }, 2000L) : "Expected no change here, but got: " + lsnr1.createdCount.get();
+        }, 2000L) : "Expected no change here, but got: " + lsnr1.createdCnt.get();
 
         // Sanity check.
         assert GridTestUtils.waitForCondition(new PA() {
             @Override public boolean apply() {
-                return lsnr2.updatedCount.get() == 0;
+                return lsnr2.updatedCnt.get() == 0;
             }
-        }, 2000L) : "Expected no update events, but got: " + lsnr2.updatedCount.get();
+        }, 2000L) : "Expected no update events, but got: " + lsnr2.updatedCnt.get();
 
-        System.out.println(">>>>> " + lsnr2.createdCount.get());
+        System.out.println(">>>>> " + lsnr2.createdCnt.get());
 
         // This assertion fails: 0 events get delivered.
         assert GridTestUtils.waitForCondition(new PA() {
             @Override public boolean apply() {
-                return lsnr2.createdCount.get() == 1;
+                return lsnr2.createdCnt.get() == 1;
             }
-        }, 2000L) : "Expected a single event due to 'peevo', but got: " + lsnr2.createdCount.get();
+        }, 2000L) : "Expected a single event due to '2', but got: " + lsnr2.createdCnt.get();
     }
 
     /**
@@ -139,23 +133,6 @@ public class CacheContinuousIssueSelfTest extends GridCommonAbstractTest {
         cache.registerCacheEntryListener(
             new MutableCacheEntryListenerConfiguration<>(factoryOf(lsnr), null, true, false));
         return lsnr;
-    }
-
-    /**
-     * @param startValue Start value.
-     * @param node Ignite node.
-     * @return Primary key.
-     */
-    private int affinityKeyForNode(int startValue, Ignite node) {
-        Affinity<Integer> affinity = node.affinity(CACHE_NAME);
-
-        ClusterNode localNode = node.cluster().localNode();
-
-        int key;
-
-        for (key = startValue + 1; !affinity.isPrimary(localNode, key); key++);
-
-        return key;
     }
 
     /** {@inheritDoc} */
@@ -178,11 +155,11 @@ public class CacheContinuousIssueSelfTest extends GridCommonAbstractTest {
     protected CacheConfiguration<Integer, String> cache() {
         CacheConfiguration<Integer, String> cfg = new CacheConfiguration<>(CACHE_NAME);
 
-        cfg.setCacheMode(CacheMode.PARTITIONED);
-        cfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
-        cfg.setRebalanceMode(CacheRebalanceMode.SYNC);
-        cfg.setWriteSynchronizationMode(CacheWriteSynchronizationMode.PRIMARY_SYNC);
-        cfg.setStartSize(1024);
+        cfg.setCacheMode(PARTITIONED);
+        cfg.setAtomicityMode(ATOMIC);
+        cfg.setRebalanceMode(SYNC);
+        cfg.setWriteSynchronizationMode(PRIMARY_SYNC);
+        cfg.setBackups(0);
 
         return cfg;
     }
@@ -194,14 +171,15 @@ public class CacheContinuousIssueSelfTest extends GridCommonAbstractTest {
         CacheEntryUpdatedListener<K, V>, CacheEntryRemovedListener<K, V>, CacheEntryExpiredListener<K, V>,
         Serializable {
         /** */
-        final AtomicInteger createdCount = new AtomicInteger();
+        final AtomicInteger createdCnt = new AtomicInteger();
 
         /** */
-        final AtomicInteger updatedCount = new AtomicInteger();
+        final AtomicInteger updatedCnt = new AtomicInteger();
 
         /** {@inheritDoc} */
         @Override public void onCreated(Iterable<CacheEntryEvent<? extends K, ? extends V>> evts) {
-            createdCount.incrementAndGet();
+            createdCnt.incrementAndGet();
+
             System.out.printf("onCreate: %s. \n", evts);
         }
 
@@ -217,7 +195,8 @@ public class CacheContinuousIssueSelfTest extends GridCommonAbstractTest {
 
         /** {@inheritDoc} */
         @Override public void onUpdated(Iterable<CacheEntryEvent<? extends K, ? extends V>> evts) {
-            updatedCount.incrementAndGet();
+            updatedCnt.incrementAndGet();
+
             System.out.printf("onUpdated: %s.", evts);
         }
     }

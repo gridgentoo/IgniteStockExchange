@@ -173,6 +173,7 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
      * @param skipPrimaryCheck Whether to skip primary check for REPLICATED cache.
      * @param taskHash Task name hash code.
      * @param locCache {@code True} if local cache.
+     * @param keepBinary Keep binary flag.
      */
     public CacheContinuousQueryHandler(
         String cacheName,
@@ -242,8 +243,8 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
 
     /** {@inheritDoc} */
     @Override public void updateCounters(AffinityTopologyVersion topVer, Map<Integer, Long> cntrs) {
-        this.initUpdCntrs = cntrs;
         this.initTopVer = topVer;
+        this.initUpdCntrs = cntrs;
     }
 
     /** {@inheritDoc} */
@@ -389,7 +390,7 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
                             entry.markBackup();
 
                             // Skip init query and expire entries.
-                            if (entry.updateCounter() != -1)
+                            if (entry.updateCounter() != -1L)
                                 backupQueue.add(entry);
                         }
                     }
@@ -648,9 +649,8 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
                 return F.asList(e);
         }
 
-        // Initial query entry or evicted entry.
-        // This events should be fired immediately.
-        if (e.updateCounter() == -1)
+        // Initial query entry or evicted entry. These events should be fired immediately.
+        if (e.updateCounter() == -1L)
             return F.asList(e);
 
         PartitionRecovery rec = rcvs.get(e.partition());
@@ -761,7 +761,7 @@ public class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler 
                 }
 
                 if (curTop.compareTo(entry.topologyVersion()) < 0) {
-                    if (entry.updateCounter() == 1 && !entry.isBackup()) {
+                    if (entry.updateCounter() == 1L && !entry.isBackup()) {
                         entries = new ArrayList<>(pendingEvts.size());
 
                         for (CacheContinuousQueryEntry evt : pendingEvts.values()) {

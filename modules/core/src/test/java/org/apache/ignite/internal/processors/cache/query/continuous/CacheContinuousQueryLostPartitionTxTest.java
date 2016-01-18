@@ -17,17 +17,19 @@
 
 package org.apache.ignite.internal.processors.cache.query.continuous;
 
-import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.configuration.CacheConfiguration;
+
+import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
 
 /**
  *
  */
-public class CacheContinuousIssueTxSelfTest extends CacheContinuousIssueSelfTest {
+public class CacheContinuousQueryLostPartitionTxTest extends CacheContinuousQueryLostPartitionTest {
+    /** {@inheritDoc} */
     @Override protected CacheConfiguration<Integer, String> cache() {
         CacheConfiguration<Integer, String> ccfg = super.cache();
 
-        ccfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+        ccfg.setAtomicityMode(TRANSACTIONAL);
 
         return ccfg;
     }
