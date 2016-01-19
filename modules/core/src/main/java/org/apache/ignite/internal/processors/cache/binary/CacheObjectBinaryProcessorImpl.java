@@ -418,7 +418,7 @@ public class CacheObjectBinaryProcessorImpl extends IgniteCacheObjectProcessorIm
             return pCol;
         }
 
-        if (obj instanceof Map) {
+        if (obj instanceof Map && !ctx.json().jsonObject(obj)) {
             Map<?, ?> map = (Map<?, ?>)obj;
 
             Map<Object, Object> pMap = BinaryUtils.newMap((Map<Object, Object>)obj);
@@ -704,7 +704,7 @@ public class CacheObjectBinaryProcessorImpl extends IgniteCacheObjectProcessorIm
 
     /** {@inheritDoc} */
     @Override public KeyCacheObject toCacheKeyObject(CacheObjectContext ctx, Object obj, boolean userObj) {
-        if (!((CacheObjectBinaryContext)ctx).binaryEnabled())
+        if (!((CacheObjectBinaryContext)ctx).binaryEnabled() || ctx.kernalContext().json().jsonObject(obj))
             return super.toCacheKeyObject(ctx, obj, userObj);
 
         if (obj instanceof KeyCacheObject)
@@ -723,7 +723,7 @@ public class CacheObjectBinaryProcessorImpl extends IgniteCacheObjectProcessorIm
     /** {@inheritDoc} */
     @Nullable @Override public CacheObject toCacheObject(CacheObjectContext ctx, @Nullable Object obj,
         boolean userObj) {
-        if (!((CacheObjectBinaryContext)ctx).binaryEnabled())
+        if (!((CacheObjectBinaryContext)ctx).binaryEnabled() || ctx.kernalContext().json().jsonObject(obj))
             return super.toCacheObject(ctx, obj, userObj);
 
         if (obj == null || obj instanceof CacheObject)

@@ -45,7 +45,7 @@ public interface IgniteJsonProcessor extends GridProcessor {
 
     /**
      * @param cls Class.
-     * @return {@code True} if given type is json object type.
+     * @return {@code True} if given type is JSON object type.
      */
     public boolean jsonType(Class<?> cls);
 

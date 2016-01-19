@@ -254,6 +254,8 @@ import org.apache.ignite.internal.util.typedef.F;
      * @return Unwrapped object.
      */
     private Object unwrapBinary(Object o, boolean keepBinary, boolean cpy) {
+        if (kernalCtx.json().jsonObject(o))
+            return ((CacheObject)o).value(this, cpy);
         if (o instanceof Map.Entry) {
             Map.Entry entry = (Map.Entry)o;
 

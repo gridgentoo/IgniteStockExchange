@@ -122,6 +122,6 @@ public class JsonCacheObject extends CacheObjectAdapter implements KeyCacheObjec
         if (obj == null || !(obj instanceof JsonCacheObject))
             return false;
 
-        return val.equals(((JsonCacheObject) obj).val);
+        return val.equals(((JsonCacheObject)obj).val);
     }
 }

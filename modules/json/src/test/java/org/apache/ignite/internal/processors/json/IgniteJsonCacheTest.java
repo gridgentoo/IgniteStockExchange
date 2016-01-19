@@ -22,6 +22,7 @@ import org.apache.ignite.cache.*;
 import org.apache.ignite.cache.query.*;
 import org.apache.ignite.configuration.*;
 import org.apache.ignite.json.*;
+import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
 import org.apache.ignite.spi.discovery.tcp.*;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
@@ -50,6 +51,7 @@ public class IgniteJsonCacheTest extends GridCommonAbstractTest {
 
         CacheConfiguration ccfg = new CacheConfiguration();
 
+/*
         QueryEntity qryEntity = new QueryEntity();
 
         qryEntity.setValueType(JsonObject.class.getName());
@@ -67,6 +69,7 @@ public class IgniteJsonCacheTest extends GridCommonAbstractTest {
         qryEntity.setFields(fields);
 
         ccfg.setQueryEntities(Collections.singleton(qryEntity));
+*/
 
         cfg.setCacheConfiguration(ccfg);
 
@@ -93,29 +96,39 @@ public class IgniteJsonCacheTest extends GridCommonAbstractTest {
         stopAllGrids();
     }
 
+    @Override public boolean isDebug() {
+        return true;
+    }
+
     /**
      * @throws Exception If failed.
      */
     public void testPutGet() throws Exception {
         IgniteCache<JsonObject, JsonObject> cache = ignite(1).cache(null);
+
         JsonProvider provider = IgniteJson.jsonProvider(ignite(1));
 
-        JsonObjectBuilder keyO = provider.createObjectBuilder();
+        JsonObject key = provider.createObjectBuilder()
+            .add("name", "a")
+            .build();
 
-        keyO.add("name", "a");
-
-        JsonObject key = keyO.build();
-
-        JsonObjectBuilder person = provider.createObjectBuilder();
-
-        person.add("salary", 1);
-        person.add("id", 1);
-
-        JsonObject obj = person.build();
+        JsonObject obj = provider.createObjectBuilder()
+            .add("salary", 1)
+            .add("id", 1)
+            .build();
 
         cache.put(key, obj);
 
-        assertNotNull(cache.get(key));
+        JsonObject key1 = provider.createObjectBuilder()
+            .add("name", "a")
+            .build();
+
+        assertEquals(key, key1);
+
+        JsonObject actual = cache.get(key1);
+
+        assertNotNull(actual);
+        assertEquals(obj, actual);
     }
 
     /**

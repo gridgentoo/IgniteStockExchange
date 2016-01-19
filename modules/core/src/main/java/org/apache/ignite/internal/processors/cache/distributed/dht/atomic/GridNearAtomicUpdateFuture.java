@@ -1249,7 +1249,7 @@ public class GridNearAtomicUpdateFuture extends GridFutureAdapter<Object>
         }
 
         /** {@inheritDoc} */
-        @Override public synchronized  String toString() {
+        @Override public synchronized String toString() {
             return S.toString(UpdateState.class, this);
         }
     }
