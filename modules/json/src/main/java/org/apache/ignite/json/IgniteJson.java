@@ -22,7 +22,7 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.internal.processors.json.IgniteJsonProvider;
 
 /**
- *
+ * Provides JSON API implementation.
  */
 public class IgniteJson {
     /**

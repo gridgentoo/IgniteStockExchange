@@ -44,6 +44,7 @@ import org.apache.ignite.internal.processors.rest.client.message.GridClientTaskR
 import org.apache.ignite.internal.processors.rest.handlers.GridRestCommandHandler;
 import org.apache.ignite.internal.processors.rest.handlers.cache.GridCacheCommandHandler;
 import org.apache.ignite.internal.processors.rest.handlers.datastructures.DataStructuresCommandHandler;
+import org.apache.ignite.internal.processors.rest.handlers.log.GridLogCommandHandler;
 import org.apache.ignite.internal.processors.rest.handlers.query.QueryCommandHandler;
 import org.apache.ignite.internal.processors.rest.handlers.scripting.IgniteScriptingCommandHandler;
 import org.apache.ignite.internal.processors.rest.handlers.task.GridTaskCommandHandler;
@@ -436,6 +437,15 @@ public class GridRestProcessor extends GridProcessorAdapter {
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
         if (isRestEnabled()) {
+            // Register handlers.
+            addHandler(new GridCacheCommandHandler(ctx));
+            addHandler(new GridTaskCommandHandler(ctx));
+            addHandler(new GridTopologyCommandHandler(ctx));
+            addHandler(new GridVersionNameCommandHandler(ctx));
+            addHandler(new DataStructuresCommandHandler(ctx));
+            addHandler(new QueryCommandHandler(ctx));
+            addHandler(new GridLogCommandHandler(ctx));
+
             // Start protocols.
             startTcpProtocol();
             startHttpProtocol();
