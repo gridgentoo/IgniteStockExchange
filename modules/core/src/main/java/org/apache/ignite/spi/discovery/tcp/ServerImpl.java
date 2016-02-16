@@ -21,7 +21,9 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectStreamException;
+import java.io.PrintWriter;
 import java.io.Serializable;
+import java.io.StringWriter;
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -54,6 +56,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.SSLException;
 import org.apache.ignite.Ignite;
@@ -156,8 +159,7 @@ import static org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryStatusChe
 /**
  *
  */
-@SuppressWarnings("All")
-class ServerImpl extends TcpDiscoveryImpl {
+@SuppressWarnings("All") class ServerImpl extends TcpDiscoveryImpl {
     /** */
     private static final int ENSURED_MSG_HIST_SIZE = getInteger(IGNITE_DISCOVERY_HISTORY_SIZE, 1024 * 10);
 
@@ -570,8 +572,8 @@ class ServerImpl extends TcpDiscoveryImpl {
      * @param addr Address of the node.
      * @param nodeId Node ID to ping. In case when client node ID is not null this node ID is an ID of the router node.
      * @param clientNodeId Client node ID.
-     * @return ID of the remote node and "client exists" flag if node alive or {@code null} if the remote node has
-     *         left a topology during the ping process.
+     * @return ID of the remote node and "client exists" flag if node alive or {@code null} if the remote node has left
+     * a topology during the ping process.
      * @throws IgniteCheckedException If an error occurs.
      */
     private @Nullable IgniteBiTuple<UUID, Boolean> pingNode(InetSocketAddress addr, @Nullable UUID nodeId,
@@ -910,9 +912,9 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
-     * Tries to send join request message to a random node presenting in topology.
-     * Address is provided by {@link org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder} and message is
-     * sent to first node connection succeeded to.
+     * Tries to send join request message to a random node presenting in topology. Address is provided by {@link
+     * org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder} and message is sent to first node connection
+     * succeeded to.
      *
      * @return {@code true} if send succeeded.
      * @throws IgniteSpiException If any error occurs.
@@ -1071,7 +1073,7 @@ class ServerImpl extends TcpDiscoveryImpl {
 
         int reconCnt = 0;
 
-        while (true){
+        while (true) {
             // Need to set to false on each new iteration,
             // since remote node may leave in the middle of the first iteration.
             joinReqSent = false;
@@ -1297,7 +1299,8 @@ class ServerImpl extends TcpDiscoveryImpl {
      * @param top Topology snapshot.
      * @return Copy of updated topology history.
      */
-    @Nullable private Map<Long, Collection<ClusterNode>> updateTopologyHistory(long topVer, Collection<ClusterNode> top) {
+    @Nullable private Map<Long, Collection<ClusterNode>> updateTopologyHistory(long topVer,
+        Collection<ClusterNode> top) {
         synchronized (mux) {
             if (topHist.containsKey(topVer))
                 return null;
@@ -1315,8 +1318,8 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
-     * Checks whether local node is coordinator. Nodes that are leaving or failed
-     * (but are still in topology) are removed from search.
+     * Checks whether local node is coordinator. Nodes that are leaving or failed (but are still in topology) are
+     * removed from search.
      *
      * @return {@code true} if local node is coordinator.
      */
@@ -1345,23 +1348,22 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
-     * Resolves coordinator. Nodes that are leaving or failed (but are still in
-     * topology) are removed from search.
+     * Resolves coordinator. Nodes that are leaving or failed (but are still in topology) are removed from search.
      *
-     * @return Coordinator node or {@code null} if there are no coordinator
-     * (i.e. local node is the last one and is currently stopping).
+     * @return Coordinator node or {@code null} if there are no coordinator (i.e. local node is the last one and is
+     * currently stopping).
      */
     @Nullable private TcpDiscoveryNode resolveCoordinator() {
         return resolveCoordinator(null);
     }
 
     /**
-     * Resolves coordinator. Nodes that are leaving or failed (but are still in
-     * topology) are removed from search as well as provided filter.
+     * Resolves coordinator. Nodes that are leaving or failed (but are still in topology) are removed from search as
+     * well as provided filter.
      *
      * @param filter Nodes to exclude when resolving coordinator (optional).
-     * @return Coordinator node or {@code null} if there are no coordinator
-     * (i.e. local node is the last one and is currently stopping).
+     * @return Coordinator node or {@code null} if there are no coordinator (i.e. local node is the last one and is
+     * currently stopping).
      */
     @Nullable private TcpDiscoveryNode resolveCoordinator(
         @Nullable Collection<TcpDiscoveryNode> filter) {
@@ -1415,7 +1417,7 @@ class ServerImpl extends TcpDiscoveryImpl {
         @Nullable Collection<TcpDiscoveryAbstractMessage> msgs,
         @Nullable IgniteUuid discardMsgId,
         @Nullable IgniteUuid discardCustomMsgId
-        ) {
+    ) {
         assert destNodeId != null;
 
         if (msg instanceof TcpDiscoveryNodeAddedMessage) {
@@ -1509,13 +1511,9 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
-     * <strong>FOR TEST ONLY!!!</strong>
-     * <p>
-     * Simulates situation when next node is still alive but is bypassed
-     * since it has been excluded from the ring, possibly, due to short time
-     * network problems.
-     * <p>
-     * This method is intended for test purposes only.
+     * <strong>FOR TEST ONLY!!!</strong> <p> Simulates situation when next node is still alive but is bypassed since it
+     * has been excluded from the ring, possibly, due to short time network problems. <p> This method is intended for
+     * test purposes only.
      */
     void forceNextNodeFailure() {
         U.warn(log, "Next node will be forcibly failed (if any).");
@@ -1532,9 +1530,7 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
-     * <strong>FOR TEST ONLY!!!</strong>
-     * <p>
-     * This method is intended for test purposes only.
+     * <strong>FOR TEST ONLY!!!</strong> <p> This method is intended for test purposes only.
      *
      * @return Nodes ring.
      */
@@ -1619,8 +1615,8 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
-     * Checks if two given {@link SecurityPermissionSet} objects contain the same permissions.
-     * Each permission belongs to one of three groups : cache, task or system.
+     * Checks if two given {@link SecurityPermissionSet} objects contain the same permissions. Each permission belongs
+     * to one of three groups : cache, task or system.
      *
      * @param locPerms The first set of permissions.
      * @param rmtPerms The second set of permissions.
@@ -1651,11 +1647,9 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
-     * Thread that cleans IP finder and keeps it in the correct state, unregistering
-     * addresses of the nodes that has left the topology.
-     * <p>
-     * This thread should run only on coordinator node and will clean IP finder
-     * if and only if {@link org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder#isShared()} is {@code true}.
+     * Thread that cleans IP finder and keeps it in the correct state, unregistering addresses of the nodes that has
+     * left the topology. <p> This thread should run only on coordinator node and will clean IP finder if and only if
+     * {@link org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder#isShared()} is {@code true}.
      */
     private class IpFinderCleaner extends IgniteSpiThread {
         /**
@@ -1845,17 +1839,16 @@ class ServerImpl extends TcpDiscoveryImpl {
         }
 
         /**
-         * Gets messages starting from provided ID (exclusive). If such
-         * message is not found, {@code null} is returned (this indicates
-         * a failure condition when it was already removed from queue).
+         * Gets messages starting from provided ID (exclusive). If such message is not found, {@code null} is returned
+         * (this indicates a failure condition when it was already removed from queue).
          *
-         * @param lastMsgId Last message ID received on client. {@code Null} if client did not finish connect procedure.
+         * @param lastMsgId Last message ID received on client. {@code Null} if client did not finish connect
+         * procedure.
          * @param node Client node.
          * @return Collection of messages.
          */
         @Nullable Collection<TcpDiscoveryAbstractMessage> messages(@Nullable IgniteUuid lastMsgId,
-            TcpDiscoveryNode node)
-        {
+            TcpDiscoveryNode node) {
             assert node != null && node.isClient() : node;
 
             if (lastMsgId == null) {
@@ -1957,8 +1950,8 @@ class ServerImpl extends TcpDiscoveryImpl {
         private IgniteUuid customDiscardId;
 
         /**
-         * Adds pending message and shrinks queue if it exceeds limit
-         * (messages that were not discarded yet are never removed).
+         * Adds pending message and shrinks queue if it exceeds limit (messages that were not discarded yet are never
+         * removed).
          *
          * @param msg Message to add.
          */
@@ -2166,6 +2159,10 @@ class ServerImpl extends TcpDiscoveryImpl {
                     if (ignite != null) {
                         U.error(log, "TcpDiscoverSpi's message worker thread failed abnormally. " +
                             "Stopping the node in order to prevent cluster wide instability.", e);
+
+                        if (isInterrupted())
+                            U.error(log, "Stack trace of Thread that interrupted TcpDiscoverSpi's message worker: " +
+                                interruptionTrace);
 
                         new Thread(new Runnable() {
                             @Override public void run() {
@@ -2422,10 +2419,11 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                 List<InetSocketAddress> locNodeAddrs = U.arrayList(locNode.socketAddresses());
 
-                addr: for (InetSocketAddress addr : spi.getNodeAddresses(next, sameHost)) {
+                addr:
+                for (InetSocketAddress addr : spi.getNodeAddresses(next, sameHost)) {
                     long ackTimeout0 = spi.getAckTimeout();
 
-                    if (locNodeAddrs.contains(addr)){
+                    if (locNodeAddrs.contains(addr)) {
                         if (log.isDebugEnabled())
                             log.debug("Skip to send message to the local node (probably remote node has the same " +
                                 "loopback address that local node): " + addr);
@@ -2585,10 +2583,10 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                             assert !forceSndPending || msg instanceof TcpDiscoveryNodeLeftMessage;
 
-                            boolean sndPending=
+                            boolean sndPending =
                                 (newNextNode && ring.minimumNodeVersion().compareTo(CUSTOM_MSG_ALLOW_JOINING_FOR_VERIFIED_SINCE) >= 0) ||
-                                failure ||
-                                forceSndPending;
+                                    failure ||
+                                    forceSndPending;
 
                             if (sndPending) {
                                 if (log.isDebugEnabled())
@@ -2816,8 +2814,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                 }
 
                 LT.warn(log, null, "Local node has detected failed nodes and started cluster-wide procedure. " +
-                        "To speed up failure detection please see 'Failure Detection' section under javadoc" +
-                        " for 'TcpDiscoverySpi'");
+                    "To speed up failure detection please see 'Failure Detection' section under javadoc" +
+                    " for 'TcpDiscoverySpi'");
             }
         }
 
@@ -2848,8 +2846,8 @@ class ServerImpl extends TcpDiscoveryImpl {
         }
 
         /**
-         * Checks whether pending messages queue contains unprocessed {@link TcpDiscoveryNodeAddedMessage} for
-         * the node with {@code nodeId}.
+         * Checks whether pending messages queue contains unprocessed {@link TcpDiscoveryNodeAddedMessage} for the node
+         * with {@code nodeId}.
          *
          * @param nodeId Node ID.
          * @return {@code true} if contains, {@code false} otherwise.
@@ -3438,9 +3436,8 @@ class ServerImpl extends TcpDiscoveryImpl {
          * Processes node added message.
          *
          * @param msg Node added message.
-         * @deprecated Due to current protocol node add process cannot be dropped in the middle of the ring,
-         *      if new node auth fails due to config inconsistency. So, we need to finish add
-         *      and only then initiate failure.
+         * @deprecated Due to current protocol node add process cannot be dropped in the middle of the ring, if new node
+         * auth fails due to config inconsistency. So, we need to finish add and only then initiate failure.
          */
         @Deprecated
         private void processNodeAddedMessage(TcpDiscoveryNodeAddedMessage msg) {
@@ -3666,7 +3663,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                             return;
                         }
                     }
-                    else  {
+                    else {
                         if (log.isDebugEnabled())
                             log.debug("Discarding node added message (this message has already been processed) " +
                                 "[spiState=" + spiState +
@@ -4464,8 +4461,7 @@ class ServerImpl extends TcpDiscoveryImpl {
         private void updateMetrics(UUID nodeId,
             ClusterMetrics metrics,
             Map<Integer, CacheMetrics> cacheMetrics,
-            long tstamp)
-        {
+            long tstamp) {
             assert nodeId != null;
             assert metrics != null;
 
@@ -4543,7 +4539,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                         try {
                             res = pingNode(msg.nodeToPing());
-                        } catch (IgniteSpiException e) {
+                        }
+                        catch (IgniteSpiException e) {
                             log.error("Failed to ping node [nodeToPing=" + msg.nodeToPing() + ']', e);
 
                             res = false;
@@ -4666,14 +4663,14 @@ class ServerImpl extends TcpDiscoveryImpl {
         }
 
         /**
-         * Checks failed nodes list and sends {@link TcpDiscoveryNodeFailedMessage} if failed node
-         * is still in the ring.
+         * Checks failed nodes list and sends {@link TcpDiscoveryNodeFailedMessage} if failed node is still in the
+         * ring.
          */
         private void checkFailedNodesList() {
             List<TcpDiscoveryNodeFailedMessage> msgs = null;
 
             synchronized (mux) {
-                for (Iterator<TcpDiscoveryNode> it = failedNodes.iterator(); it.hasNext();) {
+                for (Iterator<TcpDiscoveryNode> it = failedNodes.iterator(); it.hasNext(); ) {
                     TcpDiscoveryNode node = it.next();
 
                     if (ring.node(node.id()) != null) {
@@ -4831,10 +4828,8 @@ class ServerImpl extends TcpDiscoveryImpl {
     }
 
     /**
-     * Thread that accepts incoming TCP connections.
-     * <p>
-     * Tcp server will call provided closure when accepts incoming connection.
-     * From that moment server is no more responsible for the socket.
+     * Thread that accepts incoming TCP connections. <p> Tcp server will call provided closure when accepts incoming
+     * connection. From that moment server is no more responsible for the socket.
      */
     private class TcpServer extends IgniteSpiThread {
         /** Socket TCP server listens to. */
@@ -5004,14 +4999,14 @@ class ServerImpl extends TcpDiscoveryImpl {
                         if (log.isDebugEnabled())
                             log.debug("Unknown connection detected (is some other software connecting to " +
                                 "this Ignite port?" +
-                                (!spi.isSslEnabled() ? " missed SSL configuration?" : "" ) +
+                                (!spi.isSslEnabled() ? " missed SSL configuration?" : "") +
                                 ") " +
                                 "[rmtAddr=" + sock.getRemoteSocketAddress() +
                                 ", locAddr=" + sock.getLocalSocketAddress() + ']');
 
                         LT.warn(log, null, "Unknown connection detected (is some other software connecting to " +
                             "this Ignite port?" +
-                            (!spi.isSslEnabled() ? " missing SSL configuration on remote node?" : "" ) +
+                            (!spi.isSslEnabled() ? " missing SSL configuration on remote node?" : "") +
                             ") [rmtAddr=" + sock.getInetAddress() + ']', true);
 
                         return;
@@ -5126,7 +5121,7 @@ class ServerImpl extends TcpDiscoveryImpl {
                 }
                 catch (IOException e) {
                     if (log.isDebugEnabled())
-                        U.error(log, "Caught exception on handshake [err=" + e +", sock=" + sock + ']', e);
+                        U.error(log, "Caught exception on handshake [err=" + e + ", sock=" + sock + ']', e);
 
                     if (X.hasCause(e, SSLException.class) && spi.isSslEnabled() && !spi.isNodeStopping0())
                         LT.warn(log, null, "Failed to initialize connection " +
@@ -5153,9 +5148,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                 }
                 catch (IgniteCheckedException e) {
                     if (log.isDebugEnabled())
-                        U.error(log, "Caught exception on handshake [err=" + e +", sock=" + sock + ']', e);
+                        U.error(log, "Caught exception on handshake [err=" + e + ", sock=" + sock + ']', e);
 
-                    onException("Caught exception on handshake [err=" + e +", sock=" + sock + ']', e);
+                    onException("Caught exception on handshake [err=" + e + ", sock=" + sock + ']', e);
 
                     if (e.hasCause(SocketTimeoutException.class))
                         LT.warn(log, null, "Socket operation timed out on handshake " +
@@ -5765,6 +5760,12 @@ class ServerImpl extends TcpDiscoveryImpl {
         /** Polling timeout. */
         private final long pollingTimeout;
 
+        /** Stack trace of the Thread that interrupted the message worker. */
+        protected volatile String interruptionTrace;
+        
+        /** Avoids overriding of initial interruption stack trace */
+        private AtomicBoolean interruptTraceGenerated = new AtomicBoolean(false);
+
         /**
          * @param name Thread name.
          * @param pollingTimeout Messages polling timeout.
@@ -5790,11 +5791,29 @@ class ServerImpl extends TcpDiscoveryImpl {
                 else
                     processMessage(msg);
             }
+
+            if (!spi.isNodeStopping0()) {
+                assert isInterrupted();
+
+                throw new InterruptedException("RingMessageWorker thread has been interrupted");
+            }
         }
 
         /** {@inheritDoc} */
         @Override public void interrupt() {
             interrupted = true;
+
+            if (interruptTraceGenerated.compareAndSet(false, true)) {
+                StringBuilder sb = new StringBuilder();
+                String lineSep = System.getProperty("line.separator");
+
+                sb.append(lineSep);
+
+                for (StackTraceElement element : Thread.currentThread().getStackTrace())
+                    sb.append(element.toString()).append(lineSep);
+
+                interruptionTrace = sb.toString();
+            }
 
             super.interrupt();
         }

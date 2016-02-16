@@ -94,7 +94,8 @@ public interface IgniteDataStreamer<K, V> extends AutoCloseable {
     public static final int DFLT_MAX_PARALLEL_OPS = 16;
 
     /** Default per node buffer size. */
-    public static final int DFLT_PER_NODE_BUFFER_SIZE = 1024;
+    public static final int
+        DFLT_PER_NODE_BUFFER_SIZE = 1024;
 
     /**
      * Name of cache to stream data to.

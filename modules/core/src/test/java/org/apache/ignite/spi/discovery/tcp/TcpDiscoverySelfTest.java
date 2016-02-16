@@ -1353,9 +1353,23 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed
      */
-    public void testNodeShutdownOnRingMessageWorkerFailure() throws Exception {
+    public void testNodeShutdownWhenRingMessageWorkerInterrupted() throws Exception {
+       testNodeShutdownOnRingMessageWorkerFailure(true);
+    }
+
+    /**
+     * @throws Exception If failed
+     */
+    public void testNodeShutdownWhenRingMessageWorkerStoppedByException() throws Exception {
+        testNodeShutdownOnRingMessageWorkerFailure(false);
+    }
+
+    /**
+     * @throws Exception If failed
+     */
+    private void testNodeShutdownOnRingMessageWorkerFailure(boolean interrupt) throws Exception {
         try {
-            TestMessageWorkerFailureSpi1 spi0 = new TestMessageWorkerFailureSpi1();
+            TestMessageWorkerFailureSpi1 spi0 = new TestMessageWorkerFailureSpi1(interrupt);
 
             nodeSpi.set(spi0);
 
@@ -1403,6 +1417,7 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
             stopAllGrids();
         }
     }
+
     /**
      * @throws Exception If failed
      */
@@ -2074,12 +2089,27 @@ public class TcpDiscoverySelfTest extends GridCommonAbstractTest {
         /** */
         private volatile boolean stop;
 
+        private final boolean interrupt;
+
+        /**
+         * Constructor.
+         *
+         * @param interrupt
+         */
+        public TestMessageWorkerFailureSpi1(boolean interrupt) {
+            this.interrupt = interrupt;
+        }
+
         /** {@inheritDoc} */
         @Override protected void writeToSocket(Socket sock, TcpDiscoveryAbstractMessage msg,
             GridByteArrayOutputStream bout, long timeout) throws IOException, IgniteCheckedException {
 
-            if (stop)
-                throw new RuntimeException("Failing ring message worker explicitly");
+            if (stop) {
+                if (interrupt)
+                    Thread.currentThread().interrupt();
+                else
+                    throw new RuntimeException("Failing ring message worker explicitly");
+            }
 
             super.writeToSocket(sock, msg, bout, timeout);
         }
