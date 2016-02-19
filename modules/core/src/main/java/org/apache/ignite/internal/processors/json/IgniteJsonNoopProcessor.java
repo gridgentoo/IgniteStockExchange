@@ -64,4 +64,9 @@ public class IgniteJsonNoopProcessor extends GridProcessorAdapter implements Ign
     @Override public Object field(Object obj, String fieldName) {
         return null;
     }
+
+    /** {@inheritDoc} */
+    @Override public Object value(Object obj) {
+        return null;
+    }
 }

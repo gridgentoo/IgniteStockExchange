@@ -23,7 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
+import javax.json.JsonNumber;
 import javax.json.JsonObjectBuilder;
+import javax.json.JsonString;
 import javax.json.JsonValue;
 import org.apache.ignite.internal.util.typedef.internal.A;
 
@@ -31,104 +33,144 @@ import org.apache.ignite.internal.util.typedef.internal.A;
  * Json array builder.
  */
 public class IgniteJsonArrayBuilder implements JsonArrayBuilder {
-    /** Json array list. */
-    private List<JsonValue> jsonList = new ArrayList<>();
+    /** Values list. */
+    private List<Object> list = new ArrayList<>();
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(JsonValue val) {
         A.notNull(val, "value");
 
-        jsonList.add(val);
+        JsonValue.ValueType valType = val.getValueType();
+
+        switch (valType) {
+            case ARRAY:
+                list.add(((IgniteJsonArray)val).list());
+
+                break;
+
+            case OBJECT:
+                list.add(((IgniteJsonObject)val).binaryObject());
+
+                break;
+            case STRING:
+                list.add(((JsonString)val).getString());
+
+                break;
+            case NUMBER:
+                //TODO: Optimize for value
+                list.add(((JsonNumber)val).bigDecimalValue());
+
+                break;
+            case TRUE:
+                list.add(true);
+
+                break;
+            case FALSE:
+                list.add(false);
+
+                break;
+            case NULL:
+                list.add(null);
+
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown value type " + valType);
+        }
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(String val) {
-        A.notNull(val, "value");
+        A.notNull(val, "val");
 
-        jsonList.add(new IgniteJsonString(val));
+        list.add(val);
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(BigDecimal val) {
-        A.notNull(val, "value");
+        A.notNull(val, "val");
 
-        jsonList.add(new IgniteJsonNumber(val));
+        list.add(val);
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(BigInteger val) {
-        A.notNull(val, "value");
+        A.notNull(val, "val");
 
-        //TODO: optimize for value
-        jsonList.add(new IgniteJsonNumber(new BigDecimal(val)));
+        list.add(val);
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(int val) {
-        //TODO: optimize for value
-        jsonList.add(new IgniteJsonNumber(new BigDecimal(val)));
+        list.add(val);
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(long val) {
-        //TODO: optimize for value
-        jsonList.add(new IgniteJsonNumber(new BigDecimal(val)));
+        list.add(val);
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(double val) {
-        //TODO: optimize for value
-        jsonList.add(new IgniteJsonNumber(new BigDecimal(val)));
+        list.add(val);
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(boolean val) {
-        jsonList.add(val ? JsonValue.TRUE : JsonValue.FALSE);
+        list.add(val);
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder addNull() {
-        jsonList.add(JsonValue.NULL);
+        list.add(null);
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(JsonObjectBuilder bld) {
-        A.notNull(bld, "value");
+        A.notNull(bld, "bld");
 
-        jsonList.add(bld.build());
+        list.add(((IgniteJsonObject)bld.build()).binaryObject());
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArrayBuilder add(JsonArrayBuilder bld) {
-        A.notNull(bld, "value");
+        A.notNull(bld, "bld");
 
-        jsonList.add(bld.build());
+        list.add(((IgniteJsonArrayBuilder)bld).list());
 
         return this;
     }
 
     /** {@inheritDoc} */
     @Override public JsonArray build() {
-        return new IgniteJsonArray(jsonList);
+          return new IgniteJsonArray(list);
+    }
+
+    /**
+     * Returns backing objects list.
+     *
+     * @return backing objects list.
+     */
+    List<Object> list() {
+        return list;
     }
 }

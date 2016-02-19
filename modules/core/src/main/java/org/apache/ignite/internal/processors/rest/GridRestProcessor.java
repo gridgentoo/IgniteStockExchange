@@ -445,6 +445,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
             addHandler(new DataStructuresCommandHandler(ctx));
             addHandler(new QueryCommandHandler(ctx));
             addHandler(new GridLogCommandHandler(ctx));
+            addHandler(new IgniteScriptingCommandHandler(ctx));
 
             // Start protocols.
             startTcpProtocol();
@@ -469,7 +470,10 @@ public class GridRestProcessor extends GridProcessorAdapter {
                 }
             }
         }
+    }
 
+    /** {@inheritDoc} */
+    @Override public void onKernalStart() throws IgniteCheckedException {
         if (isRestEnabled()) {
             for (GridRestProtocol proto : protos)
                 proto.onKernalStart();
@@ -482,15 +486,6 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
             if (log.isDebugEnabled())
                 log.debug("REST processor started.");
-
-            // Register handlers.
-            addHandler(new GridCacheCommandHandler(ctx));
-            addHandler(new GridTaskCommandHandler(ctx));
-            addHandler(new GridTopologyCommandHandler(ctx));
-            addHandler(new GridVersionNameCommandHandler(ctx));
-            addHandler(new DataStructuresCommandHandler(ctx));
-            addHandler(new QueryCommandHandler(ctx));
-            addHandler(new IgniteScriptingCommandHandler(ctx));
         }
     }
 

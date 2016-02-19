@@ -39,7 +39,8 @@ public class IgniteJsonGenerator implements JsonGenerator {
     /** Writer. */
     private final BufferedWriter writer;
 
-    private LinkedList<Element> ctx = new LinkedList();
+    /** Context. */
+    private LinkedList<Element> ctx = new LinkedList<>();
 
     /**
      * @param writer Writer.

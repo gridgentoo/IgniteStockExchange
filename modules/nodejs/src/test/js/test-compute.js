@@ -30,7 +30,6 @@ testComputeRunScript = function() {
             var comp = ignite.compute();
 
             var f = function (args) {
-                print("!!!!" + args + " " + ignite.name());
                 return args + " " + ignite.name();
             }
 
@@ -128,8 +127,6 @@ testComputeCacheSizeExecute = function() {
             var map = function(nodes, arg) {
                 for (var i = 0; i < nodes.length; i++) {
                     var f = function (args) {
-                        print("!!!!!Node id " + ignite.localNode().id());
-
                         return ignite.cache("mycache").localSize();
                     };
 

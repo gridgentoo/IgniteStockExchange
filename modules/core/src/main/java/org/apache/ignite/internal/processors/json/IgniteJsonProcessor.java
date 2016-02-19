@@ -68,4 +68,9 @@ public interface IgniteJsonProcessor extends GridProcessor {
      * @return Field value.
      */
     public Object field(Object obj, String fieldName);
+
+    /**
+     * @param obj Object.
+     */
+    public Object value(Object obj);
 }

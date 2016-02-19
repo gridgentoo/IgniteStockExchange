@@ -22,6 +22,7 @@ import javax.json.JsonObject;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 import org.apache.ignite.IgniteException;
+import org.apache.ignite.binary.BinaryObject;
 import org.apache.ignite.internal.GridKernalContext;
 import org.apache.ignite.internal.processors.GridProcessorAdapter;
 import org.apache.ignite.internal.processors.cache.CacheObject;
@@ -30,7 +31,7 @@ import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.jetbrains.annotations.Nullable;
 
 /**
- *
+ * Ignite JSON objects processor.
  */
 public class IgniteJsonProcessorImpl extends GridProcessorAdapter implements IgniteJsonProcessor {
     /**
@@ -42,8 +43,13 @@ public class IgniteJsonProcessorImpl extends GridProcessorAdapter implements Ign
 
     /** {@inheritDoc} */
     @Override public KeyCacheObject toCacheKeyObject(CacheObjectContext ctx, Object obj, boolean userObj) {
-        if (obj instanceof JsonObject)
-            return new JsonCacheObject((JsonObject)obj);
+        if (obj instanceof JsonObject) {
+            IgniteJsonObject jsonObj = (IgniteJsonObject)obj;
+
+            BinaryObject binObj = jsonObj.binaryObject();
+
+            return ctx.processor().toCacheKeyObject(ctx, binObj, userObj);
+        }
 
         return null;
     }
@@ -52,8 +58,13 @@ public class IgniteJsonProcessorImpl extends GridProcessorAdapter implements Ign
     @Nullable @Override public CacheObject toCacheObject(CacheObjectContext ctx,
         @Nullable Object obj,
         boolean userObj) {
-        if (obj instanceof JsonObject)
-            return new JsonCacheObject((JsonObject)obj);
+        if (obj instanceof JsonObject) {
+            IgniteJsonObject jsonObj = (IgniteJsonObject)obj;
+
+            BinaryObject binObj = jsonObj.binaryObject();
+
+            return ctx.processor().toCacheObject(ctx, binObj, userObj);
+        }
 
         return null;
     }
@@ -65,23 +76,26 @@ public class IgniteJsonProcessorImpl extends GridProcessorAdapter implements Ign
 
     /** {@inheritDoc} */
     @Override public boolean jsonObject(Object obj) {
-        return obj instanceof JsonCacheObject || obj instanceof JsonObject;
+        return obj instanceof JsonObject || obj instanceof BinaryObject &&
+            ((BinaryObject)obj).type().typeName().equals(JsonObject.class.getName());
     }
 
     /** {@inheritDoc} */
     @Override public boolean hasField(Object obj, String fieldName) {
-        if (obj instanceof JsonObject)
-            return ((JsonObject)obj).containsKey(fieldName);
-
-        return ((JsonCacheObject)obj).hasField(fieldName);
+        return ((JsonObject)obj).containsKey(fieldName);
     }
 
     /** {@inheritDoc} */
     @Override public Object field(Object obj, String fieldName) {
-        if (obj instanceof JsonObject)
-            return value((JsonObject) obj, fieldName);
+        return value((JsonObject) obj, fieldName);
+    }
 
-        return ((JsonCacheObject)obj).field(fieldName);
+    /** {@inheritDoc} */
+    @Override public Object value(Object obj) {
+        if (obj instanceof BinaryObject)
+            return new IgniteJsonObject((BinaryObject)obj);
+
+        return null;
     }
 
     /**

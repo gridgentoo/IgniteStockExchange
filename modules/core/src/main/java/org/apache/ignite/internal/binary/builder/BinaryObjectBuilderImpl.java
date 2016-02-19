@@ -394,6 +394,13 @@ public class BinaryObjectBuilderImpl implements BinaryObjectBuilder {
     }
 
     /**
+     * @return Map of assigned values.
+     */
+    public Map<String, Object> assignedVals() {
+        return assignedVals;
+    }
+
+    /**
      * Get field position and length.
      *
      * @param footerPos Field position inside the footer (absolute).

@@ -34,11 +34,22 @@ import javax.json.stream.JsonGenerator;
 import javax.json.stream.JsonGeneratorFactory;
 import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParserFactory;
+import org.apache.ignite.internal.IgniteKernal;
 
 /**
  * JSON provider implementation.
  */
 public class IgniteJsonProvider extends JsonProvider {
+    /** Kernal. */
+    private final IgniteKernal kernal;
+
+    /**
+     * @param kernal Kernal.
+     */
+    public IgniteJsonProvider(IgniteKernal kernal) {
+        this.kernal = kernal;
+    }
+
     /** {@inheritDoc} */
     @Override public JsonParser createParser(Reader reader) {
         return null;
@@ -101,7 +112,7 @@ public class IgniteJsonProvider extends JsonProvider {
 
     /** {@inheritDoc} */
     @Override public JsonObjectBuilder createObjectBuilder() {
-        return new IgniteJsonObjectBuilder();
+        return new IgniteJsonObjectBuilder(kernal);
     }
 
     /** {@inheritDoc} */

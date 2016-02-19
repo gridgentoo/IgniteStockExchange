@@ -71,6 +71,32 @@ class BinaryValueWithType implements BinaryLazyValue {
     }
 
     /** {@inheritDoc} */
+    @Override public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (o == null || getClass() != o.getClass())
+            return false;
+
+        BinaryValueWithType that = (BinaryValueWithType)o;
+
+        if (type != that.type)
+            return false;
+
+        return val != null ? val.equals(that.val) : that.val == null;
+
+    }
+
+    /** {@inheritDoc} */
+    @Override public int hashCode() {
+        int res = (int)type;
+
+        res = 31 * res + (val != null ? val.hashCode() : 0);
+
+        return res;
+    }
+
+    /** {@inheritDoc} */
     @Override public String toString() {
         return S.toString(BinaryValueWithType.class, this);
     }

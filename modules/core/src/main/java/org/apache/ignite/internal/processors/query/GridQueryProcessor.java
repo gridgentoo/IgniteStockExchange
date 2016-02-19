@@ -144,10 +144,6 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     /** */
     private final GridQueryIndexing idx;
 
-    /** */
-    // TODO IGNITE-961
-    private TypeId jsonTypeId;
-
     /**
      * @param ctx Kernal context.
      */
@@ -278,14 +274,6 @@ public class GridQueryProcessor extends GridProcessorAdapter {
 
                         if (valCls != null)
                             altTypeId = new TypeId(ccfg.getName(), valCls);
-                    }
-                    else if (ctx.json().jsonType(desc.keyClass()) || ctx.json().jsonType(desc.valueClass())) {
-                        // TODO IGNITE-961
-                        // processJsonMeta(meta, desc);
-
-                        typeId = new TypeId(ccfg.getName(), valCls);
-
-                        jsonTypeId = typeId;
                     }
                     else {
                         processClassMeta(qryEntity, desc, coCtx);
@@ -676,47 +664,39 @@ public class GridQueryProcessor extends GridProcessorAdapter {
 
             TypeDescriptor desc;
 
-            // TODO IGNITE-961
-            if (ctx.json().jsonObject(val) && jsonTypeId != null) {
-                desc = types.get(jsonTypeId);
+            Class<?> valCls = null;
 
-                assert desc != null && desc.registered() : desc;
+            TypeId id;
+
+            boolean binaryVal = ctx.cacheObjects().isBinaryObject(val);
+
+            if (binaryVal) {
+                int typeId = ctx.cacheObjects().typeId(val);
+
+                id = new TypeId(space, typeId);
             }
             else {
-                Class<?> valCls = null;
+                valCls = val.value(coctx, false).getClass();
 
-                TypeId id;
+                id = new TypeId(space, valCls);
+            }
 
-                boolean binaryVal = ctx.cacheObjects().isBinaryObject(val);
+            desc = types.get(id);
 
-                if (binaryVal) {
-                    int typeId = ctx.cacheObjects().typeId(val);
+            if (desc == null || !desc.registered())
+                return;
 
-                    id = new TypeId(space, typeId);
-                }
-                else {
-                    valCls = val.value(coctx, false).getClass();
+            if (!binaryVal && !desc.valueClass().isAssignableFrom(valCls))
+                throw new IgniteCheckedException("Failed to update index due to class name conflict" +
+                    "(multiple classes with same simple name are stored in the same cache) " +
+                    "[expCls=" + desc.valueClass().getName() + ", actualCls=" + valCls.getName() + ']');
 
-                    id = new TypeId(space, valCls);
-                }
+            if (!ctx.cacheObjects().isBinaryObject(key)) {
+                Class<?> keyCls = key.value(coctx, false).getClass();
 
-                desc = types.get(id);
-
-                if (desc == null || !desc.registered())
-                    return;
-
-                if (!binaryVal && !desc.valueClass().isAssignableFrom(valCls))
-                    throw new IgniteCheckedException("Failed to update index due to class name conflict" +
-                        "(multiple classes with same simple name are stored in the same cache) " +
-                        "[expCls=" + desc.valueClass().getName() + ", actualCls=" + valCls.getName() + ']');
-
-                if (!ctx.cacheObjects().isBinaryObject(key)) {
-                    Class<?> keyCls = key.value(coctx, false).getClass();
-
-                    if (!desc.keyClass().isAssignableFrom(keyCls))
-                        throw new IgniteCheckedException("Failed to update index, incorrect key class [expCls=" +
-                            desc.keyClass().getName() + ", actualCls=" + keyCls.getName() + "]");
-                }
+                if (!desc.keyClass().isAssignableFrom(keyCls))
+                    throw new IgniteCheckedException("Failed to update index, incorrect key class [expCls=" +
+                        desc.keyClass().getName() + ", actualCls=" + keyCls.getName() + "]");
             }
 
             idx.store(space, desc, key, val, ver, expirationTime);

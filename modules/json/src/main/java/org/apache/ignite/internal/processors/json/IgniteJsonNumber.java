@@ -23,7 +23,7 @@ import java.math.BigInteger;
 import javax.json.JsonNumber;
 
 /**
- * Json number implementation.
+ * JSON number implementation.
  *
  * TODO IGNITE-962: optimize for int, long, double.
  */

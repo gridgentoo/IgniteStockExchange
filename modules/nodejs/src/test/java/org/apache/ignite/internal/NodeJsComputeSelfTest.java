@@ -163,7 +163,7 @@ public class NodeJsComputeSelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void _testRestartGrid() throws Exception {
+    public void testRestartGrid() throws Exception {
         final AtomicInteger id = new AtomicInteger(2);
         IgniteInternalFuture<Long> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Object>() {
             @Override public Object call() throws Exception {

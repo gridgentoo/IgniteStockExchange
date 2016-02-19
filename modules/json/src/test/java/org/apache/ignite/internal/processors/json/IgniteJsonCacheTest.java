@@ -17,21 +17,26 @@
 
 package org.apache.ignite.internal.processors.json;
 
-import org.apache.ignite.*;
-import org.apache.ignite.cache.*;
-import org.apache.ignite.cache.query.*;
-import org.apache.ignite.configuration.*;
-import org.apache.ignite.json.*;
-import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
-import org.apache.ignite.spi.discovery.tcp.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.*;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.*;
-import org.apache.ignite.testframework.junits.common.*;
-
-import javax.cache.*;
-import javax.json.*;
-import javax.json.spi.*;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import javax.cache.Cache;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import javax.json.spi.JsonProvider;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.QueryEntity;
+import org.apache.ignite.cache.QueryIndex;
+import org.apache.ignite.cache.query.SqlFieldsQuery;
+import org.apache.ignite.cache.query.SqlQuery;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.json.IgniteJson;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 
 /**
  *
@@ -51,25 +56,27 @@ public class IgniteJsonCacheTest extends GridCommonAbstractTest {
 
         CacheConfiguration ccfg = new CacheConfiguration();
 
-/*
         QueryEntity qryEntity = new QueryEntity();
 
+        qryEntity.setKeyType(JsonObject.class.getName());
         qryEntity.setValueType(JsonObject.class.getName());
 
         qryEntity.setIndexes(Arrays.asList(
             new QueryIndex("name"),
             new QueryIndex("id"),
-            new QueryIndex("address.street")));
+            new QueryIndex("street")));
 
         LinkedHashMap<String, String> fields = new LinkedHashMap<>();
 
+        fields.put("id", Integer.class.getName());
+        fields.put("name", String.class.getName());
         fields.put("salary", Integer.class.getName());
         fields.put("address", JsonObject.class.getName());
+        fields.put("address.street", String.class.getName());
 
         qryEntity.setFields(fields);
 
         ccfg.setQueryEntities(Collections.singleton(qryEntity));
-*/
 
         cfg.setCacheConfiguration(ccfg);
 
@@ -110,18 +117,37 @@ public class IgniteJsonCacheTest extends GridCommonAbstractTest {
 
         JsonObject key = provider.createObjectBuilder()
             .add("name", "a")
+            .addNull("n1")
             .build();
+
+/*
+        System.out.println("!!! key " + (key.get("n1") == null));
+        System.out.println("!!! key " + (key.get("n2") == null));
+*/
 
         JsonObject obj = provider.createObjectBuilder()
             .add("salary", 1)
             .add("id", 1)
+            .addNull("n2")
             .build();
+
+/*
+        System.out.println("!!! key " + (key.get("n1") == null));
+        System.out.println("!!! key " + (key.get("n2") == null));
+
+        System.out.println("!!! obj " + (obj.get("n1") == null));
+        System.out.println("!!! obj " + (obj.get("n2") == null));
+*/
 
         cache.put(key, obj);
 
         JsonObject key1 = provider.createObjectBuilder()
             .add("name", "a")
+            .addNull("n1")
             .build();
+
+        System.out.println("!!! key.hashCode " + key.hashCode());
+        System.out.println("!!! key1.hashCode " + key1.hashCode());
 
         assertEquals(key, key1);
 

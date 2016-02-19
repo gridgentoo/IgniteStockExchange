@@ -88,8 +88,7 @@ public enum IgniteComponentType {
     JSON(
         "org.apache.ignite.internal.processors.json.IgniteJsonNoopProcessor",
         "org.apache.ignite.internal.processors.json.IgniteJsonProcessorImpl",
-        "ignite-json",
-        "org.apache.ignite.internal.processors.json.IgniteJsonMessageFactory"
+        "ignite-json"
     );
 
     /** No-op class name. */

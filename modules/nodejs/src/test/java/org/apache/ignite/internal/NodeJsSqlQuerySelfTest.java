@@ -47,7 +47,7 @@ public class NodeJsSqlQuerySelfTest extends NodeJsAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void _testSqlQuery() throws Exception {
+    public void testSqlQuery() throws Exception {
         //TODO: fix query for simple strings.
         runJsScript("testSqlQuery");
     }

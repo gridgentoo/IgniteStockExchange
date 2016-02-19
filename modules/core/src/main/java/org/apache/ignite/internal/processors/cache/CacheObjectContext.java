@@ -231,8 +231,6 @@ import org.apache.ignite.internal.util.typedef.F;
      * @return Unwrapped object.
      */
     private Object unwrapBinary(Object o, boolean keepBinary, boolean cpy) {
-        if (kernalCtx.json().jsonObject(o))
-            return ((CacheObject)o).value(this, cpy);
         if (o instanceof Map.Entry) {
             Map.Entry entry = (Map.Entry)o;
 
@@ -254,6 +252,9 @@ import org.apache.ignite.internal.util.typedef.F;
             return unwrapBinariesInArrayIfNeeded((Object[])o, keepBinary, cpy);
         else if (o instanceof CacheObject) {
             CacheObject co = (CacheObject)o;
+
+            if (kernalCtx.json().jsonObject(co))
+                return kernalCtx.json().value(co);
 
             if (!keepBinary || co.isPlatformType())
                 return unwrapBinary(co.value(this, cpy), keepBinary, cpy);

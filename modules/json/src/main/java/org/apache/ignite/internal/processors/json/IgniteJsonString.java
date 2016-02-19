@@ -21,7 +21,7 @@ import java.io.Serializable;
 import javax.json.JsonString;
 
 /**
- * Json string implementation.
+ * JSON string implementation.
  */
 public class IgniteJsonString implements JsonString, Serializable {
     /** Value. */

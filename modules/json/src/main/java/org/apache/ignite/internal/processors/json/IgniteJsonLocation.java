@@ -20,7 +20,7 @@ package org.apache.ignite.internal.processors.json;
 import javax.json.stream.JsonLocation;
 
 /**
- * Json location implementation.
+ * JSON location implementation.
  */
 public class IgniteJsonLocation implements JsonLocation {
     /** Column number. */

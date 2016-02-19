@@ -19,6 +19,7 @@ package org.apache.ignite.json;
 
 import javax.json.spi.JsonProvider;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.internal.IgniteKernal;
 import org.apache.ignite.internal.processors.json.IgniteJsonProvider;
 
 /**
@@ -30,6 +31,6 @@ public class IgniteJson {
      * @return Ignite JSON API provider.
      */
     public static JsonProvider jsonProvider(Ignite ignite) {
-        return new IgniteJsonProvider();
+        return new IgniteJsonProvider((IgniteKernal)ignite);
     }
 }
