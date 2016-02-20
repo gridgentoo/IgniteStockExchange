@@ -86,7 +86,6 @@
         <module>modules/osgi-karaf</module>
         <module>modules/osgi</module>
         <module>modules/json</module>
-		<module>modules/benchmarks</module>
     </modules>
 
     <profiles>
@@ -432,6 +431,7 @@
         <profile>
             <id>benchmarks</id>
             <modules>
+                <module>modules/benchmarks</module>
                 <module>modules/yardstick</module>
             </modules>
         </profile>
