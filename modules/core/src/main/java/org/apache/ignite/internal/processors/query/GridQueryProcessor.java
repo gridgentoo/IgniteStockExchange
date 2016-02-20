@@ -662,8 +662,6 @@ public class GridQueryProcessor extends GridProcessorAdapter {
             if (coctx == null)
                 coctx = cacheObjectContext(space);
 
-            TypeDescriptor desc;
-
             Class<?> valCls = null;
 
             TypeId id;
@@ -681,7 +679,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
                 id = new TypeId(space, valCls);
             }
 
-            desc = types.get(id);
+            TypeDescriptor desc = types.get(id);
 
             if (desc == null || !desc.registered())
                 return;
@@ -1477,26 +1475,7 @@ public class GridQueryProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * TODO IGNITE-961.
-     *
-     * @param pathStr String representing path to the property. May contains dots '.' to identify
-     *      nested fields.
-     * @param resType Result type.
-     * @return Portable property.
-     */
-    private JsonProperty buildJsonProperty(String pathStr, Class<?> resType) {
-        String[] path = pathStr.split("\\.");
-
-        JsonProperty res = null;
-
-        for (String prop : path)
-            res = new JsonProperty(prop, res, resType);
-
-        return res;
-    }
-
-    /**
-     * Processes declarative metadata for portable object.
+     * Processes declarative metadata for binary object.
      *
      * @param qryEntity Declared metadata.
      * @param d Type descriptor.
@@ -1941,84 +1920,6 @@ public class GridQueryProcessor extends GridProcessorAdapter {
          */
         public boolean knowsClass(Class<?> cls) {
             return member.getDeclaringClass() == cls || (parent != null && parent.knowsClass(cls));
-        }
-    }
-
-    /**
-     * TODO IGNITE-961
-     */
-    private class JsonProperty extends GridQueryProperty {
-        /** Property name. */
-        private String propName;
-
-        /** Parent property. */
-        private JsonProperty parent;
-
-        /** Result class. */
-        private Class<?> type;
-
-        /** */
-        private volatile int isKeyProp;
-
-        /**
-         * Constructor.
-         *
-         * @param propName Property name.
-         * @param parent Parent property.
-         * @param type Result type.
-         */
-        private JsonProperty(String propName, JsonProperty parent, Class<?> type) {
-            this.propName = propName;
-            this.parent = parent;
-            this.type = type;
-        }
-
-        /** {@inheritDoc} */
-        @Override public Object value(Object key, Object val) throws IgniteCheckedException {
-            Object obj;
-
-            if (parent != null) {
-                obj = parent.value(key, val);
-
-                if (obj == null)
-                    return null;
-
-                if (!ctx.json().jsonObject(obj))
-                    throw new IgniteCheckedException("Non-json object received as a result of property extraction " +
-                        "[parent=" + parent + ", propName=" + propName + ", obj=" + obj + ']');
-            }
-            else {
-                int isKeyProp0 = isKeyProp;
-
-                if (isKeyProp0 == 0) {
-                    // Key is allowed to be a non-portable object here.
-                    // We check key before value consistently with ClassProperty.
-                    if (ctx.json().jsonObject(key) && ctx.json().hasField(key, propName))
-                        isKeyProp = isKeyProp0 = 1;
-                    else if (ctx.json().hasField(val, propName))
-                        isKeyProp = isKeyProp0 = -1;
-                    else {
-                        U.warn(log, "Neither key nor value have property " +
-                            "[propName=" + propName + ", key=" + key + ", val=" + val + "]");
-
-                        return null;
-                    }
-                }
-
-                obj = isKeyProp0 == 1 ? key : val;
-            }
-
-            return ctx.json().field(obj, propName);
-        }
-
-        /** {@inheritDoc} */
-        @Override public String name() {
-            return propName;
-        }
-
-        /** {@inheritDoc} */
-        @Override public Class<?> type() {
-            return type;
         }
     }
 

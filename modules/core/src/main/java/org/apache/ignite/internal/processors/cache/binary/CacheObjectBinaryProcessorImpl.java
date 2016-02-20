@@ -485,7 +485,7 @@ public class CacheObjectBinaryProcessorImpl extends IgniteCacheObjectProcessorIm
             }
         }
 
-        if (obj instanceof Map && !ctx.json().jsonObject(obj)) {
+        {
             Map<Object, Object> pMap = BinaryUtils.newKnownMap(obj);
 
             if (pMap != null) {

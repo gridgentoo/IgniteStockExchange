@@ -43,15 +43,7 @@ public class IgniteJsonProcessorImpl extends GridProcessorAdapter implements Ign
 
     /** {@inheritDoc} */
     @Override public KeyCacheObject toCacheKeyObject(CacheObjectContext ctx, Object obj, boolean userObj) {
-        if (obj instanceof JsonObject) {
-            IgniteJsonObject jsonObj = (IgniteJsonObject)obj;
-
-            BinaryObject binObj = jsonObj.binaryObject();
-
-            return ctx.processor().toCacheKeyObject(ctx, binObj, userObj);
-        }
-
-        return null;
+        return (KeyCacheObject)toCacheObject(ctx, obj, userObj);
     }
 
     /** {@inheritDoc} */
@@ -63,15 +55,10 @@ public class IgniteJsonProcessorImpl extends GridProcessorAdapter implements Ign
 
             BinaryObject binObj = jsonObj.binaryObject();
 
-            return ctx.processor().toCacheObject(ctx, binObj, userObj);
+            return (CacheObject)binObj;
         }
 
         return null;
-    }
-
-    /** {@inheritDoc} */
-    @Override public boolean jsonType(Class<?> cls) {
-        return cls.equals(JsonObject.class);
     }
 
     /** {@inheritDoc} */
@@ -81,19 +68,12 @@ public class IgniteJsonProcessorImpl extends GridProcessorAdapter implements Ign
     }
 
     /** {@inheritDoc} */
-    @Override public boolean hasField(Object obj, String fieldName) {
-        return ((JsonObject)obj).containsKey(fieldName);
-    }
-
-    /** {@inheritDoc} */
-    @Override public Object field(Object obj, String fieldName) {
-        return value((JsonObject) obj, fieldName);
-    }
-
-    /** {@inheritDoc} */
     @Override public Object value(Object obj) {
-        if (obj instanceof BinaryObject)
-            return new IgniteJsonObject((BinaryObject)obj);
+        if (obj instanceof BinaryObject) {
+            assert ((BinaryObject)obj).type().typeName().equals(JsonObject.class.getName()) : obj;
+
+            return new IgniteJsonObject((BinaryObject) obj);
+        }
 
         return null;
     }

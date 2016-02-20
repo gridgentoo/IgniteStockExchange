@@ -46,23 +46,8 @@ public class IgniteJsonNoopProcessor extends GridProcessorAdapter implements Ign
     }
 
     /** {@inheritDoc} */
-    @Override public boolean jsonType(Class<?> cls) {
-        return false;
-    }
-
-    /** {@inheritDoc} */
     @Override public boolean jsonObject(Object obj) {
         return false;
-    }
-
-    /** {@inheritDoc} */
-    @Override public boolean hasField(Object obj, String fieldName) {
-        return false;
-    }
-
-    /** {@inheritDoc} */
-    @Override public Object field(Object obj, String fieldName) {
-        return null;
     }
 
     /** {@inheritDoc} */

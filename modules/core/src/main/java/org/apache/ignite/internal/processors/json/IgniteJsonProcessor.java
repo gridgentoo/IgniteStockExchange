@@ -44,30 +44,10 @@ public interface IgniteJsonProcessor extends GridProcessor {
     @Nullable public CacheObject toCacheObject(CacheObjectContext ctx, @Nullable Object obj, boolean userObj);
 
     /**
-     * @param cls Class.
-     * @return {@code True} if given type is JSON object type.
-     */
-    public boolean jsonType(Class<?> cls);
-
-    /**
      * @param obj Object.
      * @return {@code True} if given object is JSON object.
      */
     public boolean jsonObject(Object obj);
-
-    /**
-     * @param obj Object.
-     * @param fieldName Field name.
-     * @return {@code True} if field is set.
-     */
-    public boolean hasField(Object obj, String fieldName);
-
-    /**
-     * @param obj Object.
-     * @param fieldName Field name.
-     * @return Field value.
-     */
-    public Object field(Object obj, String fieldName);
 
     /**
      * @param obj Object.
