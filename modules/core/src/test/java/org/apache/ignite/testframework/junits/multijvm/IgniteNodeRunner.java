@@ -17,17 +17,6 @@
 
 package org.apache.ignite.testframework.junits.multijvm;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
 import com.thoughtworks.xstream.XStream;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCheckedException;
@@ -41,11 +30,17 @@ import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.marshaller.Marshaller;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.testframework.junits.IgniteTestResources;
-import sun.jvmstat.monitor.HostIdentifier;
-import sun.jvmstat.monitor.MonitoredHost;
-import sun.jvmstat.monitor.MonitoredVm;
-import sun.jvmstat.monitor.MonitoredVmUtil;
-import sun.jvmstat.monitor.VmIdentifier;
+
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Run ignite node.
@@ -150,31 +145,31 @@ public class IgniteNodeRunner {
      * @throws Exception If exception.
      */
     public static List<Integer> killAll() throws Exception{
-        MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(new HostIdentifier("localhost"));
-
-        Set<Integer> jvms = monitoredHost.activeVms();
+//        MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(new HostIdentifier("localhost"));
+//
+//        Set<Integer> jvms = monitoredHost.activeVms();
 
         List<Integer> res = new ArrayList<>();
 
-        for (Integer jvmId : jvms) {
-            try {
-                MonitoredVm vm = monitoredHost.getMonitoredVm(new VmIdentifier("//" + jvmId + "?mode=r"), 0);
-
-                if (IgniteNodeRunner.class.getName().equals(MonitoredVmUtil.mainClass(vm, true))) {
-                    Process killProc = U.isWindows() ?
-                        Runtime.getRuntime().exec(new String[] {"taskkill", "/pid", jvmId.toString(), "/f", "/t"}) :
-                        Runtime.getRuntime().exec(new String[] {"kill", "-9", jvmId.toString()});
-
-                    killProc.waitFor();
-
-                    res.add(jvmId);
-                }
-            }
-            catch (Exception e) {
-                // Print stack trace just for information.
-                X.printerrln("Could not kill IgniteNodeRunner java processes. Jvm pid = " + jvmId, e);
-            }
-        }
+//        for (Integer jvmId : jvms) {
+//            try {
+//                MonitoredVm vm = monitoredHost.getMonitoredVm(new VmIdentifier("//" + jvmId + "?mode=r"), 0);
+//
+//                if (IgniteNodeRunner.class.getName().equals(MonitoredVmUtil.mainClass(vm, true))) {
+//                    Process killProc = U.isWindows() ?
+//                        Runtime.getRuntime().exec(new String[] {"taskkill", "/pid", jvmId.toString(), "/f", "/t"}) :
+//                        Runtime.getRuntime().exec(new String[] {"kill", "-9", jvmId.toString()});
+//
+//                    killProc.waitFor();
+//
+//                    res.add(jvmId);
+//                }
+//            }
+//            catch (Exception e) {
+//                // Print stack trace just for information.
+//                X.printerrln("Could not kill IgniteNodeRunner java processes. Jvm pid = " + jvmId, e);
+//            }
+//        }
 
         return res;
     }
