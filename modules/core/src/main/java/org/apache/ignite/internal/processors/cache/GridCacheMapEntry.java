@@ -2620,7 +2620,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
                     oldVal = cctx.toCacheObject(cctx.unwrapTemporary(interceptRes.get2()));
             }
 
-            if (op != GridCacheOperation.UPDATE && cctx.offheapTiered() && hasValPtr) {
+            if (op != GridCacheOperation.UPDATE && cctx.offheapTiered() && hadVal) {
                 boolean rmv = cctx.swap().removeOffheap(key);
 
                 if (log.isTraceEnabled()) {
@@ -2631,7 +2631,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
                         ']');
                 }
 
-                assert rmv;
+                assert rmv || !hasValPtr;
             }
         }
 
@@ -4177,7 +4177,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
 
                     CacheObject prev = saveOldValueUnlocked(false);
 
-                    if (!hasReaders() && markObsolete0(obsoleteVer, false, null)) {
+                    if (!deletedUnlocked() && !hasReaders() && markObsolete0(obsoleteVer, false, null)) {
                         if (swap) {
                             if (!isStartVersion()) {
                                 try {
@@ -4291,6 +4291,8 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
                         ", ptr=" + offHeapPointer() +
                         ']');
                 }
+
+                assert !deletedUnlocked();
 
                 cctx.swap().removeOffheap(key());
 
