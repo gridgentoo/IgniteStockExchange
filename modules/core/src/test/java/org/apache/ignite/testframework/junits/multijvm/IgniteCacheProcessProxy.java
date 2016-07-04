@@ -197,11 +197,6 @@ public class IgniteCacheProcessProxy<K, V> implements IgniteCache<K, V> {
     }
 
     /** {@inheritDoc} */
-    @Override public int size(int partition, CachePeekMode... peekModes) throws CacheException {
-        return compute.call(new PartitionSizeTask(cacheName, isAsync, peekModes, partition, false));
-    }
-
-    /** {@inheritDoc} */
     @Override public long sizeLong(CachePeekMode... peekModes) throws CacheException {
         return compute.call(new SizeLongTask(cacheName, isAsync, peekModes, false));
     }
@@ -214,11 +209,6 @@ public class IgniteCacheProcessProxy<K, V> implements IgniteCache<K, V> {
     /** {@inheritDoc} */
     @Override public int localSize(CachePeekMode... peekModes) {
         return compute.call(new SizeTask(cacheName, isAsync, peekModes, true));
-    }
-
-    /** {@inheritDoc} */
-    @Override public int localSize(int partition, CachePeekMode... peekModes) {
-        return compute.call(new PartitionSizeTask(cacheName, isAsync, peekModes, partition,true));
     }
 
     /** {@inheritDoc} */
@@ -692,39 +682,6 @@ public class IgniteCacheProcessProxy<K, V> implements IgniteCache<K, V> {
         /** {@inheritDoc} */
         @Override public Integer call() throws Exception {
             return loc ? cache().localSize(peekModes) : cache().size(peekModes);
-        }
-    }
-
-    /**
-     *
-     */
-    private static class PartitionSizeTask extends CacheTaskAdapter<Void, Void, Integer> {
-        /** Partition. */
-        int partition;
-
-        /** Peek modes. */
-        private final CachePeekMode[] peekModes;
-
-        /** Local. */
-        private final boolean loc;
-
-        /**
-         * @param cacheName Cache name.
-         * @param async Async.
-         * @param peekModes Peek modes.
-         * @param partition partition.
-         * @param loc Local.
-         */
-        public PartitionSizeTask(String cacheName, boolean async, CachePeekMode[] peekModes, int partition, boolean loc) {
-            super(cacheName, async);
-            this.loc = loc;
-            this.peekModes = peekModes;
-            this.partition = partition;
-        }
-
-        /** {@inheritDoc} */
-        @Override public Integer call() throws Exception {
-            return loc ? cache().localSize(partition, peekModes) : cache().size(partition, peekModes);
         }
     }
 

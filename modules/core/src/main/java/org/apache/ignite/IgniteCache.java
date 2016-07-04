@@ -370,19 +370,6 @@ public interface IgniteCache<K, V> extends javax.cache.Cache<K, V>, IgniteAsyncS
     public long sizeLong(CachePeekMode... peekModes) throws CacheException;
 
     /**
-     * Gets the number of all entries cached in a partion. By default, if {@code peekModes} value isn't defined,
-     * only size of primary copies of partition will be returned. This behavior is identical to calling
-     * this method with {@link CachePeekMode#PRIMARY} peek mode.
-     * <p>
-     * NOTE: this operation is distributed and will query all participating nodes for their partition cache sizes.
-     * @param partition partition.
-     * @param peekModes Optional peek modes. If not provided, then total partition cache size is returned.
-     * @return Partition cache size across all nodes.
-     */
-    @IgniteAsyncSupported
-    public int size(int partition, CachePeekMode... peekModes) throws CacheException;
-
-    /**
      * Gets the number of all entries cached in a partition as a long value. By default, if {@code peekModes} value
      * isn't defined, only size of primary copies across all nodes will be returned. This behavior is identical to
      * calling this method with {@link CachePeekMode#PRIMARY} peek mode.
@@ -405,17 +392,6 @@ public interface IgniteCache<K, V> extends javax.cache.Cache<K, V>, IgniteAsyncS
      * @return Cache size on this node.
      */
     public int localSize(CachePeekMode... peekModes);
-
-    /**
-     * Gets the number of all entries cached on this node for the partition. By default, if {@code peekModes} value isn't defined,
-     * only size of primary copies will be returned. This behavior is identical to calling this method with
-     * {@link CachePeekMode#PRIMARY} peek mode.
-     *
-     * @param partition partition.
-     * @param peekModes Optional peek modes. If not provided, then total cache size is returned.
-     * @return Cache size on this node.
-     */
-    public int localSize(int partition, CachePeekMode... peekModes);
 
     /**
      * Gets the number of all entries cached on this node as a long value. By default, if {@code peekModes} value isn't

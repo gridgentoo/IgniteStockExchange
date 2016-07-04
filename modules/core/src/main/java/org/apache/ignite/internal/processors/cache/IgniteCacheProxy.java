@@ -858,61 +858,19 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
     }
 
     /** {@inheritDoc} */
-    @Override public int size(int partition, CachePeekMode... peekModes) throws CacheException {
+    @Override public long sizeLong(int part, CachePeekMode... peekModes) throws CacheException {
         GridCacheGateway<K, V> gate = this.gate;
 
         CacheOperationContext prev = onEnter(gate, opCtx);
 
         try {
             if (isAsync()) {
-                IgniteInternalFuture<Long> fut = delegate.sizeLongAsync(partition, peekModes);
-
-                IgniteInternalFuture<Integer> resFut = fut.chain(new C1<IgniteInternalFuture<Long>, Integer>() {
-                    @Override public Integer apply(IgniteInternalFuture<Long> res) {
-                        try {
-                            Long longRes = res.get();
-
-                            if (longRes != null && longRes > Integer.MAX_VALUE)
-                                throw new IgniteCheckedException("Size is too big " +
-                                    "(use sizeLong(...) methods instead): " + longRes);
-
-                            return longRes == null ? 0 : (int)(long)longRes;
-                        }
-                        catch (IgniteCheckedException e) {
-                            throw new GridClosureException(e);
-                        }
-                    }
-                });
-
-                setFuture(resFut);
+                setFuture(delegate.sizeLongAsync(part, peekModes));
 
                 return 0;
             }
             else
-                return castSize(delegate.sizeLong(partition, peekModes));
-        }
-        catch (IgniteCheckedException e) {
-            throw cacheException(e);
-        }
-        finally {
-            onLeave(gate, prev);
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override public long sizeLong(int partition, CachePeekMode... peekModes) throws CacheException {
-        GridCacheGateway<K, V> gate = this.gate;
-
-        CacheOperationContext prev = onEnter(gate, opCtx);
-
-        try {
-            if (isAsync()) {
-                setFuture(delegate.sizeLongAsync(partition, peekModes));
-
-                return 0;
-            }
-            else
-                return delegate.sizeLong(partition, peekModes);
+                return delegate.sizeLong(part, peekModes);
         }
         catch (IgniteCheckedException e) {
             throw cacheException(e);
@@ -940,23 +898,6 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
     }
 
     /** {@inheritDoc} */
-    @Override public int localSize(int partition, CachePeekMode... peekModes) {
-        GridCacheGateway<K, V> gate = this.gate;
-
-        CacheOperationContext prev = onEnter(gate, opCtx);
-
-        try {
-            return castSize(delegate.localSizeLong(partition, peekModes));
-        }
-        catch (IgniteCheckedException e) {
-            throw cacheException(e);
-        }
-        finally {
-            onLeave(gate, prev);
-        }
-    }
-
-    /** {@inheritDoc} */
     @Override public long localSizeLong(CachePeekMode... peekModes) {
         GridCacheGateway<K, V> gate = this.gate;
 
@@ -974,13 +915,13 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
     }
 
     /** {@inheritDoc} */
-    @Override public long localSizeLong(int partition, CachePeekMode... peekModes) {
+    @Override public long localSizeLong(int part, CachePeekMode... peekModes) {
         GridCacheGateway<K, V> gate = this.gate;
 
         CacheOperationContext prev = onEnter(gate, opCtx);
 
         try {
-            return delegate.localSizeLong(partition, peekModes);
+            return delegate.localSizeLong(part, peekModes);
         }
         catch (IgniteCheckedException e) {
             throw cacheException(e);
@@ -2242,13 +2183,6 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
         catch (IgniteCheckedException e) {
             throw cacheException(e);
         }
-    }
-
-    private int castSize(long size) throws CacheException {
-        if (size > Integer.MAX_VALUE)
-            throw new CacheException("Size is too big (use sizeLong(...) methods instead): " + size);
-
-        return (int)size;
     }
 
     /** {@inheritDoc} */
