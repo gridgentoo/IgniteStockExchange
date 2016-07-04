@@ -75,6 +75,7 @@ import org.apache.ignite.internal.util.lang.GridClosureException;
 import org.apache.ignite.internal.util.lang.IgniteOutClosureX;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.C1;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CX1;
 import org.apache.ignite.internal.util.typedef.internal.A;
@@ -864,12 +865,31 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
 
         try {
             if (isAsync()) {
-                setFuture(delegate.sizeAsync(partition, peekModes));
+                IgniteInternalFuture<Long> fut = delegate.sizeLongAsync(partition, peekModes);
+
+                IgniteInternalFuture<Integer> resFut = fut.chain(new C1<IgniteInternalFuture<Long>, Integer>() {
+                    @Override public Integer apply(IgniteInternalFuture<Long> res) {
+                        try {
+                            Long longRes = res.get();
+
+                            if (longRes != null && longRes > Integer.MAX_VALUE)
+                                throw new IgniteCheckedException("Size is too big " +
+                                    "(use sizeLong(...) methods instead): " + longRes);
+
+                            return longRes == null ? 0 : (int)(long)longRes;
+                        }
+                        catch (IgniteCheckedException e) {
+                            throw new GridClosureException(e);
+                        }
+                    }
+                });
+
+                setFuture(resFut);
 
                 return 0;
             }
             else
-                return delegate.size(partition, peekModes);
+                return castSize(delegate.sizeLong(partition, peekModes));
         }
         catch (IgniteCheckedException e) {
             throw cacheException(e);
@@ -926,7 +946,7 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
         CacheOperationContext prev = onEnter(gate, opCtx);
 
         try {
-            return delegate.localSize(partition, peekModes);
+            return castSize(delegate.localSizeLong(partition, peekModes));
         }
         catch (IgniteCheckedException e) {
             throw cacheException(e);
@@ -2222,6 +2242,13 @@ public class IgniteCacheProxy<K, V> extends AsyncSupportAdapter<IgniteCache<K, V
         catch (IgniteCheckedException e) {
             throw cacheException(e);
         }
+    }
+
+    private int castSize(long size) throws CacheException {
+        if (size > Integer.MAX_VALUE)
+            throw new CacheException("Size is too big (use sizeLong(...) methods instead): " + size);
+
+        return (int)size;
     }
 
     /** {@inheritDoc} */

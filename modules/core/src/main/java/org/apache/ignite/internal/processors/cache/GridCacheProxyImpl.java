@@ -1460,18 +1460,6 @@ public class GridCacheProxyImpl<K, V> implements IgniteInternalCache<K, V>, Exte
     }
 
     /** {@inheritDoc} */
-    @Override public int size(int partition, CachePeekMode[] peekModes) throws IgniteCheckedException {
-        CacheOperationContext prev = gate.enter(opCtx);
-
-        try {
-            return delegate.size(partition, peekModes);
-        }
-        finally {
-            gate.leave(prev);
-        }
-    }
-
-    /** {@inheritDoc} */
     @Override public long sizeLong(CachePeekMode[] peekModes) throws IgniteCheckedException {
         CacheOperationContext prev = gate.enter(opCtx);
 
@@ -1508,18 +1496,6 @@ public class GridCacheProxyImpl<K, V> implements IgniteInternalCache<K, V>, Exte
     }
 
     /** {@inheritDoc} */
-    @Override public IgniteInternalFuture<Integer> sizeAsync(int partition, CachePeekMode[] peekModes) {
-        CacheOperationContext prev = gate.enter(opCtx);
-
-        try {
-            return delegate.sizeAsync(partition, peekModes);
-        }
-        finally {
-            gate.leave(prev);
-        }
-    }
-
-    /** {@inheritDoc} */
     @Override public IgniteInternalFuture<Long> sizeLongAsync(CachePeekMode[] peekModes) {
         CacheOperationContext prev = gate.enter(opCtx);
 
@@ -1549,18 +1525,6 @@ public class GridCacheProxyImpl<K, V> implements IgniteInternalCache<K, V>, Exte
 
         try {
             return delegate.localSize(peekModes);
-        }
-        finally {
-            gate.leave(prev);
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override public int localSize(int partition, CachePeekMode[] peekModes) throws IgniteCheckedException {
-        CacheOperationContext prev = gate.enter(opCtx);
-
-        try {
-            return delegate.localSize(partition, peekModes);
         }
         finally {
             gate.leave(prev);
