@@ -752,7 +752,7 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
         final int PUT_KEYS = 10;
 
-        int partition = nodeIdx;
+        int part = nodeIdx;
 
         List<Integer> keys = null;
 
@@ -763,29 +763,28 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
                 for (Integer key : keys)
                     cache0.put(key, String.valueOf(key));
 
-                int partitionSize = 0;
+                int partSize = 0;
 
                 for (Integer key :keys){
-                    int keyPartition = ignite(nodeIdx).affinity(null).partition(key);
-                    if(keyPartition == partition){
-                        partitionSize++;
-                    }
+                    int keyPart = ignite(nodeIdx).affinity(null).partition(key);
+                    if(keyPart == part)
+                        partSize++;
                 }
 
                 assertEquals(PUT_KEYS, cache0.localSize(BACKUP));
                 assertEquals(PUT_KEYS, cache0.localSize(ALL));
-                assertEquals(partitionSize, cache0.localSizeLong(partition, BACKUP));
-                assertEquals(partitionSize, cache0.localSizeLong(partition, ALL));
-                assertEquals(0, cache0.localSizeLong(partition, PRIMARY));
-                assertEquals(0, cache0.localSizeLong(partition, NEAR));
+                assertEquals(partSize, cache0.localSizeLong(part, BACKUP));
+                assertEquals(partSize, cache0.localSizeLong(part, ALL));
+                assertEquals(0, cache0.localSizeLong(part, PRIMARY));
+                assertEquals(0, cache0.localSizeLong(part, NEAR));
 
                 for (int i = 0; i < gridCount(); i++) {
                     IgniteCache<Integer, String> cache = jcache(i);
                     assertEquals(0, cache.size(NEAR));
-                    assertEquals(partitionSize, cache.sizeLong(partition, PRIMARY));
-                    assertEquals(partitionSize * (gridCount() - 1), cache.sizeLong(partition, BACKUP));
-                    assertEquals(partitionSize * gridCount(), cache.sizeLong(partition, PRIMARY, BACKUP));
-                    assertEquals(partitionSize * gridCount(), cache.sizeLong(partition, ALL)); // Primary + backups.
+                    assertEquals(partSize, cache.sizeLong(part, PRIMARY));
+                    assertEquals(partSize * (gridCount() - 1), cache.sizeLong(part, BACKUP));
+                    assertEquals(partSize * gridCount(), cache.sizeLong(part, PRIMARY, BACKUP));
+                    assertEquals(partSize * gridCount(), cache.sizeLong(part, ALL)); // Primary + backups.
                 }
             }
             else {
@@ -794,41 +793,40 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
                 for (Integer key : keys)
                     cache0.put(key, String.valueOf(key));
 
-                int partitionSize = 0;
+                int partSize = 0;
 
                 for (Integer key :keys){
-                    int keyPartition = ignite(nodeIdx).affinity(null).partition(key);
-                    if(keyPartition == partition){
-                        partitionSize++;
-                    }
+                    int keyPart = ignite(nodeIdx).affinity(null).partition(key);
+                    if(keyPart == part)
+                        partSize++;
                 }
 
                 if (hasNearCache()) {
                     assertEquals(0, cache0.localSize());
-                    assertEquals(0, cache0.localSizeLong(partition, ALL));
-                    assertEquals(0, cache0.localSizeLong(partition, NEAR));
+                    assertEquals(0, cache0.localSizeLong(part, ALL));
+                    assertEquals(0, cache0.localSizeLong(part, NEAR));
 
                     for (int i = 0; i < gridCount(); i++) {
                         IgniteCache<Integer, String> cache = jcache(i);
 
-                        assertEquals(0, cache.sizeLong(partition, NEAR));
-                        assertEquals(partitionSize, cache.sizeLong(partition, BACKUP));
-                        assertEquals(partitionSize * 2, cache.sizeLong(partition, PRIMARY, BACKUP));
-                        assertEquals(partitionSize * 2, cache.sizeLong(partition, ALL)); // Primary + backups + near.
+                        assertEquals(0, cache.sizeLong(part, NEAR));
+                        assertEquals(partSize, cache.sizeLong(part, BACKUP));
+                        assertEquals(partSize * 2, cache.sizeLong(part, PRIMARY, BACKUP));
+                        assertEquals(partSize * 2, cache.sizeLong(part, ALL)); // Primary + backups + near.
                     }
                 }
                 else {
                     assertEquals(0, cache0.localSize());
                     //assertEquals(partitionSize, cache0.localSizeLong(partition, ALL));
-                    assertEquals(0, cache0.localSizeLong(partition, NEAR));
+                    assertEquals(0, cache0.localSizeLong(part, NEAR));
 
                     for (int i = 0; i < gridCount(); i++) {
                         IgniteCache<Integer, String> cache = jcache(i);
 
                         assertEquals(0, cache.size(NEAR));
-                        assertEquals(partitionSize, cache.sizeLong(partition, BACKUP));
-                        assertEquals(partitionSize * 2, cache.sizeLong(partition, PRIMARY, BACKUP));
-                        assertEquals(partitionSize * 2, cache.sizeLong(partition, ALL)); // Primary + backups.
+                        assertEquals(partSize, cache.sizeLong(part, BACKUP));
+                        assertEquals(partSize * 2, cache.sizeLong(part, PRIMARY, BACKUP));
+                        assertEquals(partSize * 2, cache.sizeLong(part, ALL)); // Primary + backups.
                     }
                 }
 
@@ -850,19 +848,19 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
                 int backups = 0;
 
                 for (Integer key : keys) {
-                    if (aff.isPrimary(node, key) && aff.partition(key) == partition)
+                    if (aff.isPrimary(node, key) && aff.partition(key) == part)
                         primary++;
-                    else if (aff.isBackup(node, key) && aff.partition(key) == partition)
+                    else if (aff.isBackup(node, key) && aff.partition(key) == part)
                         backups++;
                 }
 
                 IgniteCache<Integer, String> cache = jcache(i);
 
-                assertEquals(primary, cache.localSizeLong(partition, PRIMARY));
-                assertEquals(backups, cache.localSizeLong(partition, BACKUP));
-                assertEquals(primary + backups, cache.localSizeLong(partition, PRIMARY, BACKUP));
-                assertEquals(primary + backups, cache.localSizeLong(partition, BACKUP, PRIMARY));
-                assertEquals(primary + backups, cache.localSizeLong(partition, ALL));
+                assertEquals(primary, cache.localSizeLong(part, PRIMARY));
+                assertEquals(backups, cache.localSizeLong(part, BACKUP));
+                assertEquals(primary + backups, cache.localSizeLong(part, PRIMARY, BACKUP));
+                assertEquals(primary + backups, cache.localSizeLong(part, BACKUP, PRIMARY));
+                assertEquals(primary + backups, cache.localSizeLong(part, ALL));
             }
 
             cache0.remove(keys.get(0));
@@ -877,22 +875,22 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
             ClusterNode node = ignite(nodeIdx).cluster().localNode();
 
             for (Integer key : keys) {
-                if (aff.isPrimary(node, key) && aff.partition(key) == partition)
+                if (aff.isPrimary(node, key) && aff.partition(key) == part)
                     primary++;
-                else if (aff.isBackup(node, key) && aff.partition(key) == partition)
+                else if (aff.isBackup(node, key) && aff.partition(key) == part)
                     backups++;
             }
 
             if (cacheMode() == REPLICATED) {
-                assertEquals(primary+backups, cache0.localSizeLong(partition, ALL));
-                assertEquals(primary, cache0.localSizeLong(partition, PRIMARY));
-                assertEquals(backups, cache0.localSizeLong(partition, BACKUP));
+                assertEquals(primary+backups, cache0.localSizeLong(part, ALL));
+                assertEquals(primary, cache0.localSizeLong(part, PRIMARY));
+                assertEquals(backups, cache0.localSizeLong(part, BACKUP));
             }
             else {
                 if (hasNearCache())
-                    assertEquals(0, cache0.localSizeLong(partition, ALL));
+                    assertEquals(0, cache0.localSizeLong(part, ALL));
                 else
-                    assertEquals(0, cache0.localSizeLong(partition, ALL));
+                    assertEquals(0, cache0.localSizeLong(part, ALL));
             }
         }
         finally {
@@ -962,10 +960,10 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
     /**
      * @param nodeIdx Node index.
-     * @param partition Cache partition.
+     * @param part Cache partition.
      * @return Tuple with primary and backup keys.
      */
-    private T2<List<Integer>, List<Integer>> swapKeys(int nodeIdx, int partition) {
+    private T2<List<Integer>, List<Integer>> swapKeys(int nodeIdx, int part) {
         SwapSpaceSpi swap = ignite(nodeIdx).configuration().getSwapSpaceSpi();
 
         IgniteSpiCloseableIterator<KeyCacheObject> it = swap.keyIterator(SPACE_NAME, null);
@@ -985,9 +983,9 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
         while (it.hasNext()) {
             Integer key = it.next().value(coctx, false);
 
-            if (aff.isPrimary(node, key) && aff.partition(key) == partition)
+            if (aff.isPrimary(node, key) && aff.partition(key) == part)
                 primary.add(key);
-            else if (aff.isBackup(node, key) &&  aff.partition(key) == partition)
+            else if (aff.isBackup(node, key) &&  aff.partition(key) == part)
                 backups.add(key);
         }
 
@@ -1006,11 +1004,11 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
     /**
      * @param nodeIdx Node index.
-     * @param partition Cache partition
+     * @param part Cache partition
      * @return Tuple with number of primary and backup keys.
      */
-    private T2<Integer, Integer> swapKeysCount(int nodeIdx, int partition) {
-        T2<List<Integer>, List<Integer>> keys = swapKeys(nodeIdx, partition);
+    private T2<Integer, Integer> swapKeysCount(int nodeIdx, int part) {
+        T2<List<Integer>, List<Integer>> keys = swapKeys(nodeIdx, part);
 
         return new T2<>(keys.get1().size(), keys.get2().size());
     }
@@ -1054,10 +1052,10 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
     /**
      * @param nodeIdx Node index.
-     * @param partition Cache partition.
+     * @param part Cache partition.
      * @return Tuple with primary and backup keys.
      */
-    private T2<List<Integer>, List<Integer>> offheapKeys(int nodeIdx, int partition) {
+    private T2<List<Integer>, List<Integer>> offheapKeys(int nodeIdx, int part) {
         GridCacheAdapter<Integer, String> internalCache =
                 ((IgniteKernal)ignite(nodeIdx)).context().cache().internalCache();
 
@@ -1078,9 +1076,9 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
         while (offheapIt.hasNext()) {
             Map.Entry<Integer, String> e = offheapIt.next();
 
-            if (aff.isPrimary(node, e.getKey()) && aff.partition(e.getKey()) == partition)
+            if (aff.isPrimary(node, e.getKey()) && aff.partition(e.getKey()) == part)
                 primary.add(e.getKey());
-            else if (aff.isBackup(node, e.getKey()) && aff.partition(e.getKey()) == partition)
+            else if (aff.isBackup(node, e.getKey()) && aff.partition(e.getKey()) == part)
                 backups.add(e.getKey());
         }
 
@@ -1099,11 +1097,11 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
     /**
      * @param nodeIdx Node index.
-     * @param partition Cache partition.
+     * @param part Cache partition.
      * @return Tuple with number of primary and backup keys.
      */
-    private T2<Integer, Integer> offheapKeysCount(int nodeIdx, int partition) {
-        T2<List<Integer>, List<Integer>> keys = offheapKeys(nodeIdx, partition);
+    private T2<Integer, Integer> offheapKeysCount(int nodeIdx, int part) {
+        T2<List<Integer>, List<Integer>> keys = offheapKeys(nodeIdx, part);
 
         return new T2<>(keys.get1().size(), keys.get2().size());
     }
@@ -1236,7 +1234,7 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
     private void checkPartitionSizeStorageFilter(int nodeIdx) throws Exception {
         IgniteCache<Integer, String> cache0 = jcache(nodeIdx);
 
-        int partition = nodeIdx;
+        int part = nodeIdx;
 
         List<Integer> primaryKeys = primaryKeys(cache0, 100, 10_000);
         List<Integer> backupKeys = backupKeys(cache0, 100, 10_000);
@@ -1252,9 +1250,9 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
             int totalKeys = 200;
 
-            T2<Integer, Integer> swapKeys = swapKeysCount(nodeIdx, partition);
+            T2<Integer, Integer> swapKeys = swapKeysCount(nodeIdx, part);
 
-            T2<Integer, Integer> offheapKeys = offheapKeysCount(nodeIdx, partition);
+            T2<Integer, Integer> offheapKeys = offheapKeysCount(nodeIdx, part);
 
             int totalSwap = swapKeys.get1() + swapKeys.get2();
             int totalOffheap = offheapKeys.get1() + offheapKeys.get2();
@@ -1265,35 +1263,35 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
             assertEquals(primaryKeys.size(), cache0.localSize());
             assertEquals(totalKeys, cache0.localSize(ALL));
-            assertEquals(totalOffheap, cache0.localSizeLong(partition, PRIMARY, BACKUP, NEAR, OFFHEAP));
-            assertEquals(totalSwap, cache0.localSizeLong(partition, PRIMARY, BACKUP, NEAR, SWAP));
-            assertEquals((long) swapKeys.get1(), cache0.localSizeLong(partition, SWAP, PRIMARY));
-            assertEquals((long) swapKeys.get2(), cache0.localSizeLong(partition, SWAP, BACKUP));
+            assertEquals(totalOffheap, cache0.localSizeLong(part, PRIMARY, BACKUP, NEAR, OFFHEAP));
+            assertEquals(totalSwap, cache0.localSizeLong(part, PRIMARY, BACKUP, NEAR, SWAP));
+            assertEquals((long)swapKeys.get1(), cache0.localSizeLong(part, SWAP, PRIMARY));
+            assertEquals((long)swapKeys.get2(), cache0.localSizeLong(part, SWAP, BACKUP));
 
-            assertEquals((long) offheapKeys.get1(), cache0.localSizeLong(partition, OFFHEAP, PRIMARY));
-            assertEquals((long) offheapKeys.get2(), cache0.localSizeLong(partition, OFFHEAP, BACKUP));
+            assertEquals((long)offheapKeys.get1(), cache0.localSizeLong(part, OFFHEAP, PRIMARY));
+            assertEquals((long)offheapKeys.get2(), cache0.localSizeLong(part, OFFHEAP, BACKUP));
 
-            assertEquals(swapKeys.get1() + offheapKeys.get1(), cache0.localSizeLong(partition, SWAP, OFFHEAP, PRIMARY));
-            assertEquals(swapKeys.get2() + offheapKeys.get2(), cache0.localSizeLong(partition, SWAP, OFFHEAP, BACKUP));
+            assertEquals(swapKeys.get1() + offheapKeys.get1(), cache0.localSizeLong(part, SWAP, OFFHEAP, PRIMARY));
+            assertEquals(swapKeys.get2() + offheapKeys.get2(), cache0.localSizeLong(part, SWAP, OFFHEAP, BACKUP));
 
-            assertEquals(totalSwap + totalOffheap, cache0.localSizeLong(partition, PRIMARY, BACKUP, NEAR, SWAP, OFFHEAP));
+            assertEquals(totalSwap + totalOffheap, cache0.localSizeLong(part, PRIMARY, BACKUP, NEAR, SWAP, OFFHEAP));
 
             int globalParitionSwapPrimary = 0;
-            int globalPartitionSwapBackup = 0;
+            int globalPartSwapBackup = 0;
 
-            int globalPartitionOffheapPrimary = 0;
-            int globalPartitionOffheapBackup = 0;
+            int globalPartOffheapPrimary = 0;
+            int globalPartOffheapBackup = 0;
 
             for (int i = 0; i < gridCount(); i++) {
-                T2<Integer, Integer> swap = swapKeysCount(i, partition);
+                T2<Integer, Integer> swap = swapKeysCount(i, part);
 
                 globalParitionSwapPrimary += swap.get1();
-                globalPartitionSwapBackup += swap.get2();
+                globalPartSwapBackup += swap.get2();
 
-                T2<Integer, Integer> offheap = offheapKeysCount(i, partition);
+                T2<Integer, Integer> offheap = offheapKeysCount(i, part);
 
-                globalPartitionOffheapPrimary += offheap.get1();
-                globalPartitionOffheapBackup += offheap.get2();
+                globalPartOffheapPrimary += offheap.get1();
+                globalPartOffheapBackup += offheap.get2();
             }
 
             int backups;
@@ -1306,12 +1304,12 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
                 backups = gridCount() - 1;
 
             int globalTotal = totalKeys + totalKeys * backups;
-            int globalPartitionTotalSwap = globalParitionSwapPrimary + globalPartitionSwapBackup;
-            int globalPartitionTotalOffheap = globalPartitionOffheapPrimary + globalPartitionOffheapBackup;
+            int globalPartTotalSwap = globalParitionSwapPrimary + globalPartSwapBackup;
+            int globalPartTotalOffheap = globalPartOffheapPrimary + globalPartOffheapBackup;
 
             log.info("Global keys [total=" + globalTotal +
-                    ", offheap=" + globalPartitionTotalOffheap +
-                    ", swap=" + globalPartitionTotalSwap + ']');
+                    ", offheap=" + globalPartTotalOffheap +
+                    ", swap=" + globalPartTotalSwap + ']');
 
             for (int i = 0; i < gridCount(); i++) {
                 IgniteCache<Integer, String> cache = jcache(i);
@@ -1321,17 +1319,17 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
                 assertEquals(globalTotal, cache.size(PRIMARY, BACKUP, NEAR, ONHEAP, OFFHEAP, SWAP));
                 assertEquals(globalTotal, cache.size(ONHEAP, OFFHEAP, SWAP, PRIMARY, BACKUP));
 
-                assertEquals(globalPartitionTotalSwap, cache.sizeLong(partition, PRIMARY, BACKUP, NEAR, SWAP));
-                assertEquals(globalParitionSwapPrimary, cache.sizeLong(partition, SWAP, PRIMARY));
-                assertEquals(globalPartitionSwapBackup, cache.sizeLong(partition, SWAP, BACKUP));
+                assertEquals(globalPartTotalSwap, cache.sizeLong(part, PRIMARY, BACKUP, NEAR, SWAP));
+                assertEquals(globalParitionSwapPrimary, cache.sizeLong(part, SWAP, PRIMARY));
+                assertEquals(globalPartSwapBackup, cache.sizeLong(part, SWAP, BACKUP));
 
-                assertEquals(globalPartitionTotalOffheap, cache.sizeLong(partition, PRIMARY, BACKUP, NEAR, OFFHEAP));
-                assertEquals(globalPartitionOffheapPrimary, cache.sizeLong(partition, OFFHEAP, PRIMARY));
-                assertEquals(globalPartitionOffheapBackup, cache.sizeLong(partition, OFFHEAP, BACKUP));
+                assertEquals(globalPartTotalOffheap, cache.sizeLong(part, PRIMARY, BACKUP, NEAR, OFFHEAP));
+                assertEquals(globalPartOffheapPrimary, cache.sizeLong(part, OFFHEAP, PRIMARY));
+                assertEquals(globalPartOffheapBackup, cache.sizeLong(part, OFFHEAP, BACKUP));
 
-                assertEquals(globalPartitionTotalSwap + globalPartitionTotalOffheap, cache.sizeLong(partition, PRIMARY, BACKUP, NEAR, SWAP, OFFHEAP));
-                assertEquals(globalParitionSwapPrimary + globalPartitionOffheapPrimary, cache.sizeLong(partition, SWAP, OFFHEAP, PRIMARY));
-                assertEquals(globalPartitionSwapBackup + globalPartitionOffheapBackup, cache.sizeLong(partition, SWAP, OFFHEAP, BACKUP));
+                assertEquals(globalPartTotalSwap + globalPartTotalOffheap, cache.sizeLong(part, PRIMARY, BACKUP, NEAR, SWAP, OFFHEAP));
+                assertEquals(globalParitionSwapPrimary + globalPartOffheapPrimary, cache.sizeLong(part, SWAP, OFFHEAP, PRIMARY));
+                assertEquals(globalPartSwapBackup + globalPartOffheapBackup, cache.sizeLong(part, SWAP, OFFHEAP, BACKUP));
             }
         }
         finally {

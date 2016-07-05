@@ -3897,7 +3897,12 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
 
         ClusterGroup grp = modes.near ? cluster.forCacheNodes(name(), true, true, false) : cluster.forDataNodes(name());
 
-        Collection<ClusterNode> nodes = grp.nodes();
+        Collection<ClusterNode> nodes = grp.forPredicate(new IgnitePredicate<ClusterNode>() {
+            /** {@inheritDoc} */
+            @Override public boolean apply(ClusterNode clusterNode) {
+                return clusterNode.version().compareTo(PartitionSizeLongTask.SINCE_VER) >= 0;
+            }
+        }).nodes();
 
         if (nodes.isEmpty())
             return new GridFinishedFuture<>(0L);
@@ -3962,7 +3967,7 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
     }
 
     /** {@inheritDoc} */
-    @Override public long localSizeLong(int partition, CachePeekMode[] peekModes) throws IgniteCheckedException {
+    @Override public long localSizeLong(int part, CachePeekMode[] peekModes) throws IgniteCheckedException {
         PeekModes modes = parsePeekModes(peekModes, true);
 
         long size = 0;
@@ -3986,17 +3991,17 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
                 size += swapMgr.offheapEntriesCount(0);
         }
         else {
-            GridDhtLocalPartition part = ctx.topology().localPartition(partition, topVer, false);
+            GridDhtLocalPartition dhtPart = ctx.topology().localPartition(part, topVer, false);
 
-            if (part != null) {
-                if (modes.primary && part.primary(topVer) || modes.backup && part.backup(topVer)) {
-                    size += part.publicSize();
+            if (dhtPart != null) {
+                if (modes.primary && dhtPart.primary(topVer) || modes.backup && dhtPart.backup(topVer)) {
+                    size += dhtPart.publicSize();
 
                     if (modes.swap)
-                        size += swapMgr.swapEntriesCount(partition);
+                        size += swapMgr.swapEntriesCount(part);
 
                     if (modes.offheap)
-                        size += swapMgr.offheapEntriesCount(partition);
+                        size += swapMgr.offheapEntriesCount(part);
                 }
             }
         }
@@ -6635,6 +6640,9 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
     private static class PartitionSizeLongTask extends ComputeTaskAdapter<Object, Long> {
         /** */
         private static final long serialVersionUID = 0L;
+
+        /** */
+        private static final IgniteProductVersion SINCE_VER = IgniteProductVersion.fromString("1.6.2");
 
         /** Partition */
         private final int partition;
