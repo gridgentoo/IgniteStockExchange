@@ -514,7 +514,7 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
             for (int i = 0; i < HEAP_ENTRIES; i++) {
                 cache0.put(i, String.valueOf(i));
 
-                final int size = i + 1;
+                final long size = i + 1;
 
                 assertEquals(size, cache0.localSize());
                 assertEquals(size, cache0.localSizeLong(partition, PRIMARY));
@@ -530,7 +530,7 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
                 cacheAsync0.size();
 
-                assertEquals(size, cacheAsync0.future().get());
+                assertEquals(size, (long)cacheAsync0.<Integer>future().get());
 
                 cacheAsync0.sizeLong(partition, PRIMARY);
 
@@ -556,7 +556,7 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
                 cacheAsync0.size();
 
-                assertEquals(size, cacheAsync0.future().get());
+                assertEquals(size, (long)cacheAsync0.<Integer>future().get());
             }
 
             checkEmpty();
