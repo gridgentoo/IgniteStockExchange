@@ -3906,7 +3906,7 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         Collection<ClusterNode> nodes = grp.forPredicate(new IgnitePredicate<ClusterNode>() {
             /** {@inheritDoc} */
             @Override public boolean apply(ClusterNode clusterNode) {
-                return clusterNode.version().compareTo(PartitionSizeLongTask.SINCE_VER) > 0 &&
+                return clusterNode.version().compareTo(PartitionSizeLongTask.SINCE_VER) >= 0 &&
                     ((modes.primary && aff.primary(clusterNode, part, topVer)) ||
                         (modes.backup && aff.backup(clusterNode, part, topVer)));
             }
@@ -4006,17 +4006,11 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
                     if (modes.heap)
                         size += dhtPart.publicSize();
 
-//                    U.debug(log, "Size on [node=" + ctx.localNodeId() + ", size=" + size + ']');
-
                     if (modes.swap)
                         size += swapMgr.swapEntriesCount(part);
 
-//                    U.debug(log, "Size after swap on [node=" + ctx.localNodeId() + ", size=" + size + ']');
-
                     if (modes.offheap)
                         size += swapMgr.offheapEntriesCount(part);
-
-//                    U.debug(log, "Size after offheap on [node=" + ctx.localNodeId() + ", size=" + size + ']');
                 }
             }
         }
