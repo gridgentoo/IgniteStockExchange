@@ -505,118 +505,136 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
     /**
      * @throws Exception If failed.
      */
-    public void testPartitionSize() throws Exception {
+    public void testLocalPartitionSize() throws Exception {
+        if (cacheMode() != LOCAL)
+            return;
+
         awaitPartitionMapExchange();
         checkEmpty();
-        int partition = 0;
-        if (cacheMode() == LOCAL) {
-            IgniteCache<Integer, String> cache0 = jcache(0);
+        int part = 0;
+        IgniteCache<Integer, String> cache0 = jcache(0);
 
-            IgniteCache<Integer, String> cacheAsync0 = cache0.withAsync();
+        IgniteCache<Integer, String> cacheAsync0 = cache0.withAsync();
 
-            for (int i = 0; i < HEAP_ENTRIES; i++) {
-                cache0.put(i, String.valueOf(i));
+        for (int i = 0; i < HEAP_ENTRIES; i++) {
+            cache0.put(i, String.valueOf(i));
 
-                final long size = i + 1;
+            final long size = i + 1;
 
-                assertEquals(size, cache0.localSize());
-                assertEquals(size, cache0.localSizeLong(partition, PRIMARY));
-                assertEquals(size, cache0.localSizeLong(partition, BACKUP));
-                assertEquals(size, cache0.localSizeLong(partition, NEAR));
-                assertEquals(size, cache0.localSizeLong(partition, ALL));
+            assertEquals(size, cache0.localSize());
+            assertEquals(size, cache0.localSizeLong(part, PRIMARY));
+            assertEquals(size, cache0.localSizeLong(part, BACKUP));
+            assertEquals(size, cache0.localSizeLong(part, NEAR));
+            assertEquals(size, cache0.localSizeLong(part, ALL));
 
-                assertEquals(size, cache0.size());
-                assertEquals(size, cache0.sizeLong(partition, PRIMARY));
-                assertEquals(size, cache0.sizeLong(partition, BACKUP));
-                assertEquals(size, cache0.sizeLong(partition, NEAR));
-                assertEquals(size, cache0.sizeLong(partition, ALL));
+            assertEquals(size, cache0.size());
+            assertEquals(size, cache0.sizeLong(part, PRIMARY));
+            assertEquals(size, cache0.sizeLong(part, BACKUP));
+            assertEquals(size, cache0.sizeLong(part, NEAR));
+            assertEquals(size, cache0.sizeLong(part, ALL));
 
-                cacheAsync0.size();
+            cacheAsync0.size();
 
-                assertEquals(size, (long)cacheAsync0.<Integer>future().get());
+            assertEquals(size, (long) cacheAsync0.<Integer>future().get());
 
-                cacheAsync0.sizeLong(partition, PRIMARY);
+            cacheAsync0.sizeLong(part, PRIMARY);
 
-                assertEquals(size, cacheAsync0.future().get());
-            }
-
-            for (int i = 0; i < HEAP_ENTRIES; i++) {
-                cache0.remove(i, String.valueOf(i));
-
-                final int size = HEAP_ENTRIES - i - 1;
-
-                assertEquals(size, cache0.localSize());
-                assertEquals(size, cache0.localSizeLong(partition, PRIMARY));
-                assertEquals(size, cache0.localSizeLong(partition, BACKUP));
-                assertEquals(size, cache0.localSizeLong(partition, NEAR));
-                assertEquals(size, cache0.localSizeLong(partition, ALL));
-
-                assertEquals(size, cache0.size());
-                assertEquals(size, cache0.sizeLong(partition, PRIMARY));
-                assertEquals(size, cache0.sizeLong(partition, BACKUP));
-                assertEquals(size, cache0.sizeLong(partition, NEAR));
-                assertEquals(size, cache0.sizeLong(partition, ALL));
-
-                cacheAsync0.size();
-
-                assertEquals(size, (long)cacheAsync0.<Integer>future().get());
-            }
-
-            checkEmpty();
-
-            Set<Integer> keys = new HashSet<>();
-
-            for (int i = 0; i < 200; i++) {
-                cache0.put(i, "test_val");
-
-                keys.add(i);
-            }
-
-            try {
-                int totalKeys = 200;
-
-                T2<Integer, Integer> swapKeys = swapKeysCount(0);
-
-                T2<Integer, Integer> offheapKeys = offheapKeysCount(0);
-
-                int totalSwap = swapKeys.get1() + swapKeys.get2();
-                int totalOffheap = offheapKeys.get1() + offheapKeys.get2();
-
-                log.info("Keys [total=" + totalKeys + ", offheap=" + offheapKeys + ", swap=" + swapKeys + ']');
-
-                assertTrue(totalSwap + totalOffheap < totalKeys);
-
-                assertEquals(totalKeys, cache0.localSize());
-                assertEquals(totalKeys, cache0.localSizeLong(partition, ALL));
-
-                assertEquals(totalOffheap, cache0.localSizeLong(partition, OFFHEAP));
-                assertEquals(totalSwap, cache0.localSizeLong(partition, SWAP));
-                assertEquals(totalKeys - (totalSwap + totalOffheap), cache0.localSizeLong(partition, ONHEAP));
-
-                assertEquals(totalOffheap, cache0.sizeLong(partition, OFFHEAP));
-                assertEquals(totalSwap, cache0.sizeLong(partition, SWAP));
-                assertEquals(totalKeys - (totalSwap + totalOffheap), cache0.sizeLong(partition, ONHEAP));
-
-                assertEquals(totalOffheap, cache0.localSizeLong(partition, OFFHEAP, PRIMARY));
-                assertEquals(totalSwap, cache0.localSizeLong(partition, SWAP, PRIMARY));
-                assertEquals(totalKeys - (totalSwap + totalOffheap), cache0.localSizeLong(partition, ONHEAP, PRIMARY));
-
-                assertEquals(totalOffheap, cache0.localSizeLong(partition, OFFHEAP, BACKUP));
-                assertEquals(totalSwap, cache0.localSizeLong(partition, SWAP, BACKUP));
-                assertEquals(totalKeys - (totalSwap + totalOffheap), cache0.localSizeLong(partition, ONHEAP, BACKUP));
-            }
-            finally {
-                cache0.removeAll(keys);
-            }
+            assertEquals(size, cacheAsync0.future().get());
         }
-        else {
-            checkPartitionSizeAffinityFilter(0);
 
-            checkPartitionSizeAffinityFilter(1);
+        for (int i = 0; i < HEAP_ENTRIES; i++) {
+            cache0.remove(i, String.valueOf(i));
 
-            checkPartitionSizeStorageFilter(0);
+            final int size = HEAP_ENTRIES - i - 1;
 
-            checkPartitionSizeStorageFilter(1);
+            assertEquals(size, cache0.localSize());
+            assertEquals(size, cache0.localSizeLong(part, PRIMARY));
+            assertEquals(size, cache0.localSizeLong(part, BACKUP));
+            assertEquals(size, cache0.localSizeLong(part, NEAR));
+            assertEquals(size, cache0.localSizeLong(part, ALL));
+
+            assertEquals(size, cache0.size());
+            assertEquals(size, cache0.sizeLong(part, PRIMARY));
+            assertEquals(size, cache0.sizeLong(part, BACKUP));
+            assertEquals(size, cache0.sizeLong(part, NEAR));
+            assertEquals(size, cache0.sizeLong(part, ALL));
+
+            cacheAsync0.size();
+
+            assertEquals(size, (long) cacheAsync0.<Integer>future().get());
+        }
+    }
+
+    /**
+     * @throws InterruptedException If failed.
+     */
+    public void testLocalPartitionSizeFlags() throws InterruptedException {
+        if (cacheMode() != LOCAL)
+            return;
+
+        awaitPartitionMapExchange();
+        checkEmpty();
+        int part = 0;
+        IgniteCache<Integer, String> cache0 = jcache(0);
+
+        Set<Integer> keys = new HashSet<>();
+
+        for (int i = 0; i < 200; i++) {
+            cache0.put(i, "test_val");
+
+            keys.add(i);
+        }
+
+        try {
+            int totalKeys = 200;
+
+            T2<Integer, Integer> swapKeys = swapKeysCount(0);
+
+            T2<Integer, Integer> offheapKeys = offheapKeysCount(0);
+
+            int totalSwap = swapKeys.get1() + swapKeys.get2();
+            int totalOffheap = offheapKeys.get1() + offheapKeys.get2();
+
+            log.info("Keys [total=" + totalKeys + ", offheap=" + offheapKeys + ", swap=" + swapKeys + ']');
+
+            assertTrue(totalSwap + totalOffheap < totalKeys);
+
+            assertEquals(totalKeys, cache0.localSize());
+            assertEquals(totalKeys, cache0.localSizeLong(part, ALL));
+
+            assertEquals(totalOffheap, cache0.localSizeLong(part, OFFHEAP));
+            assertEquals(totalSwap, cache0.localSizeLong(part, SWAP));
+            assertEquals(totalKeys - (totalSwap + totalOffheap), cache0.localSizeLong(part, ONHEAP));
+
+            assertEquals(totalOffheap, cache0.sizeLong(part, OFFHEAP));
+            assertEquals(totalSwap, cache0.sizeLong(part, SWAP));
+            assertEquals(totalKeys - (totalSwap + totalOffheap), cache0.sizeLong(part, ONHEAP));
+
+            assertEquals(totalOffheap, cache0.localSizeLong(part, OFFHEAP, PRIMARY));
+            assertEquals(totalSwap, cache0.localSizeLong(part, SWAP, PRIMARY));
+            assertEquals(totalKeys - (totalSwap + totalOffheap), cache0.localSizeLong(part, ONHEAP, PRIMARY));
+
+            assertEquals(totalOffheap, cache0.localSizeLong(part, OFFHEAP, BACKUP));
+            assertEquals(totalSwap, cache0.localSizeLong(part, SWAP, BACKUP));
+            assertEquals(totalKeys - (totalSwap + totalOffheap), cache0.localSizeLong(part, ONHEAP, BACKUP));
+        }
+        finally {
+            cache0.removeAll(keys);
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testNonLocalPartitionSize() throws Exception {
+        if (cacheMode() == LOCAL)
+            return;
+
+        awaitPartitionMapExchange();
+        checkEmpty();
+        for (int i = 0; i < gridCount(); i++) {
+            checkPartitionSizeAffinityFilter(i);
+            checkPartitionSizeStorageFilter(i);
         }
     }
 
@@ -768,9 +786,9 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
                 int partSize = 0;
 
-                for (Integer key :keys){
+                for (Integer key : keys){
                     int keyPart = ignite(nodeIdx).affinity(null).partition(key);
-                    if(keyPart == part)
+                    if (keyPart == part)
                         partSize++;
                 }
 
