@@ -3888,19 +3888,24 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
     }
 
     /** {@inheritDoc} */
-    @Override public IgniteInternalFuture<Long> sizeLongAsync(final int partition, final CachePeekMode[] peekModes) {
+    @Override public IgniteInternalFuture<Long> sizeLongAsync(final int part, final CachePeekMode[] peekModes) {
         assert peekModes != null;
 
         PeekModes modes = parsePeekModes(peekModes, true);
 
         IgniteClusterEx cluster = ctx.grid().cluster();
+        GridCacheAffinityManager aff = ctx.affinity();
+        AffinityTopologyVersion topVer = aff.affinityTopologyVersion();
 
         ClusterGroup grp = modes.near ? cluster.forCacheNodes(name(), true, true, false) : cluster.forDataNodes(name());
 
         Collection<ClusterNode> nodes = grp.forPredicate(new IgnitePredicate<ClusterNode>() {
             /** {@inheritDoc} */
             @Override public boolean apply(ClusterNode clusterNode) {
-                return clusterNode.version().compareTo(PartitionSizeLongTask.SINCE_VER) >= 0;
+                return clusterNode.version().compareTo(PartitionSizeLongTask.SINCE_VER) > 0 &&
+                    (modes.near ||
+                        (modes.primary && aff.primary(clusterNode, part, topVer)) ||
+                        (modes.backup && aff.backup(clusterNode, part, topVer)));
             }
         }).nodes();
 
@@ -3910,7 +3915,7 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         ctx.kernalContext().task().setThreadContext(TC_SUBGRID, nodes);
 
         return ctx.kernalContext().task().execute(
-                new PartitionSizeLongTask(ctx.name(), ctx.affinity().affinityTopologyVersion(), peekModes, partition), null);
+                new PartitionSizeLongTask(ctx.name(), ctx.affinity().affinityTopologyVersion(), peekModes, part), null);
     }
 
     /** {@inheritDoc} */
