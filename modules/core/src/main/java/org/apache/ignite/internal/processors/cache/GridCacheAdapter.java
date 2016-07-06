@@ -262,6 +262,9 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
     /** Logger. */
     protected IgniteLogger log;
 
+    /** Logger. */
+    protected IgniteLogger txLockMsgLog;
+
     /** Affinity impl. */
     private Affinity<K> aff;
 
@@ -324,6 +327,7 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         this.map = map;
 
         log = ctx.logger(getClass());
+        txLockMsgLog = ctx.shared().txLockMessageLogger();
 
         metrics = new CacheMetricsImpl(ctx);
 
