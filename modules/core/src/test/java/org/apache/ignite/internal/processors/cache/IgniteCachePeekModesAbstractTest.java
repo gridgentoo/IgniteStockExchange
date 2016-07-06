@@ -630,8 +630,10 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
         if (cacheMode() == LOCAL)
             return;
 
-        awaitPartitionMapExchange();
+        awaitPartitionMapExchange(true, true);
+
         checkEmpty();
+
         for (int i = 0; i < gridCount(); i++) {
             checkPartitionSizeAffinityFilter(i);
             checkPartitionSizeStorageFilter(i);

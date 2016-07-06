@@ -3895,20 +3895,19 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
     @Override public IgniteInternalFuture<Long> sizeLongAsync(final int part, final CachePeekMode[] peekModes) {
         assert peekModes != null;
 
-        PeekModes modes = parsePeekModes(peekModes, true);
+        final PeekModes modes = parsePeekModes(peekModes, true);
 
         IgniteClusterEx cluster = ctx.grid().cluster();
-        GridCacheAffinityManager aff = ctx.affinity();
-        AffinityTopologyVersion topVer = aff.affinityTopologyVersion();
+        final GridCacheAffinityManager aff = ctx.affinity();
+        final AffinityTopologyVersion topVer = aff.affinityTopologyVersion();
 
-        ClusterGroup grp = modes.near ? cluster.forCacheNodes(name(), true, true, false) : cluster.forDataNodes(name());
+        ClusterGroup grp = cluster.forDataNodes(name());
 
         Collection<ClusterNode> nodes = grp.forPredicate(new IgnitePredicate<ClusterNode>() {
             /** {@inheritDoc} */
             @Override public boolean apply(ClusterNode clusterNode) {
                 return clusterNode.version().compareTo(PartitionSizeLongTask.SINCE_VER) > 0 &&
-                    (modes.near ||
-                        (modes.primary && aff.primary(clusterNode, part, topVer)) ||
+                    ((modes.primary && aff.primary(clusterNode, part, topVer)) ||
                         (modes.backup && aff.backup(clusterNode, part, topVer)));
             }
         }).nodes();
@@ -4004,13 +4003,20 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
 
             if (dhtPart != null) {
                 if (modes.primary && dhtPart.primary(topVer) || modes.backup && dhtPart.backup(topVer)) {
-                    size += dhtPart.publicSize();
+                    if (modes.heap)
+                        size += dhtPart.publicSize();
+
+//                    U.debug(log, "Size on [node=" + ctx.localNodeId() + ", size=" + size + ']');
 
                     if (modes.swap)
                         size += swapMgr.swapEntriesCount(part);
 
+//                    U.debug(log, "Size after swap on [node=" + ctx.localNodeId() + ", size=" + size + ']');
+
                     if (modes.offheap)
                         size += swapMgr.offheapEntriesCount(part);
+
+//                    U.debug(log, "Size after offheap on [node=" + ctx.localNodeId() + ", size=" + size + ']');
                 }
             }
         }
@@ -6651,7 +6657,7 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         private static final long serialVersionUID = 0L;
 
         /** */
-        private static final IgniteProductVersion SINCE_VER = IgniteProductVersion.fromString("1.6.2");
+        private static final IgniteProductVersion SINCE_VER = IgniteProductVersion.fromString("1.5.30");
 
         /** Partition */
         private final int partition;
@@ -6671,7 +6677,12 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
          * @param peekModes Cache peek modes.
          * @param partition partition.
          */
-        private PartitionSizeLongTask(String cacheName, AffinityTopologyVersion topVer, CachePeekMode[] peekModes, int partition) {
+        private PartitionSizeLongTask(
+            String cacheName,
+            AffinityTopologyVersion topVer,
+            CachePeekMode[] peekModes,
+            int partition
+        ) {
             this.cacheName = cacheName;
             this.topVer = topVer;
             this.peekModes = peekModes;
@@ -6679,8 +6690,10 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         }
 
         /** {@inheritDoc} */
-        @Nullable @Override public Map<? extends ComputeJob, ClusterNode> map(List<ClusterNode> subgrid,
-                                                                              @Nullable Object arg) throws IgniteException {
+        @Nullable @Override public Map<? extends ComputeJob, ClusterNode> map(
+            List<ClusterNode> subgrid,
+            @Nullable Object arg
+        ) throws IgniteException {
             Map<ComputeJob, ClusterNode> jobs = new HashMap();
 
             for (ClusterNode node : subgrid)
