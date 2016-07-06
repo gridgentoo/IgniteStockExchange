@@ -28,6 +28,7 @@ import java.util.Set;
 import javax.cache.Cache;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.cache.CacheMemoryMode;
 import org.apache.ignite.cache.CachePeekMode;
 import org.apache.ignite.cache.affinity.Affinity;
@@ -38,6 +39,7 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
 import org.apache.ignite.internal.IgniteEx;
 import org.apache.ignite.internal.IgniteKernal;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.spi.IgniteSpiCloseableIterator;
 import org.apache.ignite.spi.swapspace.SwapSpaceSpi;
@@ -504,6 +506,7 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
      * @throws Exception If failed.
      */
     public void testPartitionSize() throws Exception {
+        awaitPartitionMapExchange();
         checkEmpty();
         int partition = 0;
         if (cacheMode() == LOCAL) {
@@ -960,40 +963,6 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
     /**
      * @param nodeIdx Node index.
-     * @param part Cache partition.
-     * @return Tuple with primary and backup keys.
-     */
-    private T2<List<Integer>, List<Integer>> swapKeys(int nodeIdx, int part) {
-        SwapSpaceSpi swap = ignite(nodeIdx).configuration().getSwapSpaceSpi();
-
-        IgniteSpiCloseableIterator<KeyCacheObject> it = swap.keyIterator(SPACE_NAME, null);
-
-        assertNotNull(it);
-
-        Affinity aff = ignite(nodeIdx).affinity(null);
-
-        ClusterNode node = ignite(nodeIdx).cluster().localNode();
-
-        List<Integer> primary = new ArrayList<>();
-        List<Integer> backups = new ArrayList<>();
-
-        CacheObjectContext coctx = ((IgniteEx)ignite(nodeIdx)).context().cache().internalCache()
-                .context().cacheObjectContext();
-
-        while (it.hasNext()) {
-            Integer key = it.next().value(coctx, false);
-
-            if (aff.isPrimary(node, key) && aff.partition(key) == part)
-                primary.add(key);
-            else if (aff.isBackup(node, key) &&  aff.partition(key) == part)
-                backups.add(key);
-        }
-
-        return new T2<>(primary, backups);
-    }
-
-    /**
-     * @param nodeIdx Node index.
      * @return Tuple with number of primary and backup keys.
      */
     private T2<Integer, Integer> swapKeysCount(int nodeIdx) {
@@ -1005,12 +974,26 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
     /**
      * @param nodeIdx Node index.
      * @param part Cache partition
-     * @return Tuple with number of primary and backup keys.
+     * @return Tuple with number of primary and backup keys (one or both will be zero).
      */
-    private T2<Integer, Integer> swapKeysCount(int nodeIdx, int part) {
-        T2<List<Integer>, List<Integer>> keys = swapKeys(nodeIdx, part);
+    private T2<Integer, Integer> swapKeysCount(int nodeIdx, int part) throws IgniteCheckedException {
+        GridCacheContext ctx = ((IgniteEx)ignite(nodeIdx)).context().cache().internalCache().context();
+        // Swap and offheap are disabled for near cache.
+        GridCacheSwapManager swapMgr = ctx.isNear() ? ctx.near().dht().context().swap() : ctx.swap();
+        //First count entries...
+        int cnt = (int)swapMgr.swapEntriesCount(part);
 
-        return new T2<>(keys.get1().size(), keys.get2().size());
+        GridCacheAffinityManager affinity = ctx.affinity();
+        AffinityTopologyVersion topVer = affinity.affinityTopologyVersion();
+
+        //And then find out whether they are primary or backup ones.
+        int primaryCnt = 0;
+        int backupCnt = 0;
+        if (affinity.primary(ctx.localNode(), part, topVer))
+            primaryCnt = cnt;
+        else if (affinity.backup(ctx.localNode(), part, topVer))
+            backupCnt = cnt;
+        return new T2<>(primaryCnt, backupCnt);
     }
 
     /**
@@ -1052,41 +1035,6 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
 
     /**
      * @param nodeIdx Node index.
-     * @param part Cache partition.
-     * @return Tuple with primary and backup keys.
-     */
-    private T2<List<Integer>, List<Integer>> offheapKeys(int nodeIdx, int part) {
-        GridCacheAdapter<Integer, String> internalCache =
-                ((IgniteKernal)ignite(nodeIdx)).context().cache().internalCache();
-
-        Iterator<Map.Entry<Integer, String>> offheapIt;
-
-        if (internalCache.context().isNear())
-            offheapIt = internalCache.context().near().dht().context().swap().lazyOffHeapIterator(false);
-        else
-            offheapIt = internalCache.context().swap().lazyOffHeapIterator(false);
-
-        Affinity aff = ignite(nodeIdx).affinity(null);
-
-        ClusterNode node = ignite(nodeIdx).cluster().localNode();
-
-        List<Integer> primary = new ArrayList<>();
-        List<Integer> backups = new ArrayList<>();
-
-        while (offheapIt.hasNext()) {
-            Map.Entry<Integer, String> e = offheapIt.next();
-
-            if (aff.isPrimary(node, e.getKey()) && aff.partition(e.getKey()) == part)
-                primary.add(e.getKey());
-            else if (aff.isBackup(node, e.getKey()) && aff.partition(e.getKey()) == part)
-                backups.add(e.getKey());
-        }
-
-        return new T2<>(primary, backups);
-    }
-
-    /**
-     * @param nodeIdx Node index.
      * @return Tuple with number of primary and backup keys.
      */
     private T2<Integer, Integer> offheapKeysCount(int nodeIdx) {
@@ -1098,12 +1046,26 @@ public abstract class IgniteCachePeekModesAbstractTest extends IgniteCacheAbstra
     /**
      * @param nodeIdx Node index.
      * @param part Cache partition.
-     * @return Tuple with number of primary and backup keys.
+     * @return Tuple with number of primary and backup keys (one or both will be zero).
      */
-    private T2<Integer, Integer> offheapKeysCount(int nodeIdx, int part) {
-        T2<List<Integer>, List<Integer>> keys = offheapKeys(nodeIdx, part);
+    private T2<Integer, Integer> offheapKeysCount(int nodeIdx, int part) throws IgniteCheckedException {
+        GridCacheContext ctx = ((IgniteEx)ignite(nodeIdx)).context().cache().internalCache().context();
+        // Swap and offheap are disabled for near cache.
+        GridCacheSwapManager swapMgr = ctx.isNear() ? ctx.near().dht().context().swap() : ctx.swap();
+        //First count entries...
+        int cnt = (int)swapMgr.offheapEntriesCount(part);
 
-        return new T2<>(keys.get1().size(), keys.get2().size());
+        GridCacheAffinityManager affinity = ctx.affinity();
+        AffinityTopologyVersion topVer = affinity.affinityTopologyVersion();
+
+        //And then find out whether they are primary or backup ones.
+        int primaryCnt = 0;
+        int backupCnt = 0;
+        if (affinity.primary(ctx.localNode(), part, topVer))
+            primaryCnt = cnt;
+        else if (affinity.backup(ctx.localNode(), part, topVer))
+            backupCnt = cnt;
+        return new T2<>(primaryCnt, backupCnt);
     }
 
     /**
