@@ -4170,7 +4170,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
 
                     CacheObject prev = saveOldValueUnlocked(false);
 
-                    if (!deletedUnlocked() && !hasReaders() && markObsolete0(obsoleteVer, false, null)) {
+                    if (!hasReaders() && markObsolete0(obsoleteVer, false, null)) {
                         if (swap) {
                             if (!isStartVersion()) {
                                 try {
@@ -4284,8 +4284,6 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
                         ", ptr=" + offHeapPointer() +
                         ']');
                 }
-
-                assert !deletedUnlocked();
 
                 cctx.swap().removeOffheap(key());
 
