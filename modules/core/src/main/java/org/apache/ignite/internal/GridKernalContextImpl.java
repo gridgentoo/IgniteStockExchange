@@ -66,6 +66,7 @@ import org.apache.ignite.internal.processors.job.GridJobProcessor;
 import org.apache.ignite.internal.processors.jobmetrics.GridJobMetricsProcessor;
 import org.apache.ignite.internal.processors.json.IgniteJsonProcessor;
 import org.apache.ignite.internal.processors.nodevalidation.DiscoveryNodeValidationProcessor;
+import org.apache.ignite.internal.processors.odbc.OdbcProcessor;
 import org.apache.ignite.internal.processors.offheap.GridOffHeapProcessor;
 import org.apache.ignite.internal.processors.platform.PlatformProcessor;
 import org.apache.ignite.internal.processors.plugin.IgnitePluginProcessor;
@@ -90,6 +91,7 @@ import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.plugin.PluginNotFoundException;
 import org.apache.ignite.plugin.PluginProvider;
+import org.apache.ignite.thread.IgniteStripedThreadPoolExecutor;
 import org.jetbrains.annotations.Nullable;
 
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_DAEMON;
@@ -159,6 +161,10 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
      * Processors.
      * ==========
      */
+
+    /** */
+    @GridToStringInclude
+    private OdbcProcessor odbcProc;
 
     /** */
     @GridToStringInclude
@@ -310,6 +316,10 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
 
     /** */
     @GridToStringExclude
+    protected IgniteStripedThreadPoolExecutor callbackExecSvc;
+
+    /** */
+    @GridToStringExclude
     private Map<String, Object> attrs = new HashMap<>();
 
     /** */
@@ -384,6 +394,7 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
         ExecutorService mgmtExecSvc,
         ExecutorService igfsExecSvc,
         ExecutorService restExecSvc,
+        IgniteStripedThreadPoolExecutor callbackExecSvc,
         List<PluginProvider> plugins) throws IgniteCheckedException {
         assert grid != null;
         assert cfg != null;
@@ -400,6 +411,7 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
         this.mgmtExecSvc = mgmtExecSvc;
         this.igfsExecSvc = igfsExecSvc;
         this.restExecSvc = restExecSvc;
+        this.callbackExecSvc = callbackExecSvc;
 
         marshCtx = new MarshallerContextImpl(plugins);
 
@@ -516,6 +528,8 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
             pluginProc = (IgnitePluginProcessor)comp;
         else if (comp instanceof GridQueryProcessor)
             qryProc = (GridQueryProcessor)comp;
+        else if (comp instanceof OdbcProcessor)
+            odbcProc = (OdbcProcessor)comp;
         else if (comp instanceof DataStructuresProcessor)
             dataStructuresProc = (DataStructuresProcessor)comp;
         else if (comp instanceof ClusterProcessor)
@@ -758,6 +772,11 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
     }
 
     /** {@inheritDoc} */
+    @Override public IgniteStripedThreadPoolExecutor asyncCallbackPool() {
+        return callbackExecSvc;
+    }
+
+    /** {@inheritDoc} */
     @Override public IgniteCacheObjectProcessor cacheObjects() {
         return cacheObjProc;
     }
@@ -765,6 +784,11 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
     /** {@inheritDoc} */
     @Override public GridQueryProcessor query() {
         return qryProc;
+    }
+
+    /** {@inheritDoc} */
+    @Override public OdbcProcessor odbc() {
+        return odbcProc;
     }
 
     /** {@inheritDoc} */
@@ -871,7 +895,7 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
 
     /** {@inheritDoc} */
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        stash.set(U.readString(in));
+        U.readString(in); // Read for compatibility only. See #readResolve().
     }
 
     /**
@@ -882,7 +906,7 @@ public class GridKernalContextImpl implements GridKernalContext, Externalizable 
      */
     protected Object readResolve() throws ObjectStreamException {
         try {
-            return IgnitionEx.gridx(stash.get()).context();
+            return IgnitionEx.localIgnite().context();
         }
         catch (IllegalStateException e) {
             throw U.withCause(new InvalidObjectException(e.getMessage()), e);

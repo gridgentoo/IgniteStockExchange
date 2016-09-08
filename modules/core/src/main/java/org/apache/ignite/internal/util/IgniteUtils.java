@@ -149,6 +149,8 @@ import org.apache.ignite.IgniteException;
 import org.apache.ignite.IgniteInterruptedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.IgniteSystemProperties;
+import org.apache.ignite.binary.BinaryRawReader;
+import org.apache.ignite.binary.BinaryRawWriter;
 import org.apache.ignite.cluster.ClusterGroupEmptyException;
 import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
@@ -215,6 +217,7 @@ import org.apache.ignite.spi.IgniteSpi;
 import org.apache.ignite.spi.IgniteSpiException;
 import org.apache.ignite.spi.discovery.DiscoverySpi;
 import org.apache.ignite.spi.discovery.DiscoverySpiOrderSupport;
+import org.apache.ignite.transactions.TransactionDeadlockException;
 import org.apache.ignite.transactions.TransactionHeuristicException;
 import org.apache.ignite.transactions.TransactionOptimisticException;
 import org.apache.ignite.transactions.TransactionRollbackException;
@@ -292,6 +295,9 @@ public abstract class IgniteUtils {
 
     /** Secure socket protocol to use. */
     private static final String HTTPS_PROTOCOL = "TLS";
+
+    /** Correct Mbean cache name pattern. */
+    private static Pattern MBEAN_CACHE_NAME_PATTERN = Pattern.compile("^[a-zA-Z_0-9]+$");
 
     /** Project home directory. */
     private static volatile GridTuple<String> ggHome;
@@ -475,6 +481,15 @@ public abstract class IgniteUtils {
     /** */
     private static volatile Boolean hasShmem;
 
+    /** Object.hashCode() */
+    private static Method hashCodeMtd;
+
+    /** Object.equals(...) */
+    private static Method equalsMtd;
+
+    /** Object.toString() */
+    private static Method toStringMtd;
+
     /**
      * Initializes enterprise check.
      */
@@ -580,6 +595,7 @@ public abstract class IgniteUtils {
         primitiveMap.put("double", double.class);
         primitiveMap.put("char", char.class);
         primitiveMap.put("boolean", boolean.class);
+        primitiveMap.put("void", void.class);
 
         boxedClsMap.put(byte.class, Byte.class);
         boxedClsMap.put(short.class, Short.class);
@@ -589,6 +605,7 @@ public abstract class IgniteUtils {
         boxedClsMap.put(double.class, Double.class);
         boxedClsMap.put(char.class, Character.class);
         boxedClsMap.put(boolean.class, Boolean.class);
+        boxedClsMap.put(void.class, Void.class);
 
         try {
             OBJECT_CTOR = Object.class.getConstructor();
@@ -695,6 +712,15 @@ public abstract class IgniteUtils {
 
         // Set the http.strictPostRedirect property to prevent redirected POST from being mapped to a GET.
         System.setProperty("http.strictPostRedirect", "true");
+
+        for (Method mtd : Object.class.getMethods()) {
+            if ("hashCode".equals(mtd.getName()))
+                hashCodeMtd = mtd;
+            else if ("equals".equals(mtd.getName()))
+                equalsMtd = mtd;
+            else if ("toString".equals(mtd.getName()))
+                toStringMtd = mtd;
+        }
     }
 
     /**
@@ -785,6 +811,9 @@ public abstract class IgniteUtils {
 
         m.put(IgniteTxTimeoutCheckedException.class, new C1<IgniteCheckedException, IgniteException>() {
             @Override public IgniteException apply(IgniteCheckedException e) {
+                if (e.getCause() instanceof TransactionDeadlockException)
+                    return new TransactionTimeoutException(e.getMessage(), e.getCause());
+
                 return new TransactionTimeoutException(e.getMessage(), e);
             }
         });
@@ -1332,13 +1361,35 @@ public abstract class IgniteUtils {
      * @param dflt Default class to return.
      * @return Class or default given class if it can't be found.
      */
-    @Nullable public static Class<?> classForName(String cls, @Nullable Class<?> dflt) {
-        try {
-            return cls == null ? dflt : Class.forName(cls);
+    @Nullable public static Class<?> classForName(@Nullable String cls, @Nullable Class<?> dflt) {
+        return classForName(cls, dflt, false);
+    }
+
+    /**
+     * Gets class for the given name if it can be loaded or default given class.
+     *
+     * @param cls Class.
+     * @param dflt Default class to return.
+     * @param includePrimitiveTypes Whether class resolution should include primitive types (i.e. "int" will resolve to int.class if flag is set)
+     * @return Class or default given class if it can't be found.
+     */
+    @Nullable public static Class<?> classForName(
+        @Nullable String cls,
+        @Nullable Class<?> dflt,
+        boolean includePrimitiveTypes
+    ) {
+        Class<?> clazz;
+        if (cls == null)
+            clazz = dflt;
+        else if (!includePrimitiveTypes || cls.length() > 7 || (clazz = primitiveMap.get(cls)) == null) {
+            try {
+                clazz = Class.forName(cls);
+            }
+            catch (ClassNotFoundException ignore) {
+                clazz = dflt;
+            }
         }
-        catch (ClassNotFoundException ignore) {
-            return dflt;
-        }
+        return clazz;
     }
 
     /**
@@ -2190,10 +2241,26 @@ public abstract class IgniteUtils {
     }
 
     /**
-     * @return Class loader passed as an argument or classloader used to load Ignite itself in case argument is null.
+     * @return ClassLoader at IgniteConfiguration in case it is not null or
+     * ClassLoader used to start Ignite.
      */
-    public static ClassLoader resolveClassLoader(ClassLoader ldr) {
-        return ldr != null ? ldr : gridClassLoader;
+    public static ClassLoader resolveClassLoader(IgniteConfiguration cfg) {
+        return resolveClassLoader(null, cfg);
+    }
+
+    /**
+     * @return ClassLoader passed as param in case it is not null or
+     * ClassLoader at IgniteConfiguration in case it is not null or
+     * ClassLoader used to start Ignite.
+     */
+    public static ClassLoader resolveClassLoader(ClassLoader ldr, IgniteConfiguration cfg) {
+        assert cfg != null;
+
+        return (ldr != null && ldr != gridClassLoader) ?
+            ldr :
+            cfg.getClassLoader() != null ?
+                cfg.getClassLoader() :
+                gridClassLoader;
     }
 
     /**
@@ -4287,7 +4354,10 @@ public abstract class IgniteUtils {
 
         cacheName = maskName(cacheName);
 
-        sb.a("group=").a(cacheName).a(',');
+        if (!MBEAN_CACHE_NAME_PATTERN.matcher(cacheName).matches())
+            sb.a("group=").a('\"').a(cacheName).a('\"').a(',');
+        else
+            sb.a("group=").a(cacheName).a(',');
 
         sb.a("name=").a(name);
 
@@ -4674,6 +4744,44 @@ public abstract class IgniteUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Writes UUID to binary writer.
+     *
+     * @param out Output Binary writer.
+     * @param uid UUID to write.
+     * @throws IOException If write failed.
+     */
+    public static void writeUuid(BinaryRawWriter out, UUID uid) {
+        // Write null flag.
+        if (uid != null) {
+            out.writeBoolean(true);
+
+            out.writeLong(uid.getMostSignificantBits());
+            out.writeLong(uid.getLeastSignificantBits());
+        }
+        else
+            out.writeBoolean(false);
+    }
+
+    /**
+     * Reads UUID from binary reader.
+     *
+     * @param in Binary reader.
+     * @return Read UUID.
+     * @throws IOException If read failed.
+     */
+    @Nullable public static UUID readUuid(BinaryRawReader in) {
+        // If UUID is not null.
+        if (in.readBoolean()) {
+            long most = in.readLong();
+            long least = in.readLong();
+
+            return new UUID(most, least);
+        }
+        else
+            return null;
     }
 
     /**
@@ -5800,7 +5908,7 @@ public abstract class IgniteUtils {
                 Iterable<Field> fields = cached ? tup.get2() : Arrays.asList(cls.getDeclaredFields());
 
                 if (!cached) {
-                    tup = F.t2();
+                    tup = new IgniteBiTuple<>();
 
                     tup.set1(cls);
                 }
@@ -5878,7 +5986,9 @@ public abstract class IgniteUtils {
      * @return {@code True} if given class is of {@code Ignite} type.
      */
     public static boolean isIgnite(Class<?> cls) {
-        return cls.getName().startsWith("org.apache.ignite");
+        String name = cls.getName();
+
+        return name.startsWith("org.apache.ignite") || name.startsWith("org.jsr166");
     }
 
     /**
@@ -6479,7 +6589,7 @@ public abstract class IgniteUtils {
      * @return Short string representing the node.
      */
     public static String toShortString(ClusterNode n) {
-        return "GridNode [id=" + n.id() + ", order=" + n.order() + ", addr=" + n.addresses() +
+        return "ClusterNode [id=" + n.id() + ", order=" + n.order() + ", addr=" + n.addresses() +
             ", daemon=" + n.isDaemon() + ']';
     }
 
@@ -6612,6 +6722,19 @@ public abstract class IgniteUtils {
         assert a == arr;
 
         return arr;
+    }
+
+    /**
+     * Swaps two objects in array.
+     *
+     * @param arr Array.
+     * @param a Index of the first object.
+     * @param b Index of the second object.
+     */
+    public static void swap(Object[] arr, int a, int b) {
+        Object tmp = arr[a];
+        arr[a] = arr[b];
+        arr[b] = tmp;
     }
 
     /**
@@ -7365,6 +7488,27 @@ public abstract class IgniteUtils {
     public static void acquire(Semaphore sem) throws IgniteInterruptedCheckedException {
         try {
             sem.acquire();
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+
+            throw new IgniteInterruptedCheckedException(e);
+        }
+    }
+
+    /**
+     * Tries to acquire a permit from provided semaphore during {@code timeout}.
+     *
+     * @param sem Semaphore.
+     * @param timeout The maximum time to wait.
+     * @param unit The unit of the {@code time} argument.
+     * @throws org.apache.ignite.internal.IgniteInterruptedCheckedException Wrapped {@link InterruptedException}.
+     * @return {@code True} if acquires a permit, {@code false} another.
+     */
+    public static boolean tryAcquire(Semaphore sem, long timeout, TimeUnit unit)
+        throws IgniteInterruptedCheckedException {
+        try {
+            return sem.tryAcquire(timeout, unit);
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -8184,7 +8328,11 @@ public abstract class IgniteUtils {
         if (cls != null)
             return cls;
 
-        if (ldr == null)
+        if (ldr != null) {
+            if (ldr instanceof ClassCache)
+                return ((ClassCache)ldr).getFromCache(clsName);
+        }
+        else
             ldr = gridClassLoader;
 
         ConcurrentMap<String, Class> ldrMap = classCache.get(ldr);
@@ -8489,7 +8637,7 @@ public abstract class IgniteUtils {
      */
     public static Collection<InetAddress> toInetAddresses(Collection<String> addrs,
         Collection<String> hostNames) throws IgniteCheckedException {
-        List<InetAddress> res = new ArrayList<>(addrs.size());
+        Set<InetAddress> res = new HashSet<>(addrs.size());
 
         Iterator<String> hostNamesIt = hostNames.iterator();
 
@@ -8522,7 +8670,7 @@ public abstract class IgniteUtils {
             throw new IgniteCheckedException("Addresses can not be resolved [addr=" + addrs +
                 ", hostNames=" + hostNames + ']');
 
-        return F.viewListReadOnly(res, F.<InetAddress>identity());
+        return res;
     }
 
     /**
@@ -8548,7 +8696,7 @@ public abstract class IgniteUtils {
      */
     public static Collection<InetSocketAddress> toSocketAddresses(Collection<String> addrs,
         Collection<String> hostNames, int port) {
-        List<InetSocketAddress> res = new ArrayList<>(addrs.size());
+        Set<InetSocketAddress> res = new HashSet<>(addrs.size());
 
         Iterator<String> hostNamesIt = hostNames.iterator();
 
@@ -8569,7 +8717,7 @@ public abstract class IgniteUtils {
             res.add(new InetSocketAddress(addr, port));
         }
 
-        return F.viewListReadOnly(res, F.<InetSocketAddress>identity());
+        return res;
     }
 
     /**
@@ -8594,20 +8742,47 @@ public abstract class IgniteUtils {
             InetSocketAddress sockAddr = new InetSocketAddress(addr, port);
 
             if (!sockAddr.isUnresolved()) {
-                try {
-                    Collection<InetSocketAddress> extAddrs0 = addrRslvr.getExternalAddresses(sockAddr);
+                Collection<InetSocketAddress> extAddrs0 = resolveAddress(addrRslvr, sockAddr);
 
-                    if (extAddrs0 != null)
-                        extAddrs.addAll(extAddrs0);
-                }
-                catch (IgniteCheckedException e) {
-                    throw new IgniteSpiException("Failed to get mapped external addresses " +
-                        "[addrRslvr=" + addrRslvr + ", addr=" + addr + ']', e);
-                }
+                if (extAddrs0 != null)
+                    extAddrs.addAll(extAddrs0);
             }
         }
 
         return extAddrs;
+    }
+
+    /**
+     * @param addrRslvr Address resolver.
+     * @param sockAddr Addresses.
+     * @return Resolved addresses.
+     */
+    public static Collection<InetSocketAddress> resolveAddresses(AddressResolver addrRslvr,
+        Collection<InetSocketAddress> sockAddr) {
+        if (addrRslvr == null)
+            return sockAddr;
+
+        Collection<InetSocketAddress> resolved = new HashSet<>();
+
+        for (InetSocketAddress address :sockAddr)
+            resolved.addAll(resolveAddress(addrRslvr, address));
+
+        return resolved;
+    }
+
+    /**
+     * @param addrRslvr Address resolver.
+     * @param sockAddr Addresses.
+     * @return Resolved addresses.
+     */
+    private static Collection<InetSocketAddress> resolveAddress(AddressResolver addrRslvr, InetSocketAddress sockAddr) {
+        try {
+            return addrRslvr.getExternalAddresses(sockAddr);
+        }
+        catch (IgniteCheckedException e) {
+            throw new IgniteSpiException("Failed to get mapped external addresses " +
+                "[addrRslvr=" + addrRslvr + ", addr=" + sockAddr + ']', e);
+        }
     }
 
     /**
@@ -9208,12 +9383,13 @@ public abstract class IgniteUtils {
      * @param name Name of a field to get.
      * @return Field or {@code null}.
      */
-    @Nullable public static Field findNonPublicField(Class<?> cls, String name) {
+    @Nullable public static Field findField(Class<?> cls, String name) {
         while (cls != null) {
             try {
                 Field fld = cls.getDeclaredField(name);
 
-                fld.setAccessible(true);
+                if (!fld.isAccessible())
+                    fld.setAccessible(true);
 
                 return fld;
             }
@@ -9423,5 +9599,52 @@ public abstract class IgniteUtils {
             return rmtProtoVer;
         else
             return GridIoManager.DIRECT_PROTO_VER;
+    }
+
+    /**
+     * @return Whether provided method is {@code Object.hashCode()}.
+     */
+    public static boolean isHashCodeMethod(Method mtd) {
+        return hashCodeMtd.equals(mtd);
+    }
+
+    /**
+     * @return Whether provided method is {@code Object.equals(...)}.
+     */
+    public static boolean isEqualsMethod(Method mtd) {
+        return equalsMtd.equals(mtd);
+    }
+
+    /**
+     * @return Whether provided method is {@code Object.toString()}.
+     */
+    public static boolean isToStringMethod(Method mtd) {
+        return toStringMtd.equals(mtd);
+    }
+
+    /**
+     * @param threadId Thread ID.
+     * @return Thread name if found.
+     */
+    public static String threadName(long threadId) {
+        Thread[] threads = new Thread[Thread.activeCount()];
+
+        int cnt = Thread.enumerate(threads);
+
+        for (int i = 0; i < cnt; i++)
+            if (threads[i].getId() == threadId)
+                return threads[i].getName();
+
+        return "<failed to find active thread " + threadId + '>';
+    }
+
+    /**
+     * @param t0 Comparable object.
+     * @param t1 Comparable object.
+     * @param <T> Comparable type.
+     * @return Maximal object o t0 and t1.
+     */
+    public static <T extends Comparable<? super T>> T max(T t0, T t1) {
+        return t0.compareTo(t1) > 0 ? t0 : t1;
     }
 }

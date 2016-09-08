@@ -20,9 +20,11 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.Linq;
     using Apache.Ignite.Core.Binary;
     using Apache.Ignite.Core.Cache;
     using Apache.Ignite.Core.Cache.Store;
+    using Apache.Ignite.Core.Impl;
     using NUnit.Framework;
 
     /// <summary>
@@ -134,7 +136,7 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
         ///
         /// </summary>
         [TestFixtureSetUp]
-        public void BeforeTests()
+        public virtual void BeforeTests()
         {
             TestUtils.KillProcesses();
 
@@ -156,7 +158,7 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
         ///
         /// </summary>
         [TestFixtureTearDown]
-        public virtual void AfterTests()
+        public void AfterTests()
         {
             Ignition.StopAll(true);
         }
@@ -176,13 +178,15 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
         [TearDown]
         public void AfterTest()
         {
+            CacheTestStore.Reset();
+
             var cache = GetCache();
 
             cache.Clear();
 
-            Assert.IsTrue(cache.IsEmpty(), "Cache is not empty: " + cache.GetSize());
-
-            CacheTestStore.Reset();
+            Assert.IsTrue(cache.IsEmpty(),
+                "Cache is not empty: " +
+                string.Join(", ", cache.Select(x => string.Format("[{0}:{1}]", x.Key, x.Value))));
 
             TestUtils.AssertHandleRegistryHasItems(300, _storeCount, Ignition.GetIgnite(GridName));
 
@@ -208,6 +212,11 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
 
             // Test exception in filter
             Assert.Throws<CacheStoreException>(() => cache.LoadCache(new ExceptionalEntryFilter(), 100, 10));
+
+            // Test exception in store
+            CacheTestStore.ThrowError = true;
+            CheckCustomStoreError(Assert.Throws<CacheStoreException>(() =>
+                cache.LoadCache(new CacheEntryFilter(), 100, 10)).InnerException);
         }
 
         [Test]
@@ -260,6 +269,13 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
             {
                 Assert.AreEqual("val_" + i, cache.GetAsync(i).Result);
             }
+
+            // Test errors
+            CacheTestStore.ThrowError = true;
+            CheckCustomStoreError(
+                Assert.Throws<AggregateException>(
+                    () => cache.LocalLoadCacheAsync(new CacheEntryFilter(), 100, 10).Wait())
+                    .InnerException);
         }
 
         [Test]
@@ -280,6 +296,13 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
             Assert.AreEqual("val", cache.Get(1));
 
             Assert.AreEqual(1, cache.GetSize());
+
+            // Test errors
+            CacheTestStore.ThrowError = true;
+            CheckCustomStoreError(Assert.Throws<CacheStoreException>(() => cache.Put(-2, "fail")).InnerException);
+
+            cache.LocalEvict(new[] { 1 });
+            CheckCustomStoreError(Assert.Throws<CacheStoreException>(() => cache.Get(1)).InnerException);
         }
 
         [Test]
@@ -416,8 +439,6 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
 
             using (var tx = cache.Ignite.GetTransactions().TxStart())
             {
-                CacheTestStore.ExpCommit = true;
-
                 tx.AddMeta("meta", 100);
 
                 cache.Put(1, "val");
@@ -462,15 +483,49 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
         [Test]
         public void TestDynamicStoreStart()
         {
-            var cache = GetTemplateStoreCache();
+            var grid = Ignition.GetIgnite(GridName);
+            var reg = ((Ignite) grid).HandleRegistry;
+            var handleCount = reg.Count;
 
+            var cache = GetTemplateStoreCache();
             Assert.IsNotNull(cache);
 
             cache.Put(1, cache.Name);
-
             Assert.AreEqual(cache.Name, CacheTestStore.Map[1]);
 
-            _storeCount++;
+            Assert.AreEqual(handleCount + 1, reg.Count);
+            grid.DestroyCache(cache.Name);
+            Assert.AreEqual(handleCount, reg.Count);
+        }
+
+        [Test]
+        public void TestLoadAll([Values(true, false)] bool isAsync)
+        {
+            var cache = GetCache();
+
+            var loadAll = isAsync
+                ? (Action<IEnumerable<int>, bool>) ((x, y) => { cache.LoadAllAsync(x, y).Wait(); })
+                : cache.LoadAll;
+
+            Assert.AreEqual(0, cache.GetSize());
+
+            loadAll(Enumerable.Range(105, 5), false);
+
+            Assert.AreEqual(5, cache.GetSize());
+
+            for (int i = 105; i < 110; i++)
+                Assert.AreEqual("val_" + i, cache[i]);
+
+            // Test overwrite
+            cache[105] = "42";
+
+            cache.LocalEvict(new[] { 105 });
+            loadAll(new[] {105}, false);
+            Assert.AreEqual("42", cache[105]);
+
+            loadAll(new[] {105, 106}, true);
+            Assert.AreEqual("val_105", cache[105]);
+            Assert.AreEqual("val_106", cache[106]);
         }
 
         /// <summary>
@@ -512,6 +567,16 @@ namespace Apache.Ignite.Core.Tests.Cache.Store
             var cacheName = TemplateStoreCacheName.Replace("*", Guid.NewGuid().ToString());
             
             return Ignition.GetIgnite(GridName).GetOrCreateCache<int, string>(cacheName);
+        }
+
+        private static void CheckCustomStoreError(Exception err)
+        {
+            var customErr = err as CacheTestStore.CustomStoreException ??
+                         err.InnerException as CacheTestStore.CustomStoreException;
+
+            Assert.IsNotNull(customErr);
+
+            Assert.AreEqual(customErr.Message, customErr.Details);
         }
     }
 

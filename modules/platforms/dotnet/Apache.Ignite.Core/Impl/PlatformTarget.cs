@@ -43,6 +43,9 @@ namespace Apache.Ignite.Core.Impl
         protected const int True = 1;
 
         /** */
+        protected const int Error = -1;
+
+        /** */
         private const int OpMeta = -1;
 
         /** */
@@ -470,7 +473,82 @@ namespace Apache.Ignite.Core.Impl
                 }
             }
         }
-        
+
+        /// <summary>
+        /// Perform out-in operation with a single stream.
+        /// </summary>
+        /// <typeparam name="TR">The type of the r.</typeparam>
+        /// <param name="type">Operation type.</param>
+        /// <param name="outAction">Out action.</param>
+        /// <param name="inAction">In action.</param>
+        /// <param name="inErrorAction">The action to read an error.</param>
+        /// <returns>
+        /// Result.
+        /// </returns>
+        protected TR DoOutInOpX<TR>(int type, Action<BinaryWriter> outAction, Func<IBinaryStream, long, TR> inAction,
+            Func<IBinaryStream, Exception> inErrorAction)
+        {
+            Debug.Assert(inErrorAction != null);
+
+            using (var stream = IgniteManager.Memory.Allocate().GetStream())
+            {
+                var writer = _marsh.StartMarshal(stream);
+
+                outAction(writer);
+
+                FinishMarshal(writer);
+
+                var res = UU.TargetInStreamOutLong(_target, type, stream.SynchronizeOutput());
+
+                if (res != Error && inAction == null)
+                    return default(TR);  // quick path for void operations
+
+                stream.SynchronizeInput();
+
+                stream.Seek(0, SeekOrigin.Begin);
+
+                if (res != Error)
+                    return inAction != null ? inAction(stream, res) : default(TR);
+
+                throw inErrorAction(stream);
+            }
+        }
+
+        /// <summary>
+        /// Perform out-in operation with a single stream.
+        /// </summary>
+        /// <param name="type">Operation type.</param>
+        /// <param name="outAction">Out action.</param>
+        /// <param name="inErrorAction">The action to read an error.</param>
+        /// <returns>
+        /// Result.
+        /// </returns>
+        protected bool DoOutInOpX(int type, Action<BinaryWriter> outAction, 
+            Func<IBinaryStream, Exception> inErrorAction)
+        {
+            Debug.Assert(inErrorAction != null);
+
+            using (var stream = IgniteManager.Memory.Allocate().GetStream())
+            {
+                var writer = _marsh.StartMarshal(stream);
+
+                outAction(writer);
+
+                FinishMarshal(writer);
+
+                var res = UU.TargetInStreamOutLong(_target, type, stream.SynchronizeOutput());
+
+                if (res != Error)
+                    return res == True;
+
+                stream.SynchronizeInput();
+
+                stream.Seek(0, SeekOrigin.Begin);
+
+                throw inErrorAction(stream);
+            }
+        }
+
         /// <summary>
         /// Perform out-in operation.
         /// </summary>
@@ -604,32 +682,53 @@ namespace Apache.Ignite.Core.Impl
         {
             DoOutOp(OpMeta, stream =>
             {
-                BinaryWriter metaWriter = _marsh.StartMarshal(stream);
+                BinaryWriter w = _marsh.StartMarshal(stream);
 
-                metaWriter.WriteInt(types.Count);
+                w.WriteInt(types.Count);
 
                 foreach (var meta in types)
                 {
-                    BinaryType meta0 = meta;
+                    w.WriteInt(meta.TypeId);
+                    w.WriteString(meta.TypeName);
+                    w.WriteString(meta.AffinityKeyFieldName);
 
-                    metaWriter.WriteInt(meta0.TypeId);
-                    metaWriter.WriteString(meta0.TypeName);
-                    metaWriter.WriteString(meta0.AffinityKeyFieldName);
+                    IDictionary<string, int> fields = meta.GetFieldsMap();
 
-                    IDictionary<string, int> fields = meta0.GetFieldsMap();
-
-                    metaWriter.WriteInt(fields.Count);
+                    w.WriteInt(fields.Count);
 
                     foreach (var field in fields)
                     {
-                        metaWriter.WriteString(field.Key);
-                        metaWriter.WriteInt(field.Value);
+                        w.WriteString(field.Key);
+                        w.WriteInt(field.Value);
                     }
 
-                    metaWriter.WriteBoolean(meta.IsEnum);
+                    w.WriteBoolean(meta.IsEnum);
+
+                    // Send schemas
+                    var desc = meta.Descriptor;
+                    Debug.Assert(desc != null);
+
+                    var count = 0;
+                    var countPos = stream.Position;
+                    w.WriteInt(0);  // Reserve for count
+
+                    foreach (var schema in desc.Schema.GetAll())
+                    {
+                        w.WriteInt(schema.Key);
+
+                        var ids = schema.Value;
+                        w.WriteInt(ids.Length);
+
+                        foreach (var id in ids)
+                            w.WriteInt(id);
+
+                        count++;
+                    }
+
+                    stream.WriteInt(countPos, count);
                 }
 
-                _marsh.FinishMarshal(metaWriter);
+                _marsh.FinishMarshal(w);
             });
 
             _marsh.OnBinaryTypesSent(types);
@@ -776,14 +875,6 @@ namespace Apache.Ignite.Core.Impl
         {
             if (_disposed)
                 throw new ObjectDisposedException(GetType().Name, "Object has been disposed.");
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this instance is disposed.
-        /// </summary>
-        protected bool IsDisposed
-        {
-            get { return _disposed; }
         }
     }
 }

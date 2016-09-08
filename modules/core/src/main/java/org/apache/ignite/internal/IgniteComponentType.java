@@ -292,7 +292,7 @@ public enum IgniteComponentType {
                 return (T)ctor.newInstance(ctx);
             }
         }
-        catch (Exception e) {
+        catch (Throwable e) {
             throw componentException(e);
         }
     }
@@ -316,7 +316,7 @@ public enum IgniteComponentType {
      * @param err Creation error.
      * @return Component creation exception.
      */
-    private IgniteCheckedException componentException(Exception err) {
+    private IgniteCheckedException componentException(Throwable err) {
         return new IgniteCheckedException("Failed to create Ignite component (consider adding " + module +
             " module to classpath) [component=" + this + ", cls=" + clsName + ']', err);
     }

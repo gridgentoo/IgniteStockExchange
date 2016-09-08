@@ -20,6 +20,7 @@ namespace Apache.Ignite.Core.Impl.Common
     using System;
     using System.Text;
     using System.IO;
+    using Apache.Ignite.Core.Log;
 
     /// <summary>
     /// Classpath resolver.
@@ -36,26 +37,14 @@ namespace Apache.Ignite.Core.Impl.Common
         /// Creates classpath from the given configuration, or default classpath if given config is null.
         /// </summary>
         /// <param name="cfg">The configuration.</param>
-        /// <param name="forceTestClasspath">Append test directories even if <see cref="EnvIgniteNativeTestClasspath" /> is not set.</param>
-        /// <returns>
-        /// Classpath string.
-        /// </returns>
-        public static string CreateClasspath(IgniteConfiguration cfg = null, bool forceTestClasspath = false)
-        {
-            return CreateClasspath(IgniteHome.Resolve(cfg), cfg, forceTestClasspath);
-        }
-
-        /// <summary>
-        /// Creates classpath from the given configuration, or default classpath if given config is null.
-        /// </summary>
-        /// <param name="ggHome">The home dir.</param>
-        /// <param name="cfg">The configuration.</param>
         /// <param name="forceTestClasspath">Append test directories even if
-        ///     <see cref="EnvIgniteNativeTestClasspath" /> is not set.</param>
+        /// <see cref="EnvIgniteNativeTestClasspath" /> is not set.</param>
+        /// <param name="log">The log.</param>
         /// <returns>
         /// Classpath string.
         /// </returns>
-        internal static string CreateClasspath(string ggHome, IgniteConfiguration cfg, bool forceTestClasspath)
+        internal static string CreateClasspath(IgniteConfiguration cfg = null, bool forceTestClasspath = false, 
+            ILogger log = null)
         {
             var cpStr = new StringBuilder();
 
@@ -67,8 +56,13 @@ namespace Apache.Ignite.Core.Impl.Common
                     cpStr.Append(';');
             }
 
+            var ggHome = IgniteHome.Resolve(cfg, log);
+
             if (!string.IsNullOrWhiteSpace(ggHome))
                 AppendHomeClasspath(ggHome, forceTestClasspath, cpStr);
+
+            if (log != null)
+                log.Debug("Classpath resolved to: " + cpStr);
 
             return ClasspathPrefix + cpStr;
         }

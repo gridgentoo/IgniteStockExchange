@@ -18,8 +18,8 @@
 package org.apache.ignite.spi.discovery.tcp.messages;
 
 import java.util.UUID;
+import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
-import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.marshaller.Marshaller;
 import org.apache.ignite.spi.discovery.DiscoverySpiCustomMessage;
 import org.jetbrains.annotations.NotNull;
@@ -77,12 +77,21 @@ public class TcpDiscoveryCustomEventMessage extends TcpDiscoveryAbstractMessage 
      */
     @Nullable public DiscoverySpiCustomMessage message(@NotNull Marshaller marsh, ClassLoader ldr) throws Throwable {
         if (msg == null) {
-            msg = marsh.unmarshal(msgBytes, U.resolveClassLoader(ldr));
+            msg = marsh.unmarshal(msgBytes, ldr);
 
             assert msg != null;
         }
 
         return msg;
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean equals(Object obj) {
+        return super.equals(obj) &&
+            obj instanceof TcpDiscoveryCustomEventMessage &&
+            F.eq(
+                ((TcpDiscoveryCustomEventMessage)obj).verifierNodeId(),
+                verifierNodeId());
     }
 
     /** {@inheritDoc} */
