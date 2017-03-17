@@ -388,6 +388,8 @@ public abstract class GridDhtAtomicAbstractUpdateFuture extends GridFutureAdapte
 
         if (needReplyToNear)
             completionCb.apply(updateReq, updateRes);
+
+        onDone();
     }
 
     /**
