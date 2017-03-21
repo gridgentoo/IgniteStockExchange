@@ -1808,11 +1808,39 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
                         final AffinityAssignment affAssignment = ctx.affinity().assignment(req.topologyVersion());
 
                         if (TEST_STRIPE_SUBMIT) {
+                            req.setResCount(stripemap.size());
+
                             for (final Map.Entry<Integer, int[]> e : stripemap.entrySet()) {
                                 if (stripeIdx != e.getKey()) {
                                     ctx.kernalContext().getStripedExecutorService().execute(e.getKey(), new Runnable() {
                                         @Override public void run() {
-                                            // No-op.
+                                            if (req.addRes()) {
+                                                GridNearAtomicUpdateResponse res = new GridNearAtomicUpdateResponse(ctx.cacheId(),
+                                                    node.id(),
+                                                    req.futureId(),
+                                                    req.partition(),
+                                                    false,
+                                                    ctx.deploymentEnabled());
+
+                                                res.returnValue(new GridCacheReturn(ctx, node.isLocal(), true, null, true));
+
+                                                for (int i = 0; i < req.size(); i++) {
+                                                    fut.addWriteEntry(affAssignment,
+                                                        req.key(i),
+                                                        req.value(i),
+                                                        null,
+                                                        0,
+                                                        0,
+                                                        null,
+                                                        false,
+                                                        null,
+                                                        1L);
+                                                }
+
+                                                fut.onDone();
+
+                                                completionCb.apply(req, res);
+                                            }
                                         }
                                     });
                                 }
@@ -1961,34 +1989,36 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         unlockEntries(locked, null);
 
         if (TEST_STRIPE_SUBMIT){
-            GridNearAtomicUpdateResponse res = new GridNearAtomicUpdateResponse(ctx.cacheId(),
-                node.id(),
-                req.futureId(),
-                req.partition(),
-                false,
-                ctx.deploymentEnabled());
-
-            if (hasNear)
-                res.nearVersion(ver);
-
-            res.returnValue(retVal);
-
-            for (int i = 0; i < req.size(); i++) {
-                fut.addWriteEntry(affinityAssignment,
-                    req.key(i),
-                    req.value(i),
-                    null,
-                    0,
-                    0,
-                    null,
+            if (req.addRes()) {
+                GridNearAtomicUpdateResponse res = new GridNearAtomicUpdateResponse(ctx.cacheId(),
+                    node.id(),
+                    req.futureId(),
+                    req.partition(),
                     false,
-                    null,
-                    1L);
+                    ctx.deploymentEnabled());
+
+                if (hasNear)
+                    res.nearVersion(ver);
+
+                res.returnValue(retVal);
+
+                for (int i = 0; i < req.size(); i++) {
+                    fut.addWriteEntry(affinityAssignment,
+                        req.key(i),
+                        req.value(i),
+                        null,
+                        0,
+                        0,
+                        null,
+                        false,
+                        null,
+                        1L);
+                }
+
+                fut.onDone();
+
+                completionCb.apply(req, res);
             }
-
-            fut.onDone();
-
-            completionCb.apply(req, res);
         }
         else {
             if (req.addRes()) {
