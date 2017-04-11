@@ -102,7 +102,7 @@ public class RendezvousAffinityFunction implements AffinityFunction, Externaliza
     private int parts;
 
     /** Mask to use in calculation when partitions count is power of 2. */
-    private int mask = -1;
+    private transient int mask = -1;
 
     /** Exclude neighbors flag. */
     private boolean exclNeighbors;
@@ -570,7 +570,8 @@ public class RendezvousAffinityFunction implements AffinityFunction, Externaliza
     /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     @Override public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        parts = in.readInt();
+        setPartitions(in.readInt());
+
         exclNeighbors = in.readBoolean();
         hashIdRslvr = (AffinityNodeHashResolver)in.readObject();
         backupFilter = (IgniteBiPredicate<ClusterNode, ClusterNode>)in.readObject();
