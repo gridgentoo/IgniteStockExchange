@@ -983,6 +983,8 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     @Override public void stop(boolean cancel) throws IgniteCheckedException {
+        U.debug("Stopping cache processor");
+
         stopCaches(cancel);
 
         List<? extends GridCacheSharedManager<?, ?>> mgrs = sharedCtx.managers();
@@ -1010,11 +1012,16 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
             if (cache != null)
                 stopCache(cache, cancel, false);
+            else
+                U.debug("CACHE IS NULL: " + cacheName);
         }
 
         for (GridCacheAdapter<?, ?> cache : stoppedCaches.values()) {
             if (cache == stoppedCaches.remove(maskNull(cache.name())))
                 stopCache(cache, cancel, false);
+            else {
+                U.debug("????? " + cache.name());
+            }
         }
 
         registeredCaches.clear();
@@ -1305,7 +1312,11 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
         ctx.kernalContext().cache().context().database().onCacheStop(ctx);
 
-        U.stopLifecycleAware(log, lifecycleAwares(cache.configuration(), ctx.store().configuredStore()));
+        Iterable<Object> lca = lifecycleAwares(cache.configuration(), ctx.store().configuredStore());
+
+        U.debug("LCA for cache [cache=" + cache.configuration().getName() + ", LCA=" + lca + ']');
+
+        U.stopLifecycleAware(log, lca);
 
         if (log.isInfoEnabled())
             log.info("Stopped cache: " + cache.name());
