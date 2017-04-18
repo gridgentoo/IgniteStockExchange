@@ -8718,16 +8718,11 @@ public abstract class IgniteUtils {
         for (Object obj : objs) {
             if (obj instanceof LifecycleAware) {
                 try {
-                    U.debug("Going to stop lifecycle aware: " + obj);
-
                     ((LifecycleAware)obj).stop();
                 }
                 catch (Exception e) {
                     U.error(log, "Failed to stop component (ignoring): " + obj, e);
                 }
-            }
-            else {
-                U.debug("Object is NOT lifecycle aware: " + obj);
             }
         }
     }
