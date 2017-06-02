@@ -192,7 +192,6 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
         assert dbCfg != null : "WAL should not be created if persistence is disabled.";
 
         this.dbCfg = dbCfg;
-        this.igCfg = igCfg;
 
         maxWalSegmentSize = dbCfg.getWalSegmentSize();
 

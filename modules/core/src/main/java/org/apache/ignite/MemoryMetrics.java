@@ -89,4 +89,22 @@ public interface MemoryMetrics {
      * @return The percentage of space that is still free and can be filled in.
      */
     public float getPagesFillFactor();
+
+    /**
+     *
+     * @return
+     */
+    public long getDirtyPages();
+
+    /**
+     *
+     * @return
+     */
+    public float getPagesReplaceRate();
+
+    /**
+     *
+     * @return
+     */
+    public long getPhysicalMemoryPages();
 }

@@ -28,6 +28,7 @@ import javax.management.JMException;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.MemoryMetrics;
+import org.apache.ignite.PersistentStoreMetrics;
 import org.apache.ignite.configuration.DataPageEvictionMode;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.MemoryConfiguration;
@@ -582,6 +583,13 @@ public class IgniteCacheDatabaseSharedManager extends GridCacheSharedManagerAdap
     }
 
     /**
+     * @return PersistenceMetrics if persistence is enabled or {@code null} otherwise.
+     */
+    public PersistentStoreMetrics persistentStoreMetrics() {
+        return null;
+    }
+
+    /**
      * @param memPlcName Name of {@link MemoryPolicy} to obtain {@link MemoryMetrics} for.
      * @return {@link MemoryMetrics} snapshot for specified {@link MemoryPolicy} or {@code null} if
      * no {@link MemoryPolicy} is configured for specified name.
@@ -903,6 +911,8 @@ public class IgniteCacheDatabaseSharedManager extends GridCacheSharedManagerAdap
         MemoryPolicyConfiguration memPlcCfg,
         MemoryMetricsImpl memMetrics
     ) {
+        memMetrics.persistenceEnabled(false);
+
         return new PageMemoryNoStoreImpl(
             log,
             memProvider,
