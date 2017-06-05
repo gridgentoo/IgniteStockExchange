@@ -40,6 +40,7 @@ import org.apache.ignite.internal.mem.file.MappedFileMemoryProvider;
 import org.apache.ignite.internal.mem.unsafe.UnsafeMemoryProvider;
 import org.apache.ignite.internal.pagemem.PageMemory;
 import org.apache.ignite.internal.pagemem.impl.PageMemoryNoStoreImpl;
+import org.apache.ignite.internal.processors.cache.CacheGroupContext;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheMapEntry;
 import org.apache.ignite.internal.processors.cache.GridCacheSharedManagerAdapter;
@@ -738,9 +739,9 @@ public class IgniteCacheDatabaseSharedManager extends GridCacheSharedManagerAdap
     }
 
     /**
-     * @param stoppedCtxs A collection of tuples (cache context, destroy flag).
+     * @param stoppedGrps A collection of tuples (cache group, destroy flag).
      */
-    public void onCachesStopped(Collection<IgniteBiTuple<GridCacheContext, Boolean>> stoppedCtxs) {
+    public void onCacheGroupsStopped(Collection<IgniteBiTuple<CacheGroupContext, Boolean>> stoppedGrps) {
         // No-op.
     }
 
@@ -776,12 +777,12 @@ public class IgniteCacheDatabaseSharedManager extends GridCacheSharedManagerAdap
 
     /**
      * Reserve update history for preloading.
-     * @param cacheId Cache ID.
+     * @param grpId Cache group ID.
      * @param partId Partition Id.
      * @param cntr Update counter.
      * @return True if successfully reserved.
      */
-    public boolean reserveHistoryForPreloading(int cacheId, int partId, long cntr) {
+    public boolean reserveHistoryForPreloading(int grpId, int partId, long cntr) {
         return false;
     }
 

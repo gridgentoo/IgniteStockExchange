@@ -30,6 +30,7 @@ import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.internal.pagemem.FullPageId;
+import org.apache.ignite.internal.pagemem.wal.WALPointer;
 import org.apache.ignite.internal.pagemem.wal.record.CacheState;
 import org.apache.ignite.internal.pagemem.wal.record.CheckpointRecord;
 import org.apache.ignite.internal.pagemem.wal.record.DataEntry;
@@ -37,8 +38,6 @@ import org.apache.ignite.internal.pagemem.wal.record.DataRecord;
 import org.apache.ignite.internal.pagemem.wal.record.LazyDataEntry;
 import org.apache.ignite.internal.pagemem.wal.record.MemoryRecoveryRecord;
 import org.apache.ignite.internal.pagemem.wal.record.PageSnapshot;
-import org.apache.ignite.internal.pagemem.wal.record.StoreOperationRecord;
-import org.apache.ignite.internal.pagemem.wal.record.StoreOperationRecord.StoreOperationType;
 import org.apache.ignite.internal.pagemem.wal.record.WALRecord;
 import org.apache.ignite.internal.pagemem.wal.record.WALRecord.RecordType;
 import org.apache.ignite.internal.pagemem.wal.record.delta.DataPageInsertFragmentRecord;
@@ -97,6 +96,8 @@ import org.apache.ignite.internal.processors.cache.database.wal.record.HeaderRec
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.processors.cacheobject.IgniteCacheObjectProcessor;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.U;
 
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_PDS_SKIP_CRC;
 
@@ -104,6 +105,9 @@ import static org.apache.ignite.IgniteSystemProperties.IGNITE_PDS_SKIP_CRC;
  * Record V1 serializer.
  */
 public class RecordV1Serializer implements RecordSerializer {
+    /** */
+    public static final int HEADER_RECORD_SIZE = /*Type*/1 + /*Pointer */12 + /*Magic*/8 + /*Version*/4 + /*CRC*/4;
+
     /** */
     private GridCacheSharedContext cctx;
 
@@ -140,6 +144,8 @@ public class RecordV1Serializer implements RecordSerializer {
 
         buf.put((byte)(record.type().ordinal() + 1));
 
+        putPosition(buf, (FileWALPointer)record.position());
+
         switch (record.type()) {
             case PAGE_RECORD:
                 PageSnapshot snap = (PageSnapshot)record;
@@ -147,16 +153,6 @@ public class RecordV1Serializer implements RecordSerializer {
                 buf.putInt(snap.fullPageId().cacheId());
                 buf.putLong(snap.fullPageId().pageId());
                 buf.put(snap.pageData());
-
-                break;
-
-            case STORE_OPERATION_RECORD:
-                StoreOperationRecord storeRec = (StoreOperationRecord)record;
-
-                buf.put((byte)storeRec.operationType().ordinal());
-                buf.putInt(storeRec.cacheId());
-                buf.putLong(storeRec.link());
-                buf.putInt(storeRec.indexId());
 
                 break;
 
@@ -197,6 +193,7 @@ public class RecordV1Serializer implements RecordSerializer {
                 buf.putLong(partDataRec.updateCounter());
                 buf.putLong(partDataRec.globalRemoveId());
                 buf.putInt(partDataRec.partitionSize());
+                buf.putLong(partDataRec.countersPageId());
                 buf.put(partDataRec.state());
                 buf.putInt(partDataRec.allocatedIndexCandidate());
 
@@ -217,12 +214,12 @@ public class RecordV1Serializer implements RecordSerializer {
                 buf.put(walPtr == null ? (byte)0 : 1);
 
                 if (walPtr != null) {
-                    buf.putInt(walPtr.index());
+                    buf.putLong(walPtr.index());
                     buf.putInt(walPtr.fileOffset());
                     buf.putInt(walPtr.length());
                 }
 
-                putCacheStates(buf, cpRec.cacheStates());
+                putCacheStates(buf, cpRec.cacheGroupStates());
 
                 buf.put(cpRec.end() ? (byte)1 : 0);
 
@@ -651,13 +648,13 @@ public class RecordV1Serializer implements RecordSerializer {
     }
 
     /** {@inheritDoc} */
-    @Override public WALRecord readRecord(FileInput in0) throws  IOException, IgniteCheckedException {
+    @Override public WALRecord readRecord(FileInput in0, WALPointer expPtr) throws  IOException, IgniteCheckedException {
         long startPos = -1;
 
         try (FileInput.Crc32CheckingFileInput in = in0.startRead(skipCrc)) {
             startPos = in0.position();
 
-            WALRecord res = readRecord(in);
+            WALRecord res = readRecord(in, expPtr);
 
             assert res != null;
 
@@ -676,11 +673,17 @@ public class RecordV1Serializer implements RecordSerializer {
     /**
      * @param in In.
      */
-    private WALRecord readRecord(ByteBufferBackedDataInput in) throws IOException, IgniteCheckedException {
+    private WALRecord readRecord(ByteBufferBackedDataInput in, WALPointer expPtr) throws IOException, IgniteCheckedException {
         int type = in.readUnsignedByte();
 
         if (type == 0)
             throw new SegmentEofException("Reached logical end of the segment", null);
+
+        FileWALPointer ptr = readPosition(in);
+
+        if (!F.eq(ptr, expPtr))
+            throw new SegmentEofException("WAL segment rollover detected (will end iteration) [expPtr=" + expPtr +
+                ", readPtr=" + ptr + ']', null);
 
         RecordType recType = RecordType.fromOrdinal(type - 1);
 
@@ -702,18 +705,6 @@ public class RecordV1Serializer implements RecordSerializer {
 
                 break;
 
-            case STORE_OPERATION_RECORD:
-                StoreOperationRecord storeRec = new StoreOperationRecord();
-
-                storeRec.operationType(StoreOperationType.fromOrdinal(in.readByte() & 0xFF));
-                storeRec.cacheId(in.readInt());
-                storeRec.link(in.readLong());
-                storeRec.indexId(in.readInt());
-
-                res = storeRec;
-
-                break;
-
             case CHECKPOINT_RECORD:
                 long msb = in.readLong();
                 long lsb = in.readLong();
@@ -730,7 +721,7 @@ public class RecordV1Serializer implements RecordSerializer {
 
                 CheckpointRecord cpRec = new CheckpointRecord(new UUID(msb, lsb), walPtr, end);
 
-                cpRec.cacheStates(states);
+                cpRec.cacheGroupStates(states);
 
                 res = cpRec;
 
@@ -756,10 +747,11 @@ public class RecordV1Serializer implements RecordSerializer {
                 long updCntr = in.readLong();
                 long rmvId = in.readLong();
                 int partSize = in.readInt();
+                long countersPageId = in.readLong();
                 byte state = in.readByte();
                 int allocatedIdxCandidate = in.readInt();
 
-                res = new MetaPageUpdatePartitionDataRecord(cacheId, pageId, updCntr, rmvId, partSize, state, allocatedIdxCandidate);
+                res = new MetaPageUpdatePartitionDataRecord(cacheId, pageId, updCntr, rmvId, partSize, countersPageId, state, allocatedIdxCandidate);
 
                 break;
 
@@ -791,8 +783,11 @@ public class RecordV1Serializer implements RecordSerializer {
                 break;
 
             case HEADER_RECORD:
-                if (in.readLong() != HeaderRecord.MAGIC)
-                    throw new EOFException("Magic is corrupted.");
+                long magic = in.readLong();
+
+                if (magic != HeaderRecord.MAGIC)
+                    throw new EOFException("Magic is corrupted [exp=" + U.hexLong(HeaderRecord.MAGIC) +
+                        ", actual=" + U.hexLong(magic) + ']');
 
                 int ver = in.readInt();
 
@@ -1217,16 +1212,15 @@ public class RecordV1Serializer implements RecordSerializer {
     /** {@inheritDoc} */
     @SuppressWarnings("CastConflictsWithInstanceof")
     @Override public int size(WALRecord record) throws IgniteCheckedException {
+        int commonFields = /* Type */1 + /* Pointer */12 + /*CRC*/4;
+
         switch (record.type()) {
             case PAGE_RECORD:
                 assert record instanceof PageSnapshot;
 
                 PageSnapshot pageRec = (PageSnapshot)record;
 
-                return pageRec.pageData().length + 12 + 1 + 4;
-
-            case STORE_OPERATION_RECORD:
-                return 18 + 4;
+                return commonFields + pageRec.pageData().length + 12;
 
             case CHECKPOINT_RECORD:
                 CheckpointRecord cpRec = (CheckpointRecord)record;
@@ -1234,155 +1228,175 @@ public class RecordV1Serializer implements RecordSerializer {
                 assert cpRec.checkpointMark() == null || cpRec.checkpointMark() instanceof FileWALPointer :
                     "Invalid WAL record: " + cpRec;
 
-                int cacheStatesSize = cacheStatesSize(cpRec.cacheStates());
+                int cacheStatesSize = cacheStatesSize(cpRec.cacheGroupStates());
 
                 FileWALPointer walPtr = (FileWALPointer)cpRec.checkpointMark();
 
-                return 19 + cacheStatesSize + (walPtr == null ? 0 : 12) + 4;
+                return commonFields + 18 + cacheStatesSize + (walPtr == null ? 0 : 16);
 
             case META_PAGE_INIT:
-                return 1 + /*cache ID*/4 + /*page ID*/8 + /*ioType*/2  + /*ioVer*/2 +  /*tree root*/8 + /*reuse root*/8 +  /*CRC*/4;
+                return commonFields + /*cache ID*/4 + /*page ID*/8 + /*ioType*/2  + /*ioVer*/2 +  /*tree root*/8 + /*reuse root*/8;
 
             case PARTITION_META_PAGE_UPDATE_COUNTERS:
-                return 1 + /*cache ID*/4 + /*page ID*/8 + /*upd cntr*/8 + /*rmv id*/8 + /*part size*/4 + /*state*/ 1
-                    + /*allocatedIdxCandidate*/ 4 + /*CRC*/4;
+                return commonFields + /*cache ID*/4 + /*page ID*/8 + /*upd cntr*/8 + /*rmv id*/8 + /*part size*/4 + /*counters page id*/8 + /*state*/ 1
+                    + /*allocatedIdxCandidate*/ 4;
 
             case MEMORY_RECOVERY:
-                return 1 + 8 + 4;
+                return commonFields + 8;
 
             case PARTITION_DESTROY:
-                return 1 + /*cacheId*/4 + /*partId*/4 + /*CRC*/4;
+                return commonFields + /*cacheId*/4 + /*partId*/4;
 
             case DATA_RECORD:
                 DataRecord dataRec = (DataRecord)record;
 
-                return 5 + dataSize(dataRec) + 4;
+                return commonFields + 4 + dataSize(dataRec);
 
             case HEADER_RECORD:
-                return 13 + 4;
+                return HEADER_RECORD_SIZE;
 
             case DATA_PAGE_INSERT_RECORD:
                 DataPageInsertRecord diRec = (DataPageInsertRecord)record;
 
-                return 1 + 4 + 8 + 2 +
-                    diRec.payload().length + 4;
+                return commonFields + 4 + 8 + 2 + diRec.payload().length;
 
             case DATA_PAGE_UPDATE_RECORD:
                 DataPageUpdateRecord uRec = (DataPageUpdateRecord)record;
 
-                return 1 + 4 + 8 + 2 + 4 +
-                    uRec.payload().length + 4;
+                return commonFields + 4 + 8 + 2 + 4 +
+                    uRec.payload().length;
 
             case DATA_PAGE_INSERT_FRAGMENT_RECORD:
                 final DataPageInsertFragmentRecord difRec = (DataPageInsertFragmentRecord)record;
 
-                return 1 + 4 + 8 + 8 + 4 + difRec.payloadSize() + 4;
+                return commonFields + 4 + 8 + 8 + 4 + difRec.payloadSize();
 
             case DATA_PAGE_REMOVE_RECORD:
-                return 1 + 4 + 8 + 1 + 4;
+                return commonFields + 4 + 8 + 1;
 
             case DATA_PAGE_SET_FREE_LIST_PAGE:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case INIT_NEW_PAGE_RECORD:
-                return 1 + 4 + 8 + 2 + 2 + 8 + 4;
+                return commonFields + 4 + 8 + 2 + 2 + 8;
 
             case BTREE_META_PAGE_INIT_ROOT:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case BTREE_META_PAGE_INIT_ROOT2:
-                return 1 + 4 + 8 + 8 + 4 + 2;
+                return commonFields + 4 + 8 + 8 + 2;
 
             case BTREE_META_PAGE_ADD_ROOT:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case BTREE_META_PAGE_CUT_ROOT:
-                return 1 + 4 + 8 + 4;
+                return commonFields + 4 + 8;
 
             case BTREE_INIT_NEW_ROOT:
                 NewRootInitRecord<?> riRec = (NewRootInitRecord<?>)record;
 
-                return 1 + 4 + 8 + 8 + 2 + 2 + 8 + 8 + riRec.io().getItemSize() + 4;
+                return commonFields + 4 + 8 + 8 + 2 + 2 + 8 + 8 + riRec.io().getItemSize();
 
             case BTREE_PAGE_RECYCLE:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case BTREE_PAGE_INSERT:
                 InsertRecord<?> inRec = (InsertRecord<?>)record;
 
-                return 1 + 4 + 8 + 2 + 2 + 2 + 8 + inRec.io().getItemSize() + 4;
+                return commonFields + 4 + 8 + 2 + 2 + 2 + 8 + inRec.io().getItemSize();
 
             case BTREE_FIX_LEFTMOST_CHILD:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case BTREE_FIX_COUNT:
-                return 1 + 4 + 8 + 2 + 4;
+                return commonFields + 4 + 8 + 2;
 
             case BTREE_PAGE_REPLACE:
                 ReplaceRecord<?> rRec = (ReplaceRecord<?>)record;
 
-                return 1 + 4 + 8 + 2 + 2 + 2 + rRec.io().getItemSize() + 4;
+                return commonFields + 4 + 8 + 2 + 2 + 2 + rRec.io().getItemSize();
 
             case BTREE_PAGE_REMOVE:
-                return 1 + 4 + 8 + 2 + 2 + 4;
+                return commonFields + 4 + 8 + 2 + 2;
 
             case BTREE_PAGE_INNER_REPLACE:
-                return 1 + 4 + 8 + 2 + 8 + 2 + 8 + 4;
+                return commonFields + 4 + 8 + 2 + 8 + 2 + 8;
 
             case BTREE_FORWARD_PAGE_SPLIT:
-                return 1 + 4 + 8 + 8 + 2 + 2 + 8 + 2 + 2 + 4;
+                return commonFields + 4 + 8 + 8 + 2 + 2 + 8 + 2 + 2;
 
             case BTREE_EXISTING_PAGE_SPLIT:
-                return 1 + 4 + 8 + 2 + 8 + 4;
+                return commonFields + 4 + 8 + 2 + 8;
 
             case BTREE_PAGE_MERGE:
-                return 1 + 4 + 8 + 8 + 2 + 8 + 1 + 4;
+                return commonFields + 4 + 8 + 8 + 2 + 8 + 1;
 
             case BTREE_FIX_REMOVE_ID:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case PAGES_LIST_SET_NEXT:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case PAGES_LIST_SET_PREVIOUS:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case PAGES_LIST_INIT_NEW_PAGE:
-                return 1 + 4 + 8 + 4 + 4 + 8 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 4 + 4 + 8 + 8 + 8;
 
             case PAGES_LIST_ADD_PAGE:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case PAGES_LIST_REMOVE_PAGE:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case TRACKING_PAGE_DELTA:
-                return 1 + 4 + 8 + 8 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8 + 8 + 8;
 
             case META_PAGE_UPDATE_LAST_SUCCESSFUL_SNAPSHOT_ID:
-                return 1 + 4 + 8 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8 + 8;
 
             case META_PAGE_UPDATE_LAST_SUCCESSFUL_FULL_SNAPSHOT_ID:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case META_PAGE_UPDATE_NEXT_SNAPSHOT_ID:
-                return 1 + 4 + 8 + 8 + 4;
+                return commonFields + 4 + 8 + 8;
 
             case META_PAGE_UPDATE_LAST_ALLOCATED_INDEX:
-                return 1 + 4 + 8 + 4 + 4;
+                return commonFields + 4 + 8 + 4;
 
             case PART_META_UPDATE_STATE:
-                return /*Type*/ 1 + /*cacheId*/ 4 + /*partId*/ 4 + /*State*/1 + /*Update Counter*/ 8 + /*CRC*/4;
+                return commonFields + /*cacheId*/ 4 + /*partId*/ 4 + /*State*/1 + /*Update Counter*/ 8;
 
             case PAGE_LIST_META_RESET_COUNT_RECORD:
-                return /*Type*/ 1 + /*cacheId*/ 4 + /*pageId*/ 8 + /*CRC*/4;
+                return commonFields + /*cacheId*/ 4 + /*pageId*/ 8;
 
             case SWITCH_SEGMENT_RECORD:
-                return  /*Type*/ 1 + /*CRC*/4;
+                return commonFields;
 
             default:
                 throw new UnsupportedOperationException("Type: " + record.type());
         }
+    }
+
+    /**
+     * @param buf Byte buffer to serialize version to.
+     * @param ptr File WAL pointer to write.
+     */
+    private void putPosition(ByteBuffer buf, FileWALPointer ptr) {
+        buf.putLong(ptr.index());
+        buf.putInt(ptr.fileOffset());
+    }
+
+    /**
+     * @param in Data input to read pointer from.
+     * @return Read file WAL pointer.
+     * @throws IOException If failed to write.
+     */
+    private FileWALPointer readPosition(DataInput in) throws IOException {
+        long idx = in.readLong();
+        int fileOffset = in.readInt();
+
+        return new FileWALPointer(idx, fileOffset, 0);
     }
 
     /**
@@ -1630,10 +1644,9 @@ public class RecordV1Serializer implements RecordSerializer {
     /**
      * @param buf Buffer.
      * @param rowBytes Row bytes.
-     * @throws IgniteCheckedException If failed.
      */
     @SuppressWarnings("unchecked")
-    private static void putRow(ByteBuffer buf, byte[] rowBytes) throws IgniteCheckedException {
+    private static void putRow(ByteBuffer buf, byte[] rowBytes) {
         assert rowBytes.length > 0;
 
         buf.put(rowBytes);
