@@ -38,6 +38,15 @@ public class PersistenceMetricsSnapshot implements PersistenceMetrics {
     private long lastCpDuration;
 
     /** */
+    private long lastCpLockWaitDuration;
+
+    /** */
+    private long lastCpMmarkDuration;
+
+    /** */
+    private long lastCpPagesWriteDuration;
+
+    /** */
     private long lastCpFsyncDuration;
 
     /** */
@@ -45,9 +54,6 @@ public class PersistenceMetricsSnapshot implements PersistenceMetrics {
 
     /** */
     private long lastCpDataPages;
-
-    /** */
-    private long lastCpIndexPages;
 
     /** */
     private long lastCpCowPages;
@@ -61,10 +67,12 @@ public class PersistenceMetricsSnapshot implements PersistenceMetrics {
         walArchiveSegments = metrics.getWalArchiveSegments();
         walFsyncTimeAvg = metrics.getWalFsyncTimeAverage();
         lastCpDuration = metrics.getLastCheckpointingDuration();
+        lastCpLockWaitDuration = metrics.getLastCheckpointLockWaitDuration();
+        lastCpMmarkDuration = metrics.getLastCheckpointMarkDuration();
+        lastCpPagesWriteDuration = metrics.getLastCheckpointPagesWriteDuration();
         lastCpFsyncDuration = metrics.getLastCheckpointFsyncDuration();
         lastCpTotalPages = metrics.getLastCheckpointTotalPagesNumber();
         lastCpDataPages = metrics.getLastCheckpointDataPagesNumber();
-        lastCpIndexPages = metrics.getLastCheckpointIndexPagesNumber();
         lastCpCowPages = metrics.getLastCheckpointCopiedOnWritePagesNumber();
     }
 
@@ -94,6 +102,21 @@ public class PersistenceMetricsSnapshot implements PersistenceMetrics {
     }
 
     /** {@inheritDoc} */
+    @Override public long getLastCheckpointLockWaitDuration() {
+        return lastCpLockWaitDuration;
+    }
+
+    /** {@inheritDoc} */
+    @Override public long getLastCheckpointMarkDuration() {
+        return lastCpMmarkDuration;
+    }
+
+    /** {@inheritDoc} */
+    @Override public long getLastCheckpointPagesWriteDuration() {
+        return lastCpPagesWriteDuration;
+    }
+
+    /** {@inheritDoc} */
     @Override public long getLastCheckpointFsyncDuration() {
         return lastCpFsyncDuration;
     }
@@ -106,11 +129,6 @@ public class PersistenceMetricsSnapshot implements PersistenceMetrics {
     /** {@inheritDoc} */
     @Override public long getLastCheckpointDataPagesNumber() {
         return lastCpDataPages;
-    }
-
-    /** {@inheritDoc} */
-    @Override public long getLastCheckpointIndexPagesNumber() {
-        return lastCpIndexPages;
     }
 
     /** {@inheritDoc} */

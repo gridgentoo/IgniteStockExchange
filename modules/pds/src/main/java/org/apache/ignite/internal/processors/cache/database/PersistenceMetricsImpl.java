@@ -31,7 +31,10 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
     private volatile HitRateMetrics walWritingRate;
 
     /** */
-    private volatile long walFsyncTimeAvg;
+    private volatile HitRateMetrics walFsyncTimeDuration;
+
+    /** */
+    private volatile HitRateMetrics walFsyncTimeNumber;
 
     /** */
     private volatile long lastCpLockWaitDuration;
@@ -75,12 +78,10 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
      * @param subInts Number of sub-intervals.
      */
     public PersistenceMetricsImpl(
-        IgniteWriteAheadLogManager wal,
         boolean metricsEnabled,
         long rateTimeInterval,
         int subInts
     ) {
-        this.wal = wal;
         this.metricsEnabled = metricsEnabled;
         this.rateTimeInterval = rateTimeInterval;
         this.subInts = subInts;
@@ -112,8 +113,17 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
         return wal.walArchiveSegments();
     }
 
+    /** {@inheritDoc} */
     @Override public float getWalFsyncTimeAverage() {
-        return 0;
+        if (!metricsEnabled)
+            return 0;
+
+        long numRate = walFsyncTimeNumber.getRate();
+
+        if (numRate == 0)
+            return 0;
+
+        return (float)walFsyncTimeDuration.getRate() / numRate;
     }
 
     /** {@inheritDoc} */
@@ -205,6 +215,13 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
     }
 
     /**
+     * @param wal Write-ahead log manager.
+     */
+    public void wal(IgniteWriteAheadLogManager wal) {
+        this.wal = wal;
+    }
+
+    /**
      * @return Metrics enabled flag.
      */
     public boolean metricsEnabled() {
@@ -246,8 +263,35 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
     /**
      *
      */
+    public void onWalRecordLogged() {
+        walLoggingRate.onHit();
+    }
+
+    /**
+     * @param size Size written.
+     */
+    public void onWalBytesWritten(int size) {
+        walWritingRate.onHits(size);
+    }
+
+    /**
+     * @param nanoTime Fsync nano time.
+     */
+    public void onFsync(long nanoTime) {
+        long microseconds = nanoTime / 1_000;
+
+        walFsyncTimeDuration.onHits(microseconds);
+        walFsyncTimeNumber.onHit();
+    }
+
+    /**
+     *
+     */
     private void resetRates() {
         walLoggingRate = new HitRateMetrics((int)rateTimeInterval, subInts);
         walWritingRate = new HitRateMetrics((int)rateTimeInterval, subInts);
+
+        walFsyncTimeDuration = new HitRateMetrics((int)rateTimeInterval, subInts);
+        walFsyncTimeNumber = new HitRateMetrics((int)rateTimeInterval, subInts);
     }
 }

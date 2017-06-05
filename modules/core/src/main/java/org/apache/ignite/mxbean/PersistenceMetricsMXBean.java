@@ -25,19 +25,19 @@ import org.apache.ignite.configuration.PersistentStoreConfiguration;
  */
 public interface PersistenceMetricsMXBean extends PersistenceMetrics {
     /** {@inheritDoc} */
-    @MXBeanDescription("Average number of WAL records per second written during the last time interval")
+    @MXBeanDescription("Average number of WAL records per second written during the last time interval.")
     @Override float getWalLoggingRate();
 
     /** {@inheritDoc} */
-    @MXBeanDescription("Average number of bytes per second written during the last time interval")
+    @MXBeanDescription("Average number of bytes per second written during the last time interval.")
     @Override float getWalWritingRate();
 
     /** {@inheritDoc} */
-    @MXBeanDescription("Current number of WAL segments in the WAL archive")
+    @MXBeanDescription("Current number of WAL segments in the WAL archive.")
     @Override int getWalArchiveSegments();
 
     /** {@inheritDoc} */
-    @MXBeanDescription("Average WAL fsync duration in microseconds over the last time interval")
+    @MXBeanDescription("Average WAL fsync duration in microseconds over the last time interval.")
     @Override float getWalFsyncTimeAverage();
 
     /** {@inheritDoc} */
@@ -57,19 +57,19 @@ public interface PersistenceMetricsMXBean extends PersistenceMetrics {
     @Override long getLastCheckpointPagesWriteDuration();
 
     /** {@inheritDoc} */
-    @MXBeanDescription("Duration of the sync phase of the last checkpoint in milliseconds")
+    @MXBeanDescription("Duration of the sync phase of the last checkpoint in milliseconds.")
     @Override long getLastCheckpointFsyncDuration();
 
     /** {@inheritDoc} */
-    @MXBeanDescription("Total number of pages written during the last checkpoint")
+    @MXBeanDescription("Total number of pages written during the last checkpoint.")
     @Override long getLastCheckpointTotalPagesNumber();
 
     /** {@inheritDoc} */
-    @MXBeanDescription("Total number of data pages written during the last checkpoint")
+    @MXBeanDescription("Total number of data pages written during the last checkpoint.")
     @Override long getLastCheckpointDataPagesNumber();
 
     /** {@inheritDoc} */
-    @MXBeanDescription("Number of pages copied to a temporary checkpoint buffer during the last checkpoint")
+    @MXBeanDescription("Number of pages copied to a temporary checkpoint buffer during the last checkpoint.")
     @Override long getLastCheckpointCopiedOnWritePagesNumber();
 
     /**

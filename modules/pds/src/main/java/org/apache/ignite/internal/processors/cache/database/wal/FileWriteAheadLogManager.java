@@ -55,6 +55,8 @@ import org.apache.ignite.internal.pagemem.wal.WALPointer;
 import org.apache.ignite.internal.pagemem.wal.record.WALRecord;
 import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
 import org.apache.ignite.internal.processors.cache.GridCacheSharedManagerAdapter;
+import org.apache.ignite.internal.processors.cache.database.GridCacheDatabaseSharedManager;
+import org.apache.ignite.internal.processors.cache.database.PersistenceMetricsImpl;
 import org.apache.ignite.internal.processors.cache.database.wal.record.HeaderRecord;
 import org.apache.ignite.internal.processors.cache.database.wal.serializer.RecordV1Serializer;
 import org.apache.ignite.internal.util.GridCloseableIteratorAdapter;
@@ -138,6 +140,9 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
     /** */
     private IgniteConfiguration igCfg;
 
+    /** Persistence metrics tracker. */
+    private PersistenceMetricsImpl metrics;
+
     /** */
     private File walWorkDir;
 
@@ -217,6 +222,10 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
                 "write ahead log archive directory");
 
             serializer = new RecordV1Serializer(cctx);
+
+            GridCacheDatabaseSharedManager dbMgr = (GridCacheDatabaseSharedManager)cctx.database();
+
+            metrics = dbMgr.persistentStoreMetricsImpl();
 
             checkOrPrepareFiles();
 
@@ -368,6 +377,8 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
             WALPointer ptr = current.addRecord(record);
 
             if (ptr != null) {
+                metrics.onWalRecordLogged();
+
                 lastWALPtr.set(ptr);
 
                 return ptr;
@@ -1807,6 +1818,10 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
                 if (lastFsyncPos != written) {
                     assert lastFsyncPos < written; // Fsync position must be behind.
 
+                    boolean metricsEnabled = metrics.metricsEnabled();
+
+                    long start = metricsEnabled ? System.nanoTime() : 0;
+
                     try {
                         ch.force(false);
                     }
@@ -1818,6 +1833,11 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
 
                     if (fsyncDelayNanos > 0)
                         fsync.signalAll();
+
+                    long end = metricsEnabled ? System.nanoTime() : 0;
+
+                    if (metricsEnabled)
+                        metrics.onFsync(end - start);
                 }
             }
             finally {
@@ -1963,6 +1983,8 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
                     while (buf.hasRemaining());
 
                     written += size;
+
+                    metrics.onWalBytesWritten(size);
 
                     assert written == ch.position();
                 }

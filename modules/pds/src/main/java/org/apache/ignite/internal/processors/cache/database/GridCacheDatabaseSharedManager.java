@@ -309,7 +309,6 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
         };
 
         persStoreMetrics = new PersistenceMetricsImpl(
-            cctx.wal(),
             persistenceCfg.isMetricsEnabled(),
             persistenceCfg.getRateTimeInterval(),
             persistenceCfg.getSubIntervals()
@@ -357,6 +356,8 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
                 throw new IgniteCheckedException("Could not create directory for checkpoint metadata: " + cpDir);
 
             fileLockHolder = new FileLockHolder(storeMgr.workDir().getPath(), cctx.kernalContext(), log);
+
+            persStoreMetrics.wal(cctx.wal());
 
             try {
                 persistenceMetricsMbeanName = U.registerMBean(
