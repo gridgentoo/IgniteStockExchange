@@ -61,7 +61,7 @@ import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.IgniteSystemProperties;
-import org.apache.ignite.PersistentStoreMetrics;
+import org.apache.ignite.PersistenceMetrics;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.DataPageEvictionMode;
 import org.apache.ignite.configuration.IgniteConfiguration;
@@ -234,7 +234,7 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
     private volatile boolean printCheckpointStats = true;
 
     /** Database configuration. */
-    private final PersistentStoreConfiguration dbCfg;
+    private final PersistentStoreConfiguration persistenceCfg;
 
     /** */
     private final Collection<DbCheckpointListener> lsnrs = new CopyOnWriteArrayList<>();
@@ -270,7 +270,7 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
     private IgniteCacheSnapshotManager snapshotMgr;
 
     /** */
-    private PersistentStoreMetricsImpl persStoreMetrics = new PersistentStoreMetricsImpl();
+    private PersistenceMetricsImpl persStoreMetrics;
 
     /**
      * @param ctx Kernal context.
@@ -278,13 +278,13 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
     public GridCacheDatabaseSharedManager(GridKernalContext ctx) {
         IgniteConfiguration cfg = ctx.config();
 
-        dbCfg = cfg.getPersistentStoreConfiguration();
+        persistenceCfg = cfg.getPersistentStoreConfiguration();
 
-        assert dbCfg != null : "PageStore should not be created if persistence is disabled.";
+        assert persistenceCfg != null : "PageStore should not be created if persistence is disabled.";
 
-        checkpointFreq = dbCfg.getCheckpointingFrequency();
+        checkpointFreq = persistenceCfg.getCheckpointingFrequency();
 
-        lockWaitTime = dbCfg.getLockWaitTime();
+        lockWaitTime = persistenceCfg.getLockWaitTime();
 
         final int pageSize = cfg.getMemoryConfiguration().getPageSize();
 
@@ -298,6 +298,12 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
                 return tmpWriteBuf;
             }
         };
+
+        persStoreMetrics = new PersistenceMetricsImpl(
+            persistenceCfg.isMetricsEnabled(),
+            persistenceCfg.getRateTimeInterval(),
+            persistenceCfg.getSubIntervals()
+        );
     }
 
     /**
@@ -348,19 +354,19 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
      *
      */
     @Override public void initDataBase() throws IgniteCheckedException {
-        Long cpBufSize = dbCfg.getCheckpointingPageBufferSize();
+        Long cpBufSize = persistenceCfg.getCheckpointingPageBufferSize();
 
-        if (dbCfg.getCheckpointingThreads() > 1)
+        if (persistenceCfg.getCheckpointingThreads() > 1)
             asyncRunner = new ThreadPoolExecutor(
-                dbCfg.getCheckpointingThreads(),
-                dbCfg.getCheckpointingThreads(),
+                persistenceCfg.getCheckpointingThreads(),
+                persistenceCfg.getCheckpointingThreads(),
                 30L,
                 TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>()
             );
 
         // Intentionally use identity comparison to check if configuration default has changed.
-        // Noinspection NumberEquality.
+        //noinspection NumberEquality
         if (cpBufSize == PersistentStoreConfiguration.DFLT_CHECKPOINTING_PAGE_BUFFER_SIZE) {
             MemoryConfiguration memCfg = cctx.kernalContext().config().getMemoryConfiguration();
 
@@ -2080,19 +2086,27 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
                     finishDestroyPartitionsAsync(reqs);
                 }
 
-                if (printCheckpointStats)
-                    log.info(String.format("Checkpoint finished [cpId=%s, pages=%d, markPos=%s, " +
-                            "walSegmentsCleared=%d, markBegin=%dms, pagesWrite=%dms, fsync=%dms, markEnd=%dms, " +
-                            "total=%dms]",
-                        chp.cpEntry.checkpointId(),
-                        pages,
-                        chp.cpEntry.checkpointMark(),
-                        chp.walFilesDeleted,
-                        marked - start,
-                        written - marked,
-                        fsync - written,
-                        fsyncEnd - fsync,
-                        fsyncEnd - start));
+                if (printCheckpointStats) {
+                    if (log.isInfoEnabled())
+                        log.info(String.format("Checkpoint finished [cpId=%s, pages=%d, markPos=%s, " +
+                                "walSegmentsCleared=%d, markBegin=%dms, pagesWrite=%dms, fsync=%dms, markEnd=%dms, " +
+                                "total=%dms]",
+                            chp.cpEntry.checkpointId(),
+                            pages,
+                            chp.cpEntry.checkpointMark(),
+                            chp.walFilesDeleted,
+                            marked - start,
+                            written - marked,
+                            fsync - written,
+                            fsyncEnd - fsync,
+                            fsyncEnd - start));
+                }
+
+                persStoreMetrics.onCheckpoint(
+                    fsyncEnd - start,
+                    fsync - written,
+                    pages,
+                    0, 0, 0);
             }
             catch (IgniteCheckedException e) {
                 // TODO-ignite-db how to handle exception?
@@ -2636,7 +2650,7 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
         private int onCheckpointFinished() {
             int deleted = 0;
 
-            while (histMap.size() > dbCfg.getWalHistorySize()) {
+            while (histMap.size() > persistenceCfg.getWalHistorySize()) {
                 Map.Entry<Long, CheckpointEntry> entry = histMap.firstEntry();
 
                 CheckpointEntry cpEntry = entry.getValue();
@@ -2656,7 +2670,7 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
                     U.warn(log, "Failed to remove stale checkpoint files [startFile=" + startFile.getAbsolutePath() +
                         ", endFile=" + endFile.getAbsolutePath() + ']');
 
-                    if (histMap.size() > 2 * dbCfg.getWalHistorySize()) {
+                    if (histMap.size() > 2 * persistenceCfg.getWalHistorySize()) {
                         U.error(log, "Too many stale checkpoint entries in the map, will truncate WAL archive anyway.");
 
                         fail = false;
@@ -3183,14 +3197,14 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
     }
 
     /** {@inheritDoc} */
-    @Override public PersistentStoreMetrics persistentStoreMetrics() {
-        return new PersistentStoreMetricsSnapshot(persStoreMetrics);
+    @Override public PersistenceMetrics persistentStoreMetrics() {
+        return new PersistenceMetricsSnapshot(persStoreMetrics);
     }
 
     /**
      *
      */
-    public PersistentStoreMetricsImpl persistentStoreMetricsImpl() {
+    public PersistenceMetricsImpl persistentStoreMetricsImpl() {
         return persStoreMetrics;
     }
 }

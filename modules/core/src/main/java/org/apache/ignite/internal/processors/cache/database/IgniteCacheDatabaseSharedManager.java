@@ -28,7 +28,7 @@ import javax.management.JMException;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.MemoryMetrics;
-import org.apache.ignite.PersistentStoreMetrics;
+import org.apache.ignite.PersistenceMetrics;
 import org.apache.ignite.configuration.DataPageEvictionMode;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.MemoryConfiguration;
@@ -586,7 +586,7 @@ public class IgniteCacheDatabaseSharedManager extends GridCacheSharedManagerAdap
     /**
      * @return PersistenceMetrics if persistence is enabled or {@code null} otherwise.
      */
-    public PersistentStoreMetrics persistentStoreMetrics() {
+    public PersistenceMetrics persistentStoreMetrics() {
         return null;
     }
 

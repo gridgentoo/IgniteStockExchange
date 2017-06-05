@@ -641,7 +641,7 @@ public interface Ignite extends AutoCloseable {
 
     /**
      *
-     * @return {@link PersistentStoreMetrics} snapshot.
+     * @return {@link PersistenceMetrics} snapshot.
      */
-    public PersistentStoreMetrics persistentStoreMetrics();
+    public PersistenceMetrics persistentStoreMetrics();
 }
