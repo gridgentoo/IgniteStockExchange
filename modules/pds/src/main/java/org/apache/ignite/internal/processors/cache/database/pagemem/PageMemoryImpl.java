@@ -791,7 +791,7 @@ public class PageMemoryImpl implements PageMemoryEx {
     }
 
     /** {@inheritDoc} */
-    @Override public Integer getForCheckpoint(FullPageId fullId, ByteBuffer tmpBuf) {
+    @Override public Integer getForCheckpoint(FullPageId fullId, ByteBuffer tmpBuf, CheckpointMetricsTracker tracker) {
         assert tmpBuf.remaining() == pageSize();
 
         Segment seg = segment(fullId.cacheId(), fullId.pageId());
@@ -869,7 +869,7 @@ public class PageMemoryImpl implements PageMemoryEx {
 
         }
         else {
-            copyPageForCheckpoint(absPtr, fullId, tmpBuf);
+            copyPageForCheckpoint(absPtr, fullId, tmpBuf, tracker);
 
             return tag;
         }
@@ -880,7 +880,7 @@ public class PageMemoryImpl implements PageMemoryEx {
      * @param fullId Full id.
      * @param tmpBuf Tmp buffer.
      */
-    private void copyPageForCheckpoint(long absPtr, FullPageId fullId, ByteBuffer tmpBuf) {
+    private void copyPageForCheckpoint(long absPtr, FullPageId fullId, ByteBuffer tmpBuf, CheckpointMetricsTracker tracker) {
         assert absPtr != 0;
 
         long tmpRelPtr;
@@ -917,6 +917,9 @@ public class PageMemoryImpl implements PageMemoryEx {
         GridUnsafe.setMemory(tmpAbsPtr + PAGE_OVERHEAD, pageSize(), (byte)0);
 
         PageHeader.dirty(tmpAbsPtr, false);
+
+        if (tracker != null)
+            tracker.onCowPageWritten();
 
         checkpointPool.releaseFreePage(tmpRelPtr);
 

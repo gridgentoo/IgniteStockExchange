@@ -58,31 +58,57 @@ public interface PersistenceMetrics {
 
     /**
      * Gets the duration of the last checkpoint in milliseconds.
+     *
+     * @return Total checkpoint duration in milliseconds.
      */
     public long getLastCheckpointingDuration();
 
     /**
+     * Gets the duration of last checkpoint lock wait in milliseconds.
+     *
+     * @return Checkpoint lock wait time in milliseconds.
+     */
+    public long getLastCheckpointLockWaitDuration();
+
+    /**
+     * Gets the duration of last checkpoint mark phase in milliseconds.
+     *
+     * @return Checkpoint mark duration in milliseconds.
+     */
+    public long getLastCheckpointMarkDuration();
+
+    /**
+     * Gets the duration of last checkpoint pages write phase in milliseconds.
+     *
+     * @return Checkpoint pages write phase in milliseconds.
+     */
+    public long getLastCheckpointPagesWriteDuration();
+
+    /**
      * Gets the duration of the sync phase of the last checkpoint in milliseconds.
+     *
+     * @return Checkpoint fsync time in milliseconds.
      */
     public long getLastCheckpointFsyncDuration();
 
     /**
      * Gets the total number of pages written during the last checkpoint.
+     *
+     * @return Total number of pages written during the last checkpoint.
      */
     public long getLastCheckpointTotalPagesNumber();
 
     /**
      * Gets the number of data pages written during the last checkpoint.
+     *
+     * @return Total number of data pages written during the last checkpoint.
      */
     public long getLastCheckpointDataPagesNumber();
 
     /**
-     * Gets the number of index pages written during the last checkpoint.
-     */
-    public long getLastCheckpointIndexPagesNumber();
-
-    /**
      * Gets the number of pages copied to a temporary checkpoint buffer during the last checkpoint.
+     *
+     * @return Total number of pages copied to a temporary checkpoint buffer during the last checkpoint.
      */
     public long getLastCheckpointCopiedOnWritePagesNumber();
 }

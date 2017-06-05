@@ -16,6 +16,7 @@
  */
 package org.apache.ignite.internal.processors.cache.database;
 
+import org.apache.ignite.internal.pagemem.wal.IgniteWriteAheadLogManager;
 import org.apache.ignite.internal.processors.cache.ratemetrics.HitRateMetrics;
 import org.apache.ignite.mxbean.PersistenceMetricsMXBean;
 
@@ -30,10 +31,16 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
     private volatile HitRateMetrics walWritingRate;
 
     /** */
-    private volatile int walArchiveSegments;
+    private volatile long walFsyncTimeAvg;
 
     /** */
-    private volatile long walFsyncTimeAvg;
+    private volatile long lastCpLockWaitDuration;
+
+    /** */
+    private volatile long lastCpMarkDuration;
+
+    /** */
+    private volatile long lastCpPagesWriteDuration;
 
     /** */
     private volatile long lastCpDuration;
@@ -48,9 +55,6 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
     private volatile long lastCpDataPages;
 
     /** */
-    private volatile long lastCpIdxPages;
-
-    /** */
     private volatile long lastCpCowPages;
 
     /** */
@@ -62,12 +66,21 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
     /** */
     private volatile boolean metricsEnabled;
 
+    /** */
+    private IgniteWriteAheadLogManager wal;
+
     /**
      * @param metricsEnabled Metrics enabled flag.
      * @param rateTimeInterval Rate time interval.
      * @param subInts Number of sub-intervals.
      */
-    public PersistenceMetricsImpl(boolean metricsEnabled, long rateTimeInterval, int subInts) {
+    public PersistenceMetricsImpl(
+        IgniteWriteAheadLogManager wal,
+        boolean metricsEnabled,
+        long rateTimeInterval,
+        int subInts
+    ) {
+        this.wal = wal;
         this.metricsEnabled = metricsEnabled;
         this.rateTimeInterval = rateTimeInterval;
         this.subInts = subInts;
@@ -93,7 +106,10 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
 
     /** {@inheritDoc} */
     @Override public int getWalArchiveSegments() {
-        return 0;
+        if (!metricsEnabled)
+            return 0;
+
+        return wal.walArchiveSegments();
     }
 
     @Override public float getWalFsyncTimeAverage() {
@@ -106,6 +122,30 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
             return 0;
 
         return lastCpDuration;
+    }
+
+    /** {@inheritDoc} */
+    @Override public long getLastCheckpointLockWaitDuration() {
+        if (!metricsEnabled)
+            return 0;
+
+        return lastCpLockWaitDuration;
+    }
+
+    /** {@inheritDoc} */
+    @Override public long getLastCheckpointMarkDuration() {
+        if (!metricsEnabled)
+            return 0;
+
+        return lastCpMarkDuration;
+    }
+
+    /** {@inheritDoc} */
+    @Override public long getLastCheckpointPagesWriteDuration() {
+        if (!metricsEnabled)
+            return 0;
+
+        return lastCpPagesWriteDuration;
     }
 
     /** {@inheritDoc} */
@@ -130,14 +170,6 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
             return 0;
 
         return lastCpDataPages;
-    }
-
-    /** {@inheritDoc} */
-    @Override public long getLastCheckpointIndexPagesNumber() {
-        if (!metricsEnabled)
-            return 0;
-
-        return lastCpIdxPages;
     }
 
     /** {@inheritDoc} */
@@ -172,20 +204,41 @@ public class PersistenceMetricsImpl implements PersistenceMetricsMXBean {
         resetRates();
     }
 
+    /**
+     * @return Metrics enabled flag.
+     */
+    public boolean metricsEnabled() {
+        return metricsEnabled;
+    }
+
+    /**
+     * @param lockWaitDuration Lock wait duration.
+     * @param markDuration Mark duration.
+     * @param pagesWriteDuration Pages write duration.
+     * @param fsyncDuration Total checkpoint fsync duration.
+     * @param duration Total checkpoint duration.
+     * @param totalPages Total number of all pages in checkpoint.
+     * @param dataPages Total number of data pages in checkpoint.
+     * @param cowPages Total number of COW-ed pages in checkpoint.
+     */
     public void onCheckpoint(
-        long duration,
+        long lockWaitDuration,
+        long markDuration,
+        long pagesWriteDuration,
         long fsyncDuration,
+        long duration,
         long totalPages,
         long dataPages,
-        long idxPages,
         long cowPages
     ) {
         if (metricsEnabled) {
-            lastCpDuration = duration;
+            lastCpLockWaitDuration = lockWaitDuration;
+            lastCpMarkDuration = markDuration;
+            lastCpPagesWriteDuration = pagesWriteDuration;
             lastCpFsyncDuration = fsyncDuration;
+            lastCpDuration = duration;
             lastCpTotalPages = totalPages;
             lastCpDataPages = dataPages;
-            lastCpIdxPages = idxPages;
             lastCpCowPages = cowPages;
         }
     }

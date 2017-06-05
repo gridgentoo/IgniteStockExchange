@@ -45,6 +45,18 @@ public interface PersistenceMetricsMXBean extends PersistenceMetrics {
     @Override long getLastCheckpointingDuration();
 
     /** {@inheritDoc} */
+    @MXBeanDescription("Duration of the checkpoint lock wait in milliseconds.")
+    @Override long getLastCheckpointLockWaitDuration();
+
+    /** {@inheritDoc} */
+    @MXBeanDescription("Duration of the checkpoint mark in milliseconds.")
+    @Override long getLastCheckpointMarkDuration();
+
+    /** {@inheritDoc} */
+    @MXBeanDescription("Duration of the checkpoint pages write in milliseconds.")
+    @Override long getLastCheckpointPagesWriteDuration();
+
+    /** {@inheritDoc} */
     @MXBeanDescription("Duration of the sync phase of the last checkpoint in milliseconds")
     @Override long getLastCheckpointFsyncDuration();
 
@@ -55,10 +67,6 @@ public interface PersistenceMetricsMXBean extends PersistenceMetrics {
     /** {@inheritDoc} */
     @MXBeanDescription("Total number of data pages written during the last checkpoint")
     @Override long getLastCheckpointDataPagesNumber();
-
-    /** {@inheritDoc} */
-    @MXBeanDescription("Total number of index pages written during the last checkpoint")
-    @Override long getLastCheckpointIndexPagesNumber();
 
     /** {@inheritDoc} */
     @MXBeanDescription("Number of pages copied to a temporary checkpoint buffer during the last checkpoint")

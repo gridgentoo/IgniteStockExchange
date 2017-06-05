@@ -91,20 +91,27 @@ public interface MemoryMetrics {
     public float getPagesFillFactor();
 
     /**
+     * Gets the number of dirty pages (pages which contents is different from the current persistent storage state).
+     * This metric is enabled only for Ignite nodes with enabled persistence.
      *
-     * @return
+     * @return Current number of dirty pages.
      */
     public long getDirtyPages();
 
     /**
+     * Gets rate (pages per second) at which pages get replaced with other pages from persistent storage.
+     * The rate effectively represents the rate at which pages get 'evicted' in favor of newly needed pages.
+     * This metric is enabled only for Ignite nodes with enabled persistence.
      *
-     * @return
+     * @return Pages per second replace rate.
      */
     public float getPagesReplaceRate();
 
     /**
+     * Gets total number of pages currently loaded to the RAM. When persistence is disabled, this metric is equal
+     * to {@link #getTotalAllocatedPages()}.
      *
-     * @return
+     * @return Total number of pages loaded to RAM.
      */
     public long getPhysicalMemoryPages();
 }

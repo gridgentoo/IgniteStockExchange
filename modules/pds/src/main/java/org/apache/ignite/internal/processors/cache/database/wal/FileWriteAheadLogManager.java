@@ -147,6 +147,9 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
     /** Current log segment handle */
     private volatile FileWriteHandle currentHnd;
 
+    /** */
+    private volatile long oldestArchiveSegmentIdx;
+
     /** Updater for {@link #currentHnd}, used for verify there are no concurrent update for current log segment handle */
     private static final AtomicReferenceFieldUpdater<FileWriteAheadLogManager, FileWriteHandle> currentHndUpd =
         AtomicReferenceFieldUpdater.newUpdater(FileWriteAheadLogManager.class, FileWriteHandle.class, "currentHnd");
@@ -217,7 +220,11 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
 
             checkOrPrepareFiles();
 
-            archiver = new FileArchiver();
+            IgniteBiTuple<Long, Long> tup = scanMinMaxArchiveIndices();
+
+            oldestArchiveSegmentIdx = tup == null ? 0 : tup.get1();
+
+            archiver = new FileArchiver(tup == null ? -1 : tup.get2());
 
             if (mode != Mode.DEFAULT) {
                 if (log.isInfoEnabled())
@@ -279,13 +286,13 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
     /** {@inheritDoc} */
     @Override public void onActivate(GridKernalContext kctx) throws IgniteCheckedException {
         if (log.isDebugEnabled())
-            log.debug("Activate file write ahead log [nodeId=" + cctx.localNodeId() +
+            log.debug("Activated file write ahead log manager [nodeId=" + cctx.localNodeId() +
                 " topVer=" + cctx.discovery().topologyVersionEx() + " ]");
 
         start0();
 
         if (!cctx.kernalContext().clientNode()) {
-            archiver = new FileArchiver();
+            assert archiver != null;
 
             archiver.start();
         }
@@ -459,7 +466,7 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
         if (inArchive)
             return true;
 
-        if (absIdx <= archiver.lastArchivedIndex())
+        if (absIdx <= lastArchivedIndex())
             return false;
 
         FileWriteHandle cur = currentHnd;
@@ -494,10 +501,28 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
                         desc.file.getAbsolutePath());
                 else
                     deleted++;
+
+                // Bump up the oldest archive segment index.
+                if (oldestArchiveSegmentIdx < desc.idx)
+                    oldestArchiveSegmentIdx = desc.idx;
             }
         }
 
         return deleted;
+    }
+
+    /** {@inheritDoc} */
+    @Override public int walArchiveSegments() {
+        long oldest = oldestArchiveSegmentIdx;
+
+        long lastArchived = archiver.lastArchivedAbsoluteIndex();
+
+        if (lastArchived == -1)
+            return 0;
+
+        int res = (int)(lastArchived - oldest);
+
+        return res >= 0 ? res : 0;
     }
 
     /** {@inheritDoc} */
@@ -507,6 +532,52 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
         FileArchiver archiver0 = archiver;
 
         return archiver0 != null && archiver0.reserved(fPtr.index());
+    }
+
+    /**
+     * Lists files in archive directory and returns the index of last archived file.
+     *
+     * @return The absolute index of last archived file.
+     */
+    private long lastArchivedIndex() {
+        long lastIdx = -1;
+
+        for (File file : walArchiveDir.listFiles(WAL_SEGMENT_FILE_FILTER)) {
+            try {
+                long idx = Long.parseLong(file.getName().substring(0, 16));
+
+                lastIdx = Math.max(lastIdx, idx);
+            }
+            catch (NumberFormatException | IndexOutOfBoundsException ignore) {
+
+            }
+        }
+
+        return lastIdx;
+    }
+
+    /**
+     * Lists files in archive directory and returns the index of last archived file.
+     *
+     * @return The absolute index of last archived file.
+     */
+    private IgniteBiTuple<Long, Long> scanMinMaxArchiveIndices() {
+        long minIdx = Integer.MAX_VALUE;
+        long maxIdx = -1;
+
+        for (File file : walArchiveDir.listFiles(WAL_SEGMENT_FILE_FILTER)) {
+            try {
+                long idx = Long.parseLong(file.getName().substring(0, 16));
+
+                minIdx = Math.min(minIdx, idx);
+                maxIdx = Math.max(maxIdx, idx);
+            }
+            catch (NumberFormatException | IndexOutOfBoundsException ignore) {
+
+            }
+        }
+
+        return maxIdx == -1 ? null : F.t(minIdx, maxIdx);
     }
 
     /**
@@ -863,10 +934,17 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
         /**
          *
          */
-        private FileArchiver() {
+        private FileArchiver(long lastAbsArchivedIdx) {
             super("wal-file-archiver%" + cctx.igniteInstanceName());
 
-            lastAbsArchivedIdx = lastArchivedIndex();
+            this.lastAbsArchivedIdx = lastAbsArchivedIdx;
+        }
+
+        /**
+         * @return Last archived segment absolute index.
+         */
+        private synchronized long lastArchivedAbsoluteIndex() {
+            return lastAbsArchivedIdx;
         }
 
         /**
@@ -1125,28 +1203,6 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
                     ", dst=" + dstFile.getAbsolutePath() + ']');
 
             return origFile;
-        }
-
-        /**
-         * Lists files in archive directory and returns the index of last archived file.
-         *
-         * @return The absolute index of last archived file.
-         */
-        private int lastArchivedIndex() {
-            int lastIdx = -1;
-
-            for (File file : walArchiveDir.listFiles(WAL_SEGMENT_FILE_FILTER)) {
-                try {
-                    int idx = Integer.parseInt(file.getName().substring(0, 16));
-
-                    lastIdx = Math.max(lastIdx, idx);
-                }
-                catch (NumberFormatException | IndexOutOfBoundsException ignore) {
-
-                }
-            }
-
-            return lastIdx;
         }
 
         /**
