@@ -17,11 +17,17 @@
 
 package org.apache.ignite.internal.processors.cache;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import javax.cache.CacheException;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
+import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
@@ -35,8 +41,10 @@ import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
+import org.jetbrains.annotations.Nullable;
 
 import static org.apache.ignite.cache.CacheMode.REPLICATED;
+import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_IGNITE_INSTANCE_NAME;
 
 /**
@@ -264,6 +272,118 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
      */
     public void testCreateCloseClientCache2_2() throws Exception {
         createCloseClientCache2(true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testStartMultipleClientCaches() throws Exception {
+        startMultipleClientCaches(null);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testStartMultipleClientCachesForGroup() throws Exception {
+        startMultipleClientCaches("testGrp");
+    }
+
+    /**
+     * @param grp Caches group name.
+     * @throws Exception If failed.
+     */
+    private void startMultipleClientCaches(@Nullable String grp) throws Exception {
+        final int SRVS = 1;
+
+        Ignite srv = startGrids(SRVS);
+
+        client = true;
+
+        Ignite client = startGrid(SRVS);
+
+        for (CacheAtomicityMode atomicityMode : CacheAtomicityMode.values()) {
+            for (boolean batch : new boolean[]{false, true})
+                startCachesForGroup(srv, client, grp, atomicityMode, batch);
+        }
+    }
+
+    /**
+     * @param srv Server node.
+     * @param client Client node.
+     * @param grp Cache group.
+     * @param atomicityMode Cache atomicity mode.
+     * @param batch {@code True} if use {@link Ignite#getOrCreateCaches(Collection)} for cache creation.
+     * @throws Exception If failed.
+     */
+    @SuppressWarnings("unchecked")
+    private void startCachesForGroup(Ignite srv,
+        Ignite client,
+        @Nullable String grp,
+        CacheAtomicityMode atomicityMode,
+        boolean batch) throws Exception {
+        log.info("Start caches [grp=" + grp + ", atomicity=" + atomicityMode + ", batch=" + batch + ']');
+
+        try {
+            srv.createCaches(cacheConfigurations(grp, atomicityMode));
+
+            Collection<IgniteCache> caches;
+
+            if (batch)
+                caches = client.getOrCreateCaches(cacheConfigurations(grp, atomicityMode));
+            else {
+                caches = new ArrayList<>();
+
+                for (CacheConfiguration ccfg : cacheConfigurations(grp, atomicityMode))
+                    caches.add(client.getOrCreateCache(ccfg));
+            }
+
+            Map<Integer, Integer> map1 = new HashMap<>();
+            Map<Integer, Integer> map2 = new HashMap<>();
+
+            for (int i = 0; i < 100; i++) {
+                map1.put(i, i);
+                map2.put(i, i + 1);
+            }
+
+            for (IgniteCache<Integer, Integer> cache : caches) {
+                for (Map.Entry<Integer, Integer> e : map1.entrySet())
+                    cache.put(e.getKey(), e.getValue());
+
+                checkCacheData(map1, cache.getName());
+
+                cache.putAll(map2);
+
+                checkCacheData(map2, cache.getName());
+            }
+
+            for (IgniteCache<Integer, Integer> cache : caches)
+                cache.close();
+        }
+        finally {
+            for (CacheConfiguration ccfg : cacheConfigurations(grp, atomicityMode))
+                srv.destroyCache(ccfg.getName());
+        }
+    }
+
+    /**
+     * @param grp Group name.
+     * @param atomicityMode Atomicity mode.
+     * @return Cache configurations.
+     */
+    private List<CacheConfiguration> cacheConfigurations(@Nullable String grp, CacheAtomicityMode atomicityMode) {
+        List<CacheConfiguration> ccfgs = new ArrayList<>();
+
+        for (int i = 0; i < 3; i++) {
+            CacheConfiguration ccfg = new CacheConfiguration();
+
+            ccfg.setGroupName(grp);
+            ccfg.setName("cache-" + atomicityMode + "-" + i);
+            ccfg.setWriteSynchronizationMode(FULL_SYNC);
+
+            ccfgs.add(ccfg);
+        }
+
+        return ccfgs;
     }
 
     /**

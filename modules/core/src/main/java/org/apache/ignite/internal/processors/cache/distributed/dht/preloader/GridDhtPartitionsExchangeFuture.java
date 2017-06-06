@@ -648,15 +648,22 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
             if (crd) {
                 boolean updateTop = exchId.topologyVersion().equals(grp.localStartVersion());
 
-                if (updateTop && clientTop != null)
-                    top.update(exchId, clientTop.partitionMap(true), clientTop.updateCounters(false));
+                if (updateTop && clientTop != null) {
+                    top.update(topologyVersion(),
+                        clientTop.partitionMap(true),
+                        clientTop.updateCounters(false));
+                }
             }
 
-            top.updateTopologyVersion(exchId, this, updSeq, cacheGroupStopping(grp.groupId()));
+            top.updateTopologyVersion(
+                this,
+                discoCache(),
+                updSeq,
+                cacheGroupStopping(grp.groupId()));
         }
 
         for (GridClientPartitionTopology top : cctx.exchange().clientTopologies())
-            top.updateTopologyVersion(exchId, this, -1, cacheGroupStopping(top.groupId()));
+            top.updateTopologyVersion(this, discoCache(), -1, cacheGroupStopping(top.groupId()));
     }
 
     /**
@@ -761,7 +768,9 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
 
                                 assert fullMap != null;
 
-                                grp.topology().update(exchId, fullMap, top.updateCounters(false));
+                                grp.topology().update(topologyVersion(),
+                                    fullMap,
+                                    top.updateCounters(false));
 
                                 break;
                             }
@@ -1842,13 +1851,19 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
 
             CacheGroupContext grp = cctx.cache().cacheGroup(grpId);
 
-            if (grp != null)
-                grp.topology().update(exchId, entry.getValue(), cntrMap);
+            if (grp != null) {
+                grp.topology().update(topologyVersion(),
+                    entry.getValue(),
+                    cntrMap);
+            }
             else {
                 ClusterNode oldest = cctx.discovery().oldestAliveCacheServerNode(AffinityTopologyVersion.NONE);
 
-                if (oldest != null && oldest.isLocal())
-                    cctx.exchange().clientTopology(grpId, this).update(exchId, entry.getValue(), cntrMap);
+                if (oldest != null && oldest.isLocal()) {
+                    cctx.exchange().clientTopology(grpId, this).update(topologyVersion(),
+                        entry.getValue(),
+                        cntrMap);
+                }
             }
         }
     }

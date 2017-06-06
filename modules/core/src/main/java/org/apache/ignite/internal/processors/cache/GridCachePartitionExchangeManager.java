@@ -1669,7 +1669,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                 cctx.cache().processCustomExchangeTask(task);
             }
             catch (Exception e) {
-                U.warn(log, "Failed to process custom exchange task: " + task, e);
+                U.error(log, "Failed to process custom exchange task: " + task, e);
             }
         }
 

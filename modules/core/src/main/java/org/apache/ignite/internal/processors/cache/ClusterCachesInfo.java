@@ -317,6 +317,8 @@ class ClusterCachesInfo {
                 continue;
             }
 
+            assert !req.clientStartOnly() : req;
+
             DynamicCacheDescriptor desc = req.globalStateChange() ? null : registeredCaches.get(req.cacheName());
 
             boolean needExchange = false;
@@ -498,14 +500,6 @@ class ClusterCachesInfo {
 
                         exchangeActions.addCacheGroupToStop(grpDesc);
                     }
-                }
-            }
-            else if (req.close()) {
-                if (desc != null) {
-                    needExchange = ctx.discovery().onClientCacheClose(req.cacheName(), req.initiatingNodeId());
-
-                    if (needExchange)
-                        exchangeActions.addCacheToClose(req, desc);
                 }
             }
             else
