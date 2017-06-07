@@ -54,6 +54,7 @@ import org.apache.ignite.cache.CacheMetrics;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.events.DiscoveryEvent;
 import org.apache.ignite.events.Event;
 import org.apache.ignite.internal.ClusterMetricsSnapshot;
@@ -72,6 +73,7 @@ import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheGroupDescriptor;
 import org.apache.ignite.internal.processors.cache.ClientCacheChangeDiscoveryMessage;
 import org.apache.ignite.internal.processors.cache.DynamicCacheChangeRequest;
+import org.apache.ignite.internal.processors.cache.DynamicCacheDescriptor;
 import org.apache.ignite.internal.processors.cache.GridCacheAdapter;
 import org.apache.ignite.internal.processors.jobmetrics.GridJobMetrics;
 import org.apache.ignite.internal.processors.security.SecurityContext;
@@ -256,7 +258,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     private final Collection<IgniteInClosure<ClusterNode>> locNodeInitLsnrs = new ArrayList<>();
 
     /** Map of dynamic cache filters. */
-    private Map<String, CachePredicate> registeredCaches = new HashMap<>();
+    private ConcurrentMap<String, CachePredicate> registeredCaches = new ConcurrentHashMap<>();
 
     /** */
     private Map<Integer, CacheGroupAffinity> registeredCacheGrps = new HashMap<>();
@@ -355,7 +357,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
-     * Adds dynamic cache filter.
+     * Called from discovery thread. Adds dynamic cache filter.
      *
      * @param grpId Cache group ID.
      * @param cacheName Cache name.
@@ -379,7 +381,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
-     * Removes dynamic cache filter.
+     * Called from discovery thread. Removes dynamic cache filter.
      *
      * @param cacheName Cache name.
      */
@@ -406,7 +408,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
-     * Removes near node ID from cache filter.
+     * Called from discovery thread. Removes near node ID from cache filter.
      *
      * @param cacheName Cache name.
      * @param clientNodeId Near node ID.
@@ -421,6 +423,8 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
+     * Called from discovery thread.
+     *
      * @return Client nodes map.
      */
     public Map<String, Map<UUID, Boolean>> clientNodesMap() {
@@ -441,6 +445,8 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
+     * Called from discovery thread.
+     *
      * @param leftNodeId Left node ID.
      */
     private void updateClientNodes(UUID leftNodeId) {
@@ -1839,17 +1845,17 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
      * @param node Node to check.
      * @return Public cache names accessible on the given node.
      */
-    public Map<String, CacheMode> nodeCaches(ClusterNode node) {
-        Map<String, CacheMode> caches = U.newHashMap(registeredCaches.size());
+    public Map<String, CacheConfiguration> nodePublicCaches(ClusterNode node) {
+        Map<String, CacheConfiguration> caches = U.newHashMap(registeredCaches.size());
 
-        for (Map.Entry<String, CachePredicate> entry : registeredCaches.entrySet()) {
-            String cacheName = entry.getKey();
+        for (DynamicCacheDescriptor cacheDesc : ctx.cache().cacheDescriptors().values()) {
+            if (!cacheDesc.cacheType().userCache())
+                continue;
 
-            CachePredicate pred = entry.getValue();
+            CachePredicate p = registeredCaches.get(cacheDesc.cacheName());
 
-            if (!CU.isSystemCache(cacheName) && !CU.isIgfsCache(ctx.config(), cacheName) &&
-                pred != null && pred.cacheNode(node))
-                caches.put(cacheName, pred.aff.cacheMode);
+            if (p != null && p.cacheNode(node))
+                caches.put(cacheDesc.cacheName(), cacheDesc.cacheConfiguration());
         }
 
         return caches;
@@ -2077,6 +2083,8 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
+     * Called from discovery thread.
+     *
      * @param loc Local node.
      * @param topSnapshot Topology snapshot.
      * @return Newly created discovery cache.
