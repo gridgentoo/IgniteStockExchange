@@ -34,6 +34,7 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
 import org.apache.ignite.internal.IgniteKernal;
 import org.apache.ignite.internal.managers.discovery.GridDiscoveryManager;
+import org.apache.ignite.internal.util.lang.GridAbsPredicate;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
@@ -417,6 +418,8 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
 
         ignite0.cache(DEFAULT_CACHE_NAME).close();
 
+        checkNoCache(ignite0, DEFAULT_CACHE_NAME);
+
         assertNotNull(ignite0.cache(DEFAULT_CACHE_NAME));
 
         startGrid(2);
@@ -429,20 +432,30 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
      * @param cacheName Cache name
      * @param srv {@code True} if server cache is expected.
      * @param near {@code True} if near cache is expected.
+     * @throws Exception If failed.
      */
-    private void checkCache(Ignite ignite, String cacheName, boolean srv, boolean near) {
+    private void checkCache(Ignite ignite, final String cacheName, boolean srv, boolean near) throws Exception {
         GridCacheAdapter<Object, Object> cache = ((IgniteKernal)ignite).context().cache().internalCache(cacheName);
 
         assertNotNull("No cache on node " + ignite.name(), cache);
 
         assertEquals(near, cache.context().isNear());
 
-        ClusterNode node = ((IgniteKernal)ignite).localNode();
+        final ClusterNode node = ((IgniteKernal)ignite).localNode();
 
         for (Ignite ignite0 : Ignition.allGrids()) {
-            GridDiscoveryManager disco = ((IgniteKernal)ignite0).context().discovery();
+            final GridDiscoveryManager disco = ((IgniteKernal)ignite0).context().discovery();
 
-            assertTrue(disco.cacheNode(node, cacheName));
+            if (srv || ignite == ignite0)
+                assertTrue(disco.cacheNode(node, cacheName));
+            else {
+                assertTrue(ignite0.name(), GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                    @Override public boolean apply() {
+                        return disco.cacheNode(node, cacheName);
+                    }
+                }, 5000));
+            }
+
             assertEquals(srv, disco.cacheAffinityNode(node, cacheName));
             assertEquals(near, disco.cacheNearNode(node, cacheName));
 
@@ -458,18 +471,28 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
     /**
      * @param ignite Node.
      * @param cacheName Cache name.
+     * @throws Exception If failed.
      */
-    private void checkNoCache(Ignite ignite, String cacheName) {
+    private void checkNoCache(Ignite ignite, final String cacheName) throws Exception {
         GridCacheAdapter<Object, Object> cache = ((IgniteKernal)ignite).context().cache().internalCache(cacheName);
 
         assertNull("Unexpected cache on node " + ignite.name(), cache);
 
-        ClusterNode node = ((IgniteKernal)ignite).localNode();
+        final ClusterNode node = ((IgniteKernal)ignite).localNode();
 
         for (Ignite ignite0 : Ignition.allGrids()) {
-            GridDiscoveryManager disco = ((IgniteKernal)ignite0).context().discovery();
+            final GridDiscoveryManager disco = ((IgniteKernal)ignite0).context().discovery();
 
-            assertFalse(disco.cacheNode(node, cacheName));
+            if (ignite0 == ignite)
+                assertFalse(ignite0.name(), disco.cacheNode(node, cacheName));
+            else {
+                assertTrue(ignite0.name(), GridTestUtils.waitForCondition(new GridAbsPredicate() {
+                    @Override public boolean apply() {
+                        return !disco.cacheNode(node, cacheName);
+                    }
+                }, 5000));
+            }
+
             assertFalse(disco.cacheAffinityNode(node, cacheName));
             assertFalse(disco.cacheNearNode(node, cacheName));
         }

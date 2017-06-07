@@ -43,9 +43,6 @@ public class ExchangeActions {
     private Map<String, ActionData> cachesToStart;
 
     /** */
-    private Map<String, ActionData> clientCachesToStart;
-
-    /** */
     private Map<String, ActionData> cachesToStop;
 
     /** */
@@ -57,7 +54,7 @@ public class ExchangeActions {
     /**
      * @return {@code True} if server nodes should not participate in exchange.
      */
-    boolean clientOnlyExchange() {
+    public boolean clientOnlyExchange() {
         return F.isEmpty(cachesToStart) &&
             F.isEmpty(cachesToStop) &&
             F.isEmpty(cacheGrpsToStart) &&
@@ -73,25 +70,6 @@ public class ExchangeActions {
     }
 
     /**
-     * @return Start cache requests.
-     */
-    Collection<ActionData> newAndClientCachesStartRequests() {
-        if (cachesToStart != null || clientCachesToStart != null) {
-            List<ActionData> res = new ArrayList<>();
-
-            if (cachesToStart != null)
-                res.addAll(cachesToStart.values());
-
-            if (clientCachesToStart != null)
-                res.addAll(clientCachesToStart.values());
-
-            return res;
-        }
-
-        return Collections.emptyList();
-    }
-
-    /**
      * @return Stop cache requests.
      */
     Collection<ActionData> cacheStopRequests() {
@@ -104,7 +82,6 @@ public class ExchangeActions {
     public void completeRequestFutures(GridCacheSharedContext ctx) {
         completeRequestFutures(cachesToStart, ctx);
         completeRequestFutures(cachesToStop, ctx);
-        completeRequestFutures(clientCachesToStart, ctx);
         completeRequestFutures(cachesToResetLostParts, ctx);
     }
 
@@ -169,21 +146,6 @@ public class ExchangeActions {
     }
 
     /**
-     * @param nodeId Local node ID.
-     * @return {@code True} if client cache was started.
-     */
-    public boolean clientCacheStarted(UUID nodeId) {
-        if (clientCachesToStart != null) {
-            for (ActionData cache : clientCachesToStart.values()) {
-                if (nodeId.equals(cache.req.initiatingNodeId()))
-                    return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * @param state New cluster state.
      */
     void newClusterState(ClusterState state) {
@@ -229,16 +191,6 @@ public class ExchangeActions {
         assert req.start() : req;
 
         cachesToStart = add(cachesToStart, req, desc);
-    }
-
-    /**
-     * @param req Request.
-     * @param desc Cache descriptor.
-     */
-    void addClientCacheToStart(DynamicCacheChangeRequest req, DynamicCacheDescriptor desc) {
-        assert req.start() : req;
-
-        clientCachesToStart = add(clientCachesToStart, req, desc);
     }
 
     /**
@@ -334,7 +286,6 @@ public class ExchangeActions {
      */
     public boolean empty() {
         return F.isEmpty(cachesToStart) &&
-            F.isEmpty(clientCachesToStart) &&
             F.isEmpty(cachesToStop) &&
             F.isEmpty(cacheGrpsToStart) &&
             F.isEmpty(cacheGrpsToStop) &&

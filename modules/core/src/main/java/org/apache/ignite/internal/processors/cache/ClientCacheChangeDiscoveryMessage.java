@@ -19,80 +19,52 @@ package org.apache.ignite.internal.processors.cache;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
-import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.lang.IgniteUuid;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Dummy discovery message which is not really sent via ring, it is just added in local discovery worker queue.
+ *
  */
-public class ClientCacheChangeDiscoveryMessage implements DiscoveryCustomMessage, CachePartitionExchangeWorkerTask {
+public class ClientCacheChangeDiscoveryMessage implements DiscoveryCustomMessage {
     /** */
-    private final UUID reqId;
-
-    /** */
-    private final Map<String, DynamicCacheChangeRequest> startReqs;
+    private final IgniteUuid id = IgniteUuid.randomUuid();;
 
     /** */
-    private final Set<String> cachesToClose;
+    private Map<Integer, Boolean> startedCaches;
+
+    /** */
+    private Set<Integer> closedCaches;
 
     /**
-     * @param reqId Start request ID.
-     * @param startReqs Caches start requests.
-     * @param cachesToClose Cache to close.
+     * @param startedCaches
+     * @param closedCaches
      */
-    public ClientCacheChangeDiscoveryMessage(UUID reqId,
-        @Nullable Map<String, DynamicCacheChangeRequest> startReqs,
-        @Nullable Set<String> cachesToClose) {
-        assert reqId != null;
-        assert startReqs != null ^ cachesToClose != null;
-
-        this.reqId = reqId;
-        this.startReqs = startReqs;
-        this.cachesToClose = cachesToClose;
+    public ClientCacheChangeDiscoveryMessage(Map<Integer, Boolean> startedCaches, Set<Integer> closedCaches) {
+        this.startedCaches = startedCaches;
+        this.closedCaches = closedCaches;
     }
 
-    /**
-     * @return Start request ID.
-     */
-    UUID requestId() {
-        return reqId;
+    @Nullable public Map<Integer, Boolean> startedCaches() {
+        return startedCaches;
     }
 
-    /**
-     * @return Cache start requests.
-     */
-    @Nullable Map<String, DynamicCacheChangeRequest> startRequests() {
-        return startReqs;
-    }
-
-    /**
-     * @return Client caches to close.
-     */
-    Set<String> cachesToClose() {
-        return cachesToClose;
+    @Nullable public Set<Integer> closedCaches() {
+        return closedCaches;
     }
 
     /** {@inheritDoc} */
     @Override public IgniteUuid id() {
-        throw new UnsupportedOperationException();
+        return id;
     }
 
     /** {@inheritDoc} */
     @Nullable @Override public DiscoveryCustomMessage ackMessage() {
-        throw new UnsupportedOperationException();
+        return null;
     }
 
     /** {@inheritDoc} */
     @Override public boolean isMutable() {
-        throw new UnsupportedOperationException();
-    }
-
-    /** {@inheritDoc} */
-    @Override public String toString() {
-        return S.toString(ClientCacheChangeDiscoveryMessage.class, this,
-            "startCaches", (startReqs != null ? startReqs.keySet() : ""));
+        return false;
     }
 }

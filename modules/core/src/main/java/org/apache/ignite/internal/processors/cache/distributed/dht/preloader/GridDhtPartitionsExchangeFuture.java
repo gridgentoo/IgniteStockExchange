@@ -681,12 +681,11 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
                 changeGlobalStateExceptions.put(cctx.localNodeId(), changeGlobalStateE);
         }
 
-        boolean clientOnly = cctx.affinity().onCacheChangeRequest(this, crd, exchActions);
+        assert !exchActions.clientOnlyExchange() : exchActions;
 
-        if (clientOnly)
-            return exchActions.clientCacheStarted(cctx.localNodeId()) ? ExchangeType.CLIENT : ExchangeType.NONE;
-        else
-            return cctx.kernalContext().clientNode() ? ExchangeType.CLIENT : ExchangeType.ALL;
+        cctx.affinity().onCacheChangeRequest(this, crd, exchActions);
+
+        return cctx.kernalContext().clientNode() ? ExchangeType.CLIENT : ExchangeType.ALL;
     }
 
     /**

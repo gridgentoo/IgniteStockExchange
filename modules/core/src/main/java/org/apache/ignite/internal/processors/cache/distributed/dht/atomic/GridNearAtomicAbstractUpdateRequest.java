@@ -66,6 +66,9 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheIdMes
     /** Recovery value flag. */
     private static final int RECOVERY_FLAG_MASK = 0x20;
 
+    /** . */
+    private static final int NEAR_CACHE_FLAG_MASK = 0x40;
+
     /** Target node ID. */
     @GridDirectTransient
     protected UUID nodeId;
@@ -160,6 +163,10 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheIdMes
             keepBinary(true);
         if (recovery)
             recovery(true);
+    }
+
+    public boolean nearEnabled() {
+        return isFlag(NEAR_CACHE_FLAG_MASK);
     }
 
     /** {@inheritDoc} */

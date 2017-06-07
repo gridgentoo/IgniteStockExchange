@@ -68,7 +68,6 @@ import org.apache.ignite.internal.IgniteTransactionsEx;
 import org.apache.ignite.internal.binary.BinaryContext;
 import org.apache.ignite.internal.binary.BinaryMarshaller;
 import org.apache.ignite.internal.binary.GridBinaryMarshaller;
-import org.apache.ignite.internal.managers.discovery.DiscoCache;
 import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
 import org.apache.ignite.internal.pagemem.snapshot.StartFullSnapshotAckDiscoveryMessage;
 import org.apache.ignite.internal.pagemem.store.IgnitePageStoreManager;
@@ -364,8 +363,8 @@ public class GridCacheProcessor extends GridProcessorAdapter {
             if (msg0.exchange())
                 return new SchemaExchangeWorkerTask(msg0);
         }
-        else if (msg instanceof ClientCacheChangeDiscoveryMessage) {
-            ClientCacheChangeDiscoveryMessage msg0 = (ClientCacheChangeDiscoveryMessage)msg;
+        else if (msg instanceof ClientCacheChangeDummyDiscoveryMessage) {
+            ClientCacheChangeDummyDiscoveryMessage msg0 = (ClientCacheChangeDummyDiscoveryMessage)msg;
 
             return msg0;
         }
@@ -395,8 +394,8 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
             ctx.query().onNodeLeave(task0.node());
         }
-        else if (task instanceof ClientCacheChangeDiscoveryMessage) {
-            ClientCacheChangeDiscoveryMessage task0 = (ClientCacheChangeDiscoveryMessage)task;
+        else if (task instanceof ClientCacheChangeDummyDiscoveryMessage) {
+            ClientCacheChangeDummyDiscoveryMessage task0 = (ClientCacheChangeDummyDiscoveryMessage)task;
 
             sharedCtx.affinity().processClientCachesChanges(task0);
         }
@@ -2085,15 +2084,24 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     /**
      * @param cachesToClose Caches to close.
      */
-    public void closeCaches(Set<String> cachesToClose) {
+    public Set<Integer> closeCaches(Set<String> cachesToClose) {
+        Set<Integer> ids = null;
+
         for (String cacheName : cachesToClose) {
             GridCacheContext ctx = blockGateway(cacheName, false);
 
             if (ctx == null)
                 continue;
 
+            if (ids == null)
+                ids = U.newHashSet(cachesToClose.size());
+
+            ids.add(ctx.cacheId());
+
             closeCache(cacheName, false);
         }
+
+        return ids;
     }
 
     /**
@@ -2932,9 +2940,10 @@ public class GridCacheProcessor extends GridProcessorAdapter {
      *
      * @param msg Customer message.
      * @param topVer Current topology version.
+     * @param node Node sent message.
      * @return {@code True} if minor topology version should be increased.
      */
-    public boolean onCustomEvent(DiscoveryCustomMessage msg, AffinityTopologyVersion topVer) {
+    public boolean onCustomEvent(DiscoveryCustomMessage msg, AffinityTopologyVersion topVer, ClusterNode node) {
         if (msg instanceof SchemaAbstractDiscoveryMessage) {
             ctx.query().onDiscovery((SchemaAbstractDiscoveryMessage)msg);
 
@@ -2950,6 +2959,9 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
         if (msg instanceof DynamicCacheChangeBatch)
             return cachesInfo.onCacheChangeRequested((DynamicCacheChangeBatch)msg, topVer);
+
+        if (msg instanceof ClientCacheChangeDiscoveryMessage)
+            cachesInfo.onClientCacheChange((ClientCacheChangeDiscoveryMessage)msg, node);
 
         return false;
     }

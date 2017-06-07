@@ -43,6 +43,7 @@ import org.apache.ignite.internal.managers.eventstorage.GridLocalEventListener;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.affinity.GridAffinityAssignmentCache;
 import org.apache.ignite.internal.processors.cache.distributed.dht.ClientCacheDhtTopologyFuture;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridClientPartitionTopology;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtAffinityAssignmentResponse;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtAssignmentFetchFuture;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState;
@@ -361,31 +362,41 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
 
     /**
      * @param msg Change request.
+     * @param crd Coordinator flag.
      * @param topVer Current topology version.
      * @param discoCache Discovery data cache.
      */
-    private void processClientCacheStartRequests(ClientCacheChangeDiscoveryMessage msg,
+    @Nullable private Map<Integer, Boolean> processClientCacheStartRequests(
+        ClientCacheChangeDummyDiscoveryMessage msg,
+        boolean crd,
         AffinityTopologyVersion topVer,
         DiscoCache discoCache) {
         Map<String, DynamicCacheChangeRequest> startReqs = msg.startRequests();
 
         if (startReqs == null)
-            return;
+            return null;
 
         List<DynamicCacheDescriptor> startDescs = clientCachesToStart(msg.requestId(), msg.startRequests());
 
-        if (startDescs == null || startDescs.isEmpty())
-            return;
+        if (startDescs == null || startDescs.isEmpty()) {
+            cctx.cache().completeClientCacheChangeFuture(msg.requestId(), null);
+
+            return null;
+        }
 
         Map<Integer, GridDhtAssignmentFetchFuture> fetchFuts = U.newHashMap(startDescs.size());
 
         Set<String> startedCaches = U.newHashSet(startDescs.size());
+
+        Map<Integer, Boolean> startedInfos = U.newHashMap(startDescs.size());
 
         for (DynamicCacheDescriptor desc : startDescs) {
             try {
                 DynamicCacheChangeRequest startReq = startReqs.get(desc.cacheName());
 
                 cctx.cache().prepareCacheStart(desc, startReq.nearCacheConfiguration(), topVer);
+
+                startedInfos.put(desc.cacheId(), startReq.nearCacheConfiguration() != null);
 
                 startedCaches.add(desc.cacheName());
 
@@ -394,18 +405,36 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                 assert grp != null : desc.groupId();
                 assert !grp.affinityNode() : grp.cacheOrGroupName();
 
-                if (!grp.isLocal() &&
-                    grp.affinity().lastVersion().equals(AffinityTopologyVersion.NONE) &&
-                    grp.localStartVersion().equals(topVer) &&
-                    !fetchFuts.containsKey(grp.groupId())) {
-                    GridDhtAssignmentFetchFuture fetchFut = new GridDhtAssignmentFetchFuture(cctx,
-                        grp.groupId(),
-                        topVer,
-                        discoCache);
+                if (!grp.isLocal() && grp.affinity().lastVersion().equals(AffinityTopologyVersion.NONE)) {
+                    assert grp.localStartVersion().equals(topVer) : grp.localStartVersion();
 
-                    fetchFut.init(true);
+                    if (crd) {
+                        GridClientPartitionTopology clientTop = cctx.exchange().clearClientTopology(grp.groupId());
 
-                    fetchFuts.put(grp.groupId(), fetchFut);
+                        if (clientTop != null) {
+                            grp.topology().update(topVer,
+                                clientTop.partitionMap(true),
+                                clientTop.updateCounters(false));
+                        }
+
+                        CacheGroupHolder grpHolder = grpHolders.get(grp.groupId());
+
+                        assert grpHolder != null && grpHolder.affinity().idealAssignment() != null;
+
+                        grpHolder = new CacheGroupHolder1(grp, grpHolder.affinity());
+
+                        grpHolders.put(grp.groupId(), grpHolder);
+                    }
+                    else if (!fetchFuts.containsKey(grp.groupId())) {
+                        GridDhtAssignmentFetchFuture fetchFut = new GridDhtAssignmentFetchFuture(cctx,
+                            grp.groupId(),
+                            topVer,
+                            discoCache);
+
+                        fetchFut.init(true);
+
+                        fetchFuts.put(grp.groupId(), fetchFut);
+                    }
                 }
             }
             catch (IgniteCheckedException e) {
@@ -413,7 +442,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
 
                 cctx.cache().completeClientCacheChangeFuture(msg.requestId(), e);
 
-                return;
+                return null;
             }
         }
 
@@ -443,9 +472,9 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                     grp.topology().update(topVer, partMap, null);
                 }
                 else {
-                    cctx.cache().completeClientCacheChangeFuture(msg.requestId(), new IgniteCheckedException("test"));
-
-                    return;
+//                    cctx.cache().completeClientCacheChangeFuture(msg.requestId(), new IgniteCheckedException("test"));
+//
+//                    return;
                     // TODO 5272: mark as 'no server nodes'
                 }
             }
@@ -454,31 +483,35 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
 
                 cctx.cache().completeClientCacheChangeFuture(msg.requestId(), e);
 
-                return;
+                return null;
             }
         }
 
         cctx.cache().initCacheProxies(topVer, null);
 
         cctx.cache().completeClientCacheChangeFuture(msg.requestId(), null);
+
+        return startedInfos;
     }
 
     /**
      * @param msg Change request.
      * @param topVer Current topology version.
      * @param crd Coordinator flag.
+     * @return Closed caches IDs.
      */
-    private void processCacheCloseRequests(ClientCacheChangeDiscoveryMessage msg,
-        AffinityTopologyVersion topVer,
-        boolean crd) {
+    private Set<Integer> processCacheCloseRequests(
+        ClientCacheChangeDummyDiscoveryMessage msg,
+        boolean crd,
+        AffinityTopologyVersion topVer) {
         Set<String> cachesToClose = msg.cachesToClose();
 
         if (cachesToClose == null)
-            return;
+            return null;
 
-        cctx.cache().closeCaches(cachesToClose);
+        Set<Integer> closed = cctx.cache().closeCaches(cachesToClose);
 
-        if (crd ) {
+        if (crd) {
             for (CacheGroupHolder hld : grpHolders.values()) {
                 if (!hld.client() && cctx.cache().cacheGroup(hld.groupId()) == null) {
                     int grpId = hld.groupId();
@@ -504,19 +537,34 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
         }
 
         cctx.cache().completeClientCacheChangeFuture(msg.requestId(), null);
+
+        return closed;
     }
 
     /**
      * @param msg Change request.
      */
-    void processClientCachesChanges(ClientCacheChangeDiscoveryMessage msg) {
+    void processClientCachesChanges(ClientCacheChangeDummyDiscoveryMessage msg) {
         AffinityTopologyVersion topVer = cctx.exchange().readyAffinityVersion();
 
         DiscoCache discoCache = cctx.discovery().discoCache(topVer);
 
-        processClientCacheStartRequests(msg, topVer, discoCache);
+        boolean crd = cctx.localNode().equals(discoCache.oldestAliveServerNode());
 
-        processCacheCloseRequests(msg, topVer, cctx.localNode().equals(discoCache.oldestAliveServerNode()));
+        Map<Integer, Boolean> startedCaches = processClientCacheStartRequests(msg, crd, topVer, discoCache);
+
+        Set<Integer> closedCaches = processCacheCloseRequests(msg, crd, topVer);
+
+        if (startedCaches != null || closedCaches != null) {
+            ClientCacheChangeDiscoveryMessage msg0 = new ClientCacheChangeDiscoveryMessage(startedCaches, closedCaches);
+
+            try {
+                cctx.discovery().sendCustomEvent(msg0);
+            }
+            catch (IgniteCheckedException e) {
+                U.error(log, "Failed to send discovery event: " + e, e);
+            }
+        }
     }
 
     /**
@@ -526,9 +574,8 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
      * @param crd Coordinator flag.
      * @param exchActions Cache change requests.
      * @throws IgniteCheckedException If failed.
-     * @return {@code True} if client-only exchange is needed.
      */
-    public boolean onCacheChangeRequest(final GridDhtPartitionsExchangeFuture fut,
+    public void onCacheChangeRequest(final GridDhtPartitionsExchangeFuture fut,
         boolean crd,
         final ExchangeActions exchActions)
         throws IgniteCheckedException
@@ -547,7 +594,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
             }
         });
 
-        for (ExchangeActions.ActionData action : exchActions.newAndClientCachesStartRequests()) {
+        for (ExchangeActions.ActionData action : exchActions.cacheStartRequests()) {
             DynamicCacheDescriptor cacheDesc = action.descriptor();
 
             DynamicCacheChangeRequest req = action.request();
@@ -588,7 +635,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
 
         Set<Integer> gprs = new HashSet<>();
 
-        for (ExchangeActions.ActionData action : exchActions.newAndClientCachesStartRequests()) {
+        for (ExchangeActions.ActionData action : exchActions.cacheStartRequests()) {
             Integer grpId = action.descriptor().groupId();
 
             if (gprs.add(grpId)) {
@@ -655,8 +702,6 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                 });
             }
         }
-
-        return exchActions.clientOnlyExchange();
     }
 
     /**
