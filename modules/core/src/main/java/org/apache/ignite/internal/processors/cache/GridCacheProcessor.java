@@ -2009,22 +2009,24 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * @param req Stop request.
+     * @param cacheName Cache name.
+     * @param stop {@code True} for stop cache, {@code false} for close cache.
+     * @return Cache context if cache found.
      */
-    void blockGateway(DynamicCacheChangeRequest req) {
-        assert req.stop();
+    @Nullable GridCacheContext blockGateway(String cacheName, boolean stop) {
+        // Break the proxy before exchange future is done.
+        IgniteCacheProxy<?, ?> proxy = jCacheProxies.get(cacheName);
 
-        if (req.stop()) {
-            // Break the proxy before exchange future is done.
-            IgniteCacheProxy<?, ?> proxy = jCacheProxies.get(req.cacheName());
+        if (proxy != null) {
+            if (stop)
+                proxy.gate().stopped();
+            else
+                proxy.closeProxy();
 
-            if (proxy != null) {
-                if (req.stop())
-                    proxy.gate().stopped();
-                else
-                    proxy.closeProxy();
-            }
+            return proxy.context();
         }
+
+        return null;
     }
 
     /**
@@ -2041,48 +2043,26 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * @param req Stop request.
+     * @param cacheName Cache name.
+     * @param destroy Cache destroy flag.
      * @return Cache group for stopped cache.
      */
-    private CacheGroupContext prepareCacheStop(DynamicCacheChangeRequest req, boolean forceClose) {
-        assert req.stop() || forceClose : req;
-
-        GridCacheAdapter<?, ?> cache = caches.remove(req.cacheName());
+    private CacheGroupContext prepareCacheStop(String cacheName, boolean destroy) {
+        GridCacheAdapter<?, ?> cache = caches.remove(cacheName);
 
         if (cache != null) {
             GridCacheContext<?, ?> ctx = cache.context();
 
             sharedCtx.removeCacheContext(ctx);
 
-            onKernalStop(cache, req.destroy());
+            onKernalStop(cache, destroy);
 
-            stopCache(cache, true, req.destroy());
+            stopCache(cache, true, destroy);
 
             return ctx.group();
         }
 
         return null;
-    }
-
-    /**
-     * Closes cache even if it's not fully initialized (e.g. fail on cache init stage).
-     *
-     * @param topVer Completed topology version.
-     * @param act Exchange action.
-     * @param err Error.
-     */
-    void forceCloseCache(
-        AffinityTopologyVersion topVer,
-        final ExchangeActions.ActionData act,
-        Throwable err
-    ) {
-        ExchangeActions actions = new ExchangeActions(){
-            @Override List<ActionData> closeRequests(UUID nodeId) {
-                return Collections.singletonList(act);
-            }
-        };
-
-        onExchangeDone(topVer, actions, err, true);
     }
 
     /**
@@ -2103,6 +2083,48 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     }
 
     /**
+     * @param cachesToClose Caches to close.
+     */
+    public void closeCaches(Set<String> cachesToClose) {
+        for (String cacheName : cachesToClose) {
+            GridCacheContext ctx = blockGateway(cacheName, false);
+
+            if (ctx == null)
+                continue;
+
+            closeCache(cacheName, false);
+        }
+    }
+
+    /**
+     * @param cacheName Cache name.
+     * @param destroy Destroy flag.
+     */
+    private void closeCache(String cacheName, boolean destroy) {
+        IgniteCacheProxy<?, ?> proxy = jCacheProxies.get(cacheName);
+
+        if (proxy != null) {
+            if (proxy.context().affinityNode()) {
+                GridCacheAdapter<?, ?> cache = caches.get(cacheName);
+
+                assert cache != null : cacheName;
+
+                jCacheProxies.put(cacheName, new IgniteCacheProxy(cache.context(), cache, null, false));
+            }
+            else {
+                jCacheProxies.remove(cacheName);
+
+                proxy.context().gate().onStopped();
+
+                CacheGroupContext grp = prepareCacheStop(cacheName, destroy);
+
+                if (grp != null && !grp.hasCaches())
+                    stopCacheGroup(grp.groupId());
+            }
+        }
+    }
+
+    /**
      * Callback invoked when first exchange future for dynamic cache is completed.
      *
      * @param topVer Completed topology version.
@@ -2113,49 +2135,19 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     public void onExchangeDone(
         AffinityTopologyVersion topVer,
         @Nullable ExchangeActions exchActions,
-        Throwable err,
-        boolean forceClose
+        Throwable err
     ) {
         initCacheProxies(topVer, err);
 
-        if (exchActions != null && (err == null || forceClose)) {
+        if (exchActions != null && err == null) {
             for (ExchangeActions.ActionData action : exchActions.cacheStopRequests()) {
                 stopGateway(action.request());
 
-                prepareCacheStop(action.request(), forceClose);
+                prepareCacheStop(action.request().cacheName(), action.request().destroy());
             }
 
             for (CacheGroupDescriptor grpDesc : exchActions.cacheGroupsToStop())
                 stopCacheGroup(grpDesc.groupId());
-
-            for (ExchangeActions.ActionData req : exchActions.closeRequests(ctx.localNodeId())) {
-                String cacheName = req.request().cacheName();
-
-                IgniteCacheProxy<?, ?> proxy = jCacheProxies.get(cacheName);
-
-                if (proxy != null) {
-                    if (proxy.context().affinityNode()) {
-                        GridCacheAdapter<?, ?> cache = caches.get(cacheName);
-
-                        assert cache != null : cacheName;
-
-                        jCacheProxies.put(cacheName, new IgniteCacheProxy(cache.context(), cache, null, false));
-                    }
-                    else {
-                        jCacheProxies.remove(cacheName);
-
-                        proxy.context().gate().onStopped();
-
-                        CacheGroupContext grp = prepareCacheStop(req.request(), forceClose);
-
-                        if (grp != null && !grp.hasCaches())
-                            stopCacheGroup(grp.groupId());
-                    }
-                }
-
-                if (forceClose)
-                    completeCacheStartFuture(req.request(), false, err);
-            }
         }
     }
 

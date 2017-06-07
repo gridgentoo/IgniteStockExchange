@@ -1215,7 +1215,7 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
             grpValidRes = m;
         }
 
-        cctx.cache().onExchangeDone(exchId.topologyVersion(), exchActions, err, false);
+        cctx.cache().onExchangeDone(exchId.topologyVersion(), exchActions, err);
 
         cctx.exchange().onExchangeDone(this, err);
 

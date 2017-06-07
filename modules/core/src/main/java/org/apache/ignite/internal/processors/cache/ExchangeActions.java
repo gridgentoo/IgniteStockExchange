@@ -49,9 +49,6 @@ public class ExchangeActions {
     private Map<String, ActionData> cachesToStop;
 
     /** */
-    private Map<String, ActionData> cachesToClose;
-
-    /** */
     private Map<String, ActionData> cachesToResetLostParts;
 
     /** */
@@ -66,27 +63,6 @@ public class ExchangeActions {
             F.isEmpty(cacheGrpsToStart) &&
             F.isEmpty(cacheGrpsToStop) &&
             F.isEmpty(cachesToResetLostParts);
-    }
-
-    /**
-     * @param nodeId Local node ID.
-     * @return Close cache requests.
-     */
-    List<ActionData> closeRequests(UUID nodeId) {
-        List<ActionData> res = null;
-
-        if (cachesToClose != null) {
-            for (ActionData req : cachesToClose.values()) {
-                if (nodeId.equals(req.req.initiatingNodeId())) {
-                    if (res == null)
-                        res = new ArrayList<>(cachesToClose.size());
-
-                    res.add(req);
-                }
-            }
-        }
-
-        return res != null ? res : Collections.<ActionData>emptyList();
     }
 
     /**
@@ -128,7 +104,6 @@ public class ExchangeActions {
     public void completeRequestFutures(GridCacheSharedContext ctx) {
         completeRequestFutures(cachesToStart, ctx);
         completeRequestFutures(cachesToStop, ctx);
-        completeRequestFutures(cachesToClose, ctx);
         completeRequestFutures(clientCachesToStart, ctx);
         completeRequestFutures(cachesToResetLostParts, ctx);
     }
@@ -280,16 +255,6 @@ public class ExchangeActions {
      * @param req Request.
      * @param desc Cache descriptor.
      */
-    void addCacheToClose(DynamicCacheChangeRequest req, DynamicCacheDescriptor desc) {
-        assert req.close() : req;
-
-        cachesToClose = add(cachesToClose, req, desc);
-    }
-
-    /**
-     * @param req Request.
-     * @param desc Cache descriptor.
-     */
     void addCacheToResetLostPartitions(DynamicCacheChangeRequest req, DynamicCacheDescriptor desc) {
         assert req.resetLostPartitions() : req;
 
@@ -371,7 +336,6 @@ public class ExchangeActions {
         return F.isEmpty(cachesToStart) &&
             F.isEmpty(clientCachesToStart) &&
             F.isEmpty(cachesToStop) &&
-            F.isEmpty(cachesToClose) &&
             F.isEmpty(cacheGrpsToStart) &&
             F.isEmpty(cacheGrpsToStop) &&
             F.isEmpty(cachesToResetLostParts);
