@@ -337,6 +337,9 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
                     caches.add(client.getOrCreateCache(ccfg));
             }
 
+            for (IgniteCache cache : caches)
+                checkCache(client, cache.getName(), false, false);
+
             Map<Integer, Integer> map1 = new HashMap<>();
             Map<Integer, Integer> map2 = new HashMap<>();
 
@@ -356,8 +359,11 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
                 checkCacheData(map2, cache.getName());
             }
 
-            for (IgniteCache<Integer, Integer> cache : caches)
+            for (IgniteCache<Integer, Integer> cache : caches) {
                 cache.close();
+
+                checkNoCache(client, cache.getName());
+            }
         }
         finally {
             for (CacheConfiguration ccfg : cacheConfigurations(grp, atomicityMode))
@@ -441,9 +447,9 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
             assertEquals(near, disco.cacheNearNode(node, cacheName));
 
             if (srv)
-                assertTrue(ignite0.affinity(DEFAULT_CACHE_NAME).primaryPartitions(node).length > 0);
+                assertTrue(ignite0.affinity(cacheName).primaryPartitions(node).length > 0);
             else
-                assertEquals(0, ignite0.affinity(DEFAULT_CACHE_NAME).primaryPartitions(node).length);
+                assertEquals(0, ignite0.affinity(cacheName).primaryPartitions(node).length);
         }
 
         assertNotNull(ignite.cache(cacheName));
