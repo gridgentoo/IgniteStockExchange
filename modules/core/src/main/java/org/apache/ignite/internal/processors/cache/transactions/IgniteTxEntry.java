@@ -88,6 +88,8 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
     /** Flag indicating that old value for 'invoke' operation was non null on primary node. */
     private static final int TX_ENTRY_OLD_VAL_ON_PRIMARY = 0x04;
 
+    private static final int TX_ENTRY_ADD_READER_FLAG_MASK = 0x08;
+
     /** Prepared flag updater. */
     private static final AtomicIntegerFieldUpdater<IgniteTxEntry> PREPARED_UPD =
         AtomicIntegerFieldUpdater.newUpdater(IgniteTxEntry.class, "prepared");
@@ -287,7 +289,8 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
         CacheEntryPredicate[] filters,
         GridCacheVersion conflictVer,
         boolean skipStore,
-        boolean keepBinary
+        boolean keepBinary,
+        boolean addReader
     ) {
         assert ctx != null;
         assert tx != null;
@@ -304,6 +307,7 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
 
         skipStore(skipStore);
         keepBinary(keepBinary);
+        addReader(addReader);
 
         if (entryProcessor != null)
             addEntryProcessor(entryProcessor, invokeArgs);
@@ -521,6 +525,14 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
      */
     public boolean keepBinary() {
         return isFlag(TX_ENTRY_KEEP_BINARY_FLAG_MASK);
+    }
+
+    public void addReader(boolean addReader) {
+        setFlag(addReader, TX_ENTRY_ADD_READER_FLAG_MASK);
+    }
+
+    public boolean addReader() {
+        return isFlag(TX_ENTRY_ADD_READER_FLAG_MASK);
     }
 
     /**

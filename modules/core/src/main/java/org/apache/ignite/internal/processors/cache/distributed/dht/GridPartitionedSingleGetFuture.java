@@ -221,11 +221,10 @@ public class GridPartitionedSingleGetFuture extends GridCacheFutureAdapter<Objec
             return;
 
         if (node.isLocal()) {
-            Map<KeyCacheObject, Boolean> map = Collections.singletonMap(key, false);
-
-            final GridDhtFuture<Collection<GridCacheEntryInfo>> fut = cctx.dht().getDhtAsync(node.id(),
+            final GridDhtFuture<Collection<GridCacheEntryInfo>> fut = cctx.dht().getDhtSingleAsync(node.id(),
                 -1,
-                map,
+                key,
+                false,
                 readThrough,
                 topVer,
                 subjId,

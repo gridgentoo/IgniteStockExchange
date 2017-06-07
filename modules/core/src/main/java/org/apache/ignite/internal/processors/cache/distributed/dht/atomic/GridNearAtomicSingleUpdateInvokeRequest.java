@@ -91,6 +91,7 @@ public class GridNearAtomicSingleUpdateInvokeRequest extends GridNearAtomicSingl
      */
     GridNearAtomicSingleUpdateInvokeRequest(
         int cacheId,
+        boolean nearCache,
         UUID nodeId,
         long futId,
         @NotNull AffinityTopologyVersion topVer,
@@ -109,6 +110,7 @@ public class GridNearAtomicSingleUpdateInvokeRequest extends GridNearAtomicSingl
     ) {
         super(
             cacheId,
+            nearCache,
             nodeId,
             futId,
             topVer,

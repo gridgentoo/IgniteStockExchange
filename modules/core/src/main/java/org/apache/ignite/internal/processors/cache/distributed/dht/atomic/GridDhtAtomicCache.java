@@ -1796,7 +1796,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
 
                         locked = lockEntries(req, req.topologyVersion());
 
-                        boolean hasNear = req.nearEnabled();
+                        boolean hasNear = req.nearCache();
 
                         // Assign next version for update inside entries lock.
                         GridCacheVersion ver = ctx.versions().next(top.topologyVersion());

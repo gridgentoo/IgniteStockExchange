@@ -612,7 +612,8 @@ public abstract class GridDhtTxLocalAdapter extends IgniteTxLocalAdapter {
                         -1L,
                         null,
                         skipStore,
-                        keepBinary);
+                        keepBinary,
+                        CU.isNearEnabled(cacheCtx));
 
                     if (read)
                         txEntry.ttl(accessTtl);

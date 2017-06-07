@@ -138,6 +138,7 @@ public class GridNearAtomicFullUpdateRequest extends GridNearAtomicAbstractUpdat
      */
     GridNearAtomicFullUpdateRequest(
         int cacheId,
+        boolean nearCache,
         UUID nodeId,
         long futId,
         @NotNull AffinityTopologyVersion topVer,
@@ -158,6 +159,7 @@ public class GridNearAtomicFullUpdateRequest extends GridNearAtomicAbstractUpdat
         int maxEntryCnt
     ) {
         super(cacheId,
+            nearCache,
             nodeId,
             futId,
             topVer,

@@ -126,6 +126,7 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheIdMes
      */
     protected GridNearAtomicAbstractUpdateRequest(
         int cacheId,
+        boolean nearCache,
         UUID nodeId,
         long futId,
         @NotNull AffinityTopologyVersion topVer,
@@ -163,9 +164,14 @@ public abstract class GridNearAtomicAbstractUpdateRequest extends GridCacheIdMes
             keepBinary(true);
         if (recovery)
             recovery(true);
+        if (nearCache)
+            setFlag(true, NEAR_CACHE_FLAG_MASK);
     }
 
-    public boolean nearEnabled() {
+    /**
+     * @return {@code True} if near cache is enabled on node initiated operation.
+     */
+    public boolean nearCache() {
         return isFlag(NEAR_CACHE_FLAG_MASK);
     }
 
