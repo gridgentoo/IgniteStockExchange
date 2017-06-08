@@ -454,7 +454,7 @@ public class IgniteConfiguration {
     /** */
     private boolean lateAffAssignment = DFLT_LATE_AFF_ASSIGNMENT;
 
-    /** Page memory configuration. */
+    /** Ignite Virtual Memory configuration. */
     private MemoryConfiguration memCfg;
 
     /** Persistence store configuration. */
@@ -2133,7 +2133,7 @@ public class IgniteConfiguration {
     }
 
     /**
-     * Gets page memory configuration.
+     * Gets Ignite Virtual Memory configuration.
      *
      * @return Memory configuration.
      */
@@ -2142,7 +2142,7 @@ public class IgniteConfiguration {
     }
 
     /**
-     * Sets page memory configuration.
+     * Sets Ignite Virtual Memory memory configuration.
      *
      * @param memCfg Memory configuration.
      * @return {@code this} for chaining.

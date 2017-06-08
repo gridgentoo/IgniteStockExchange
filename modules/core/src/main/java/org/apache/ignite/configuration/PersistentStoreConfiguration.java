@@ -19,7 +19,7 @@ package org.apache.ignite.configuration;
 import java.io.Serializable;
 
 /**
- * Configures Apache Ignite Persistent store.
+ * Configures Apache Ignite Persistent store that is used as a secondary storage by Ignite Virtual Memory.
  */
 public class PersistentStoreConfiguration implements Serializable {
     /** */

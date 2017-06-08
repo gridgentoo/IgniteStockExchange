@@ -22,11 +22,13 @@ import org.apache.ignite.configuration.MemoryPolicyConfiguration;
 import org.apache.ignite.mxbean.MemoryMetricsMXBean;
 
 /**
- * This interface provides page memory related metrics of a specific Apache Ignite node. The overall page memory
- * architecture is covered in {@link MemoryConfiguration}.
+ * This interface provides Ignite Virtual Memory related metrics of a specific Apache Ignite node.
+ * The overall virtual memory architecture is covered in {@link MemoryConfiguration}.
  * <p>
  * Since there are can be several memory regions configured with {@link MemoryPolicyConfiguration} on an individual
- * Apache Ignite node, the metrics for every region will be collected and obtained separately.
+ * Apache Ignite node, the metrics for every region will be collected and obtained separately. In addition, some
+ * metrics of this interface are accumulated and provided only when Ignite Persistent Store is enabled and used as a
+ * secondary storage by the virtual memory.
  * <p>
  * There are two ways to get the metrics of an Apache Ignite node.
  * <ol>

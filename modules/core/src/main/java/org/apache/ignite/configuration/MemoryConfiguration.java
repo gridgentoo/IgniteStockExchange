@@ -22,12 +22,12 @@ import org.apache.ignite.internal.util.typedef.internal.A;
 import org.apache.ignite.internal.util.typedef.internal.U;
 
 /**
- * A page memory configuration for an Apache Ignite node. The page memory is a manageable off-heap based memory
- * architecture that divides all expandable memory regions into pages of fixed size
+ * Ignite Virtual Memory configuration for an Apache Ignite node. The virtual memory is a manageable off-heap
+ * based memory architecture that divides all expandable memory regions into pages of fixed size
  * (see {@link MemoryConfiguration#getPageSize()}. An individual page can store one or many cache key-value entries
  * that allows reusing the memory in the most efficient way and avoid memory fragmentation issues.
  * <p>
- * By default, the page memory allocates a single expandable memory region using settings of
+ * By default, the virtual memory allocates a single expandable memory region using settings of
  * {@link MemoryConfiguration#createDefaultPolicyConfig()}. All the caches that will be configured in an application
  * will be mapped to this memory region by default, thus, all the cache data will reside in that memory region.
  * <p>
@@ -159,7 +159,7 @@ public class MemoryConfiguration implements Serializable {
     }
 
     /**
-     * The pages memory consists of one or more expandable memory regions defined by {@link MemoryPolicyConfiguration}.
+     * Ignite Virtaul Memory consists of one or more expandable memory regions defined by {@link MemoryPolicyConfiguration}.
      * Every memory region is split on pages of fixed size that store actual cache entries.
      *
      * @return Page size in bytes.

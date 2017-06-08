@@ -25,7 +25,7 @@ import static org.apache.ignite.configuration.MemoryConfiguration.DFLT_MEM_PLC_D
 
 /**
  * This class allows defining custom memory policies' configurations with various parameters for Apache Ignite
- * page memory (see {@link MemoryConfiguration}. For each configured memory policy Apache Ignite instantiates
+ * Virtual Memory (see {@link MemoryConfiguration}. For each configured memory policy Apache Ignite instantiates
  * respective memory regions with different parameters like maximum size, eviction policy, swapping options, etc.
  * An Apache Ignite cache can be mapped to a particular policy using
  * {@link CacheConfiguration#setMemoryPolicyName(String)} method.
@@ -237,7 +237,7 @@ public final class MemoryPolicyConfiguration implements Serializable {
 
     /**
      * Gets a threshold for memory pages eviction initiation. For instance, if the threshold is 0.9 it means that the
-     * page memory will start the eviction only after 90% of the memory region (defined by this policy) is occupied.
+     * virtual memory will start the eviction only after 90% of the memory region (defined by this policy) is occupied.
      *
      * @return Memory pages eviction threshold.
      */

@@ -19,15 +19,17 @@ package org.apache.ignite;
 import org.apache.ignite.configuration.PersistentStoreConfiguration;
 
 /**
- *
+ * This interface provides Ignite Persistent Store related metrics that is used as a secondary storage by
+ * Ignite Virtual Memory.
  */
 public interface PersistenceMetrics {
     /**
      * Gets the average number of WAL records per second written during the last time interval.
      * <p>
      * The length of time interval is configured via {@link PersistentStoreConfiguration#setRateTimeInterval(long)}
-     * configurartion property.
-     * The number of subintervals is configured via {@link PersistentStoreConfiguration#setSubIntervals(int)}
+     * configuration property.
+     *
+     * The number of sub-intervals is configured via {@link PersistentStoreConfiguration#setSubIntervals(int)}
      * configuration property.
      */
     public float getWalLoggingRate();
@@ -35,8 +37,9 @@ public interface PersistenceMetrics {
     /**
      * Gets the average number of bytes per second written during the last time interval.
      * The length of time interval is configured via {@link PersistentStoreConfiguration#setRateTimeInterval(long)}
-     * configurartion property.
-     * The number of subintervals is configured via {@link PersistentStoreConfiguration#setSubIntervals(int)}
+     * configuration property.
+     *
+     * The number of sub-intervals is configured via {@link PersistentStoreConfiguration#setSubIntervals(int)}
      * configuration property.
      */
     public float getWalWritingRate();
@@ -50,8 +53,9 @@ public interface PersistenceMetrics {
      * Gets the average WAL fsync duration in microseconds over the last time interval.
      * <p>
      * The length of time interval is configured via {@link PersistentStoreConfiguration#setRateTimeInterval(long)}
-     * configurartion property.
-     * The number of subintervals is configured via {@link PersistentStoreConfiguration#setSubIntervals(int)}
+     * configuration property.
+     *
+     * The number of sub-intervals is configured via {@link PersistentStoreConfiguration#setSubIntervals(int)}
      * configuration property.
      */
     public float getWalFsyncTimeAverage();
