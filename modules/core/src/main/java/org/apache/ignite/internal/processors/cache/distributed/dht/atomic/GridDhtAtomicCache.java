@@ -3243,7 +3243,7 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
         if (req.nearSize() > 0) {
             List<KeyCacheObject> nearEvicted;
 
-            if (isNearEnabled(cacheCfg))
+            if (isNearEnabled(ctx))
                 nearEvicted = ((GridNearAtomicCache<K, V>)near()).processDhtAtomicUpdateRequest(nodeId, req, nearRes);
             else {
                 nearEvicted = new ArrayList<>(req.nearSize());

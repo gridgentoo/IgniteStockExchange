@@ -2922,7 +2922,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
             if (ctx.localNodeId().equals(node.id())) {
                 GridCacheContext cctx = ctx.cache().context().cacheContext(cacheId);
 
-                return cctx != null ? cctx.isNear() : null;
+                return cctx != null ? CU.isNearEnabled(cctx) : null;
             }
 
             return clientNodes.get(node.id());

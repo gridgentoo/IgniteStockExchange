@@ -2103,6 +2103,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
                 ids.add(ctx.cacheId());
 
                 if (!ctx.affinityNode() && !locked) {
+                    // Do not close client cache while requests processing is in progress.
                     sharedCtx.io().writeLock();
 
                     locked = true;

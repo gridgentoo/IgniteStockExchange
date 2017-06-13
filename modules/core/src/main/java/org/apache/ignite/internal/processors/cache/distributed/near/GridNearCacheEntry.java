@@ -292,6 +292,11 @@ public class GridNearCacheEntry extends GridDistributedCacheEntry {
     @Override protected void recordNodeId(UUID primaryNodeId, AffinityTopologyVersion topVer) {
         assert Thread.holdsLock(this);
 
+        assert topVer.compareTo(cctx.affinity().affinityTopologyVersion()) <= 0 : "Affinity not ready [" +
+            "topVer=" + topVer +
+            ", readyVer=" + cctx.affinity().affinityTopologyVersion() +
+            ", cache=" + cctx.name() + ']';
+
         primaryNode(primaryNodeId, topVer);
     }
 
