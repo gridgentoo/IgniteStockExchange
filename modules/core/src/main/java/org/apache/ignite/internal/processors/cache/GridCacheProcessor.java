@@ -2083,25 +2083,43 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
     /**
      * @param cachesToClose Caches to close.
+     * @return Closed caches' IDs.
      */
-    public Set<Integer> closeCaches(Set<String> cachesToClose) {
+    Set<Integer> closeCaches(Set<String> cachesToClose) {
         Set<Integer> ids = null;
 
-        for (String cacheName : cachesToClose) {
-            GridCacheContext ctx = blockGateway(cacheName, false);
+        boolean locked = false;
 
-            if (ctx == null)
-                continue;
+        try {
+            for (String cacheName : cachesToClose) {
+                GridCacheContext ctx = blockGateway(cacheName, false);
 
-            if (ids == null)
-                ids = U.newHashSet(cachesToClose.size());
+                if (ctx == null)
+                    continue;
 
-            ids.add(ctx.cacheId());
+                if (ids == null)
+                    ids = U.newHashSet(cachesToClose.size());
 
-            closeCache(cacheName, false);
+                ids.add(ctx.cacheId());
+
+                if (!ctx.affinityNode() && !locked) {
+                    sharedCtx.io().writeLock();
+
+                    locked = true;
+                }
+
+                if (!ctx.affinityNode() && ctx.transactional())
+                    sharedCtx.tm().rollbackTransactionsForCache(ctx.cacheId());
+
+                closeCache(cacheName, false);
+            }
+
+            return ids;
         }
-
-        return ids;
+        finally {
+            if (locked)
+                sharedCtx.io().writeUnlock();
+        }
     }
 
     /**

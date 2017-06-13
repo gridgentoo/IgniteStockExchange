@@ -43,6 +43,7 @@ import org.apache.ignite.internal.processors.cache.IgniteCacheIncrementTxTest;
 import org.apache.ignite.internal.processors.cache.IgniteCacheNoSyncForGetTest;
 import org.apache.ignite.internal.processors.cache.IgniteCachePartitionMapUpdateTest;
 import org.apache.ignite.internal.processors.cache.IgniteDynamicCacheAndNodeStop;
+import org.apache.ignite.internal.processors.cache.IgniteNearClientCacheCloseTest;
 import org.apache.ignite.internal.processors.cache.IgniteOnePhaseCommitInvokeTest;
 import org.apache.ignite.internal.processors.cache.IgniteOnePhaseCommitNearReadersTest;
 import org.apache.ignite.internal.processors.cache.MemoryPolicyConfigValidationTest;
@@ -272,6 +273,7 @@ public class IgniteCacheTestSuite2 extends TestSuite {
         suite.addTest(new TestSuite(IgniteCacheNoSyncForGetTest.class));
 
         suite.addTest(new TestSuite(IgniteOnePhaseCommitNearReadersTest.class));
+        suite.addTest(new TestSuite(IgniteNearClientCacheCloseTest.class));
 
         return suite;
     }
