@@ -28,7 +28,8 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Dummy discovery message which is not really sent via ring, it is just added in local discovery worker queue.
  */
-public class ClientCacheChangeDummyDiscoveryMessage implements DiscoveryCustomMessage, CachePartitionExchangeWorkerTask {
+public class ClientCacheChangeDummyDiscoveryMessage implements DiscoveryCustomMessage,
+    CachePartitionExchangeWorkerTask {
     /** */
     private static final long serialVersionUID = 0L;
 

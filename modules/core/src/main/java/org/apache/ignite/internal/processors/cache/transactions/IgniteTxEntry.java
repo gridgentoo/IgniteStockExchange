@@ -88,6 +88,7 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
     /** Flag indicating that old value for 'invoke' operation was non null on primary node. */
     private static final int TX_ENTRY_OLD_VAL_ON_PRIMARY = 0x04;
 
+    /** Flag indicating that near cache is enabled on originating node and it should be added as reader. */
     private static final int TX_ENTRY_ADD_READER_FLAG_MASK = 0x08;
 
     /** Prepared flag updater. */
@@ -277,6 +278,7 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
      * @param filters Put filters.
      * @param conflictVer Data center replication version.
      * @param skipStore Skip store flag.
+     * @param addReader Add reader flag.
      */
     public IgniteTxEntry(GridCacheContext<?, ?> ctx,
         IgniteInternalTx tx,
@@ -322,6 +324,13 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
      */
     public GridCacheContext<?, ?> context() {
         return ctx;
+    }
+
+    /**
+     * @param ctx Cache context for this tx entry.
+     */
+    public void context(GridCacheContext<?, ?> ctx) {
+        this.ctx = ctx;
     }
 
     /**
@@ -527,10 +536,16 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
         return isFlag(TX_ENTRY_KEEP_BINARY_FLAG_MASK);
     }
 
+    /**
+     * @param addReader Add reader flag.
+     */
     public void addReader(boolean addReader) {
         setFlag(addReader, TX_ENTRY_ADD_READER_FLAG_MASK);
     }
 
+    /**
+     * @return Add reader flag.
+     */
     public boolean addReader() {
         return isFlag(TX_ENTRY_ADD_READER_FLAG_MASK);
     }

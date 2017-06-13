@@ -2083,52 +2083,69 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
     /**
      * @param cachesToClose Caches to close.
+     * @return Closed caches' IDs.
      */
-    public Set<Integer> closeCaches(Set<String> cachesToClose) {
+    Set<Integer> closeCaches(Set<String> cachesToClose) {
         Set<Integer> ids = null;
 
-        for (String cacheName : cachesToClose) {
-            GridCacheContext ctx = blockGateway(cacheName, false);
+        boolean locked = false;
 
-            if (ctx == null)
-                continue;
+        try {
+            for (String cacheName : cachesToClose) {
+                blockGateway(cacheName, false);
 
-            if (ids == null)
-                ids = U.newHashSet(cachesToClose.size());
+                GridCacheContext ctx = sharedCtx.cacheContext(CU.cacheId(cacheName));
 
-            ids.add(ctx.cacheId());
+                if (ctx == null)
+                    continue;
 
-            closeCache(cacheName, false);
+                if (ids == null)
+                    ids = U.newHashSet(cachesToClose.size());
+
+                ids.add(ctx.cacheId());
+
+                if (!ctx.affinityNode() && !locked) {
+                    // Do not close client cache while requests processing is in progress.
+                    sharedCtx.io().writeLock();
+
+                    locked = true;
+                }
+
+                if (!ctx.affinityNode() && ctx.transactional())
+                    sharedCtx.tm().rollbackTransactionsForCache(ctx.cacheId());
+
+                closeCache(ctx, false);
+            }
+
+            return ids;
         }
-
-        return ids;
+        finally {
+            if (locked)
+                sharedCtx.io().writeUnlock();
+        }
     }
 
     /**
-     * @param cacheName Cache name.
+     * @param cctx Cache context.
      * @param destroy Destroy flag.
      */
-    private void closeCache(String cacheName, boolean destroy) {
-        IgniteCacheProxy<?, ?> proxy = jCacheProxies.get(cacheName);
+    private void closeCache(GridCacheContext cctx, boolean destroy) {
+        if (cctx.affinityNode()) {
+            GridCacheAdapter<?, ?> cache = caches.get(cctx.name());
 
-        if (proxy != null) {
-            if (proxy.context().affinityNode()) {
-                GridCacheAdapter<?, ?> cache = caches.get(cacheName);
+            assert cache != null : cctx.name();
 
-                assert cache != null : cacheName;
+            jCacheProxies.put(cctx.name(), new IgniteCacheProxy(cache.context(), cache, null, false));
+        }
+        else {
+            jCacheProxies.remove(cctx.name());
 
-                jCacheProxies.put(cacheName, new IgniteCacheProxy(cache.context(), cache, null, false));
-            }
-            else {
-                jCacheProxies.remove(cacheName);
+            cctx.gate().onStopped();
 
-                proxy.context().gate().onStopped();
+            CacheGroupContext grp = prepareCacheStop(cctx.name(), destroy);
 
-                CacheGroupContext grp = prepareCacheStop(cacheName, destroy);
-
-                if (grp != null && !grp.hasCaches())
-                    stopCacheGroup(grp.groupId());
-            }
+            if (grp != null && !grp.hasCaches())
+                stopCacheGroup(grp.groupId());
         }
     }
 

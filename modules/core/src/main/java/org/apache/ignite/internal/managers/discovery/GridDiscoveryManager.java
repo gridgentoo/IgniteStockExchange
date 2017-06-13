@@ -1866,17 +1866,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
-     * Checks if cache with given ID has at least one node with near cache enabled.
-     *
-     * @param cacheId Cache ID.
-     * @param topVer Topology version.
-     * @return {@code True} if cache with given name has at least one node with near cache enabled.
-     */
-    public boolean hasNearCache(int cacheId, AffinityTopologyVersion topVer) {
-        return resolveDiscoCache(cacheId, topVer).hasNearCache(cacheId);
-    }
-
-    /**
      * Gets discovery cache for given topology version.
      *
      * @param grpId Cache group ID (participates in exception message).
@@ -2131,8 +2120,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
         Set<ClusterNode> rmtNodesWithCaches = new TreeSet<>(GridNodeOrderComparator.INSTANCE);
         Set<ClusterNode> srvNodesWithCaches = new TreeSet<>(GridNodeOrderComparator.INSTANCE);
 
-        Set<Integer> nearEnabledCaches = new HashSet<>();
-
         for (ClusterNode node : allNodes) {
             assert node.order() != 0 : "Invalid node order [locNode=" + loc + ", node=" + node + ']';
             assert !node.isDaemon();
@@ -2165,9 +2152,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
                         rmtNodesWithCaches.add(node);
 
                     addToMap(allCacheNodes, cacheName, node);
-
-                    if (filter.nearNode(node))
-                        nearEnabledCaches.add(CU.cacheId(cacheName));
                 }
             }
         }
@@ -2184,7 +2168,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
             Collections.unmodifiableMap(allCacheNodes),
             Collections.unmodifiableMap(cacheGrpAffNodes),
             Collections.unmodifiableMap(nodeMap),
-            Collections.unmodifiableSet(nearEnabledCaches),
             alives);
     }
 
@@ -2939,7 +2922,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
             if (ctx.localNodeId().equals(node.id())) {
                 GridCacheContext cctx = ctx.cache().context().cacheContext(cacheId);
 
-                return cctx != null ? cctx.isNear() : null;
+                return cctx != null ? CU.isNearEnabled(cctx) : null;
             }
 
             return clientNodes.get(node.id());

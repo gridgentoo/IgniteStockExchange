@@ -51,49 +51,34 @@ public abstract class GridNearAtomicAbstractSingleUpdateRequest extends GridNear
      * @param nodeId Node ID.
      * @param futId Future ID.
      * @param topVer Topology version.
-     * @param topLocked Topology locked flag.
      * @param syncMode Synchronization mode.
      * @param op Cache update operation.
-     * @param retval Return value required flag.
      * @param subjId Subject ID.
      * @param taskNameHash Task name hash code.
-     * @param skipStore Skip write-through to a persistent storage.
-     * @param keepBinary Keep binary flag.
+     * @param flags Flags.
      * @param addDepInfo Deployment info flag.
      */
     protected GridNearAtomicAbstractSingleUpdateRequest(
         int cacheId,
-        boolean nearCache,
         UUID nodeId,
         long futId,
         @NotNull AffinityTopologyVersion topVer,
-        boolean topLocked,
         CacheWriteSynchronizationMode syncMode,
         GridCacheOperation op,
-        boolean retval,
         @Nullable UUID subjId,
         int taskNameHash,
-        boolean mappingKnown,
-        boolean skipStore,
-        boolean keepBinary,
-        boolean recovery,
+        byte flags,
         boolean addDepInfo
     ) {
         super(cacheId,
-            nearCache,
             nodeId,
             futId,
             topVer,
-            topLocked,
             syncMode,
             op,
-            retval,
             subjId,
             taskNameHash,
-            mappingKnown,
-            skipStore,
-            keepBinary,
-            recovery,
+            flags,
             addDepInfo);
     }
 

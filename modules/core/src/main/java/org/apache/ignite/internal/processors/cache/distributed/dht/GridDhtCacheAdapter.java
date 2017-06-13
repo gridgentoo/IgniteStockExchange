@@ -797,6 +797,7 @@ public abstract class GridDhtCacheAdapter<K, V> extends GridDistributedCacheAdap
      * @param reader Reader node ID.
      * @param msgId Message ID.
      * @param keys Keys to get.
+     * @param addReaders Add readers flag.
      * @param readThrough Read through flag.
      * @param topVer Topology version.
      * @param subjId Subject ID.

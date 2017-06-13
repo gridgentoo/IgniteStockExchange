@@ -373,6 +373,55 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
     }
 
     /**
+     * @throws Exception If failed.
+     */
+    @SuppressWarnings("unchecked")
+    public void testStartNewAndClientCaches() throws Exception {
+        final int SRVS = 4;
+
+        Ignite srv = startGrids(SRVS);
+
+        srv.createCaches(cacheConfigurations(null, CacheAtomicityMode.ATOMIC));
+
+        ccfg = null;
+
+        client = true;
+
+        Ignite client = startGrid(SRVS);
+
+        List<CacheConfiguration> cfgs = new ArrayList<>();
+
+        cfgs.addAll(cacheConfigurations(null, CacheAtomicityMode.ATOMIC));
+        cfgs.addAll(cacheConfigurations(null, CacheAtomicityMode.TRANSACTIONAL));
+
+        assertEquals(6, cfgs.size());
+
+        Collection<IgniteCache> caches = client.getOrCreateCaches(cfgs);
+
+        assertEquals(cfgs.size(), caches.size());
+
+        for (CacheConfiguration cfg : cfgs)
+            checkCache(client, cfg.getName(), false, false);
+
+        Map<Integer, Integer> map = new HashMap<>();
+
+        for (int i = 0; i < 100; i++)
+            map.put(i, i);
+
+        for (IgniteCache<Object, Object> cache : caches) {
+            cache.putAll(map);
+
+            checkCacheData(map, cache.getName());
+        }
+
+        for (IgniteCache cache : caches) {
+            cache.close();
+
+            checkNoCache(client, cache.getName());
+        }
+    }
+
+    /**
      * @param grp Group name.
      * @param atomicityMode Atomicity mode.
      * @return Cache configurations.

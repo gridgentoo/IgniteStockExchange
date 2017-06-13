@@ -535,6 +535,8 @@ public abstract class GridDhtTxLocalAdapter extends IgniteTxLocalAdapter {
      * @param accessTtl TTL for read operation.
      * @param needRetVal Return value flag.
      * @param skipStore Skip store flag.
+     * @param keepBinary Keep binary flag.
+     * @param nearCache {@code True} if near cache enabled on originating node.
      * @return Lock future.
      */
     @SuppressWarnings("ForLoopReplaceableByForEach")
@@ -547,7 +549,8 @@ public abstract class GridDhtTxLocalAdapter extends IgniteTxLocalAdapter {
         long createTtl,
         long accessTtl,
         boolean skipStore,
-        boolean keepBinary
+        boolean keepBinary,
+        boolean nearCache
     ) {
         try {
             checkValid();
@@ -613,7 +616,7 @@ public abstract class GridDhtTxLocalAdapter extends IgniteTxLocalAdapter {
                         null,
                         skipStore,
                         keepBinary,
-                        CU.isNearEnabled(cacheCtx));
+                        nearCache);
 
                     if (read)
                         txEntry.ttl(accessTtl);
