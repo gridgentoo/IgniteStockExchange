@@ -2092,7 +2092,9 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
         try {
             for (String cacheName : cachesToClose) {
-                GridCacheContext ctx = blockGateway(cacheName, false);
+                blockGateway(cacheName, false);
+
+                GridCacheContext ctx = sharedCtx.cacheContext(CU.cacheId(cacheName));
 
                 if (ctx == null)
                     continue;
@@ -2112,7 +2114,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
                 if (!ctx.affinityNode() && ctx.transactional())
                     sharedCtx.tm().rollbackTransactionsForCache(ctx.cacheId());
 
-                closeCache(cacheName, false);
+                closeCache(ctx, false);
             }
 
             return ids;
@@ -2124,30 +2126,26 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * @param cacheName Cache name.
+     * @param cctx Cache context.
      * @param destroy Destroy flag.
      */
-    private void closeCache(String cacheName, boolean destroy) {
-        IgniteCacheProxy<?, ?> proxy = jCacheProxies.get(cacheName);
+    private void closeCache(GridCacheContext cctx, boolean destroy) {
+        if (cctx.affinityNode()) {
+            GridCacheAdapter<?, ?> cache = caches.get(cctx.name());
 
-        if (proxy != null) {
-            if (proxy.context().affinityNode()) {
-                GridCacheAdapter<?, ?> cache = caches.get(cacheName);
+            assert cache != null : cctx.name();
 
-                assert cache != null : cacheName;
+            jCacheProxies.put(cctx.name(), new IgniteCacheProxy(cache.context(), cache, null, false));
+        }
+        else {
+            jCacheProxies.remove(cctx.name());
 
-                jCacheProxies.put(cacheName, new IgniteCacheProxy(cache.context(), cache, null, false));
-            }
-            else {
-                jCacheProxies.remove(cacheName);
+            cctx.gate().onStopped();
 
-                proxy.context().gate().onStopped();
+            CacheGroupContext grp = prepareCacheStop(cctx.name(), destroy);
 
-                CacheGroupContext grp = prepareCacheStop(cacheName, destroy);
-
-                if (grp != null && !grp.hasCaches())
-                    stopCacheGroup(grp.groupId());
-            }
+            if (grp != null && !grp.hasCaches())
+                stopCacheGroup(grp.groupId());
         }
     }
 
