@@ -30,6 +30,9 @@ import org.jetbrains.annotations.Nullable;
  */
 public class ClientCacheChangeDummyDiscoveryMessage implements DiscoveryCustomMessage, CachePartitionExchangeWorkerTask {
     /** */
+    private static final long serialVersionUID = 0L;
+
+    /** */
     private final UUID reqId;
 
     /** */
