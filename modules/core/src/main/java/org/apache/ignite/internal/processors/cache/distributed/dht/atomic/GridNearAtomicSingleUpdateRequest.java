@@ -80,7 +80,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractSin
      */
     GridNearAtomicSingleUpdateRequest(
         int cacheId,
-        boolean nearCache,
         UUID nodeId,
         long futId,
         @NotNull AffinityTopologyVersion topVer,
@@ -92,7 +91,6 @@ public class GridNearAtomicSingleUpdateRequest extends GridNearAtomicAbstractSin
         boolean addDepInfo
     ) {
         super(cacheId,
-            nearCache,
             nodeId,
             futId,
             topVer,

@@ -324,13 +324,6 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
     }
 
     /**
-     * @param exchActions Cache change requests to execute on exchange.
-     */
-    private void updateCachesInfo(ExchangeActions exchActions) {
-        caches.updateCachesInfo(exchActions);
-    }
-
-    /**
      * @param reqId Request ID.
      * @param startReqs Client cache start request.
      * @return Descriptors for caches to start.
@@ -582,7 +575,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
     {
         assert exchActions != null && !exchActions.empty() : exchActions;
 
-        updateCachesInfo(exchActions);
+        caches.updateCachesInfo(exchActions);
 
         // Affinity did not change for existing caches.
         forAllCacheGroups(crd && lateAffAssign, new IgniteInClosureX<GridAffinityAssignmentCache>() {
@@ -2074,10 +2067,10 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
      *
      */
     static class CachesInfo {
-        /** Registered caches (updated from exchange thread). */
+        /** Registered cache groups (updated from exchange thread). */
         private final ConcurrentHashMap<Integer, CacheGroupDescriptor> registeredGrps = new ConcurrentHashMap<>();
 
-        /** */
+        /** Registered caches (updated from exchange thread). */
         private final ConcurrentHashMap<String, DynamicCacheDescriptor> registeredCaches = new ConcurrentHashMap<>();
 
         /**

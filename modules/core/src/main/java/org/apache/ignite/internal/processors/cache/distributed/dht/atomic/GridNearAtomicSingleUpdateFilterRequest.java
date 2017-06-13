@@ -70,7 +70,6 @@ public class GridNearAtomicSingleUpdateFilterRequest extends GridNearAtomicSingl
      */
     GridNearAtomicSingleUpdateFilterRequest(
         int cacheId,
-        boolean nearCache,
         UUID nodeId,
         long futId,
         @NotNull AffinityTopologyVersion topVer,
@@ -84,7 +83,6 @@ public class GridNearAtomicSingleUpdateFilterRequest extends GridNearAtomicSingl
     ) {
         super(
             cacheId,
-            nearCache,
             nodeId,
             futId,
             topVer,

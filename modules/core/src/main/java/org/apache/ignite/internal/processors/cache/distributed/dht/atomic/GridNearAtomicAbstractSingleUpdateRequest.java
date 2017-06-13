@@ -60,7 +60,6 @@ public abstract class GridNearAtomicAbstractSingleUpdateRequest extends GridNear
      */
     protected GridNearAtomicAbstractSingleUpdateRequest(
         int cacheId,
-        boolean nearCache,
         UUID nodeId,
         long futId,
         @NotNull AffinityTopologyVersion topVer,
@@ -72,7 +71,6 @@ public abstract class GridNearAtomicAbstractSingleUpdateRequest extends GridNear
         boolean addDepInfo
     ) {
         super(cacheId,
-            nearCache,
             nodeId,
             futId,
             topVer,

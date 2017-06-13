@@ -574,7 +574,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
             if (op == TRANSFORM) {
                 req = new GridNearAtomicSingleUpdateInvokeRequest(
                     cctx.cacheId(),
-                    nearEnabled,
                     primary.id(),
                     futId,
                     topVer,
@@ -590,7 +589,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 if (filter == null || filter.length == 0) {
                     req = new GridNearAtomicSingleUpdateRequest(
                         cctx.cacheId(),
-                        nearEnabled,
                         primary.id(),
                         futId,
                         topVer,
@@ -604,7 +602,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
                 else {
                     req = new GridNearAtomicSingleUpdateFilterRequest(
                         cctx.cacheId(),
-                        nearEnabled,
                         primary.id(),
                         futId,
                         topVer,
@@ -621,7 +618,6 @@ public class GridNearAtomicSingleUpdateFuture extends GridNearAtomicAbstractUpda
         else {
             req = new GridNearAtomicFullUpdateRequest(
                 cctx.cacheId(),
-                nearEnabled,
                 primary.id(),
                 futId,
                 topVer,

@@ -1015,7 +1015,6 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
 
                 GridNearAtomicFullUpdateRequest req = new GridNearAtomicFullUpdateRequest(
                     cctx.cacheId(),
-                    nearEnabled,
                     nodeId,
                     futId,
                     topVer,
@@ -1126,7 +1125,6 @@ public class GridNearAtomicUpdateFuture extends GridNearAtomicAbstractUpdateFutu
 
         GridNearAtomicFullUpdateRequest req = new GridNearAtomicFullUpdateRequest(
             cctx.cacheId(),
-            nearEnabled,
             primary.id(),
             futId,
             topVer,
