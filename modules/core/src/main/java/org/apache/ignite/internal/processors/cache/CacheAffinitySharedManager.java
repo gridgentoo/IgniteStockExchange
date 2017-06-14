@@ -776,6 +776,15 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                 });
             }
         }
+
+        ClientCacheChangeDiscoveryMessage msg = clientCacheChanges.get();
+
+        if (msg != null) {
+            msg.checkCachesExist(caches.registeredCaches.keySet());
+
+            if (msg.empty())
+                clientCacheChanges.remove();
+        }
     }
 
     /**
@@ -2217,7 +2226,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
             }
 
             for (ExchangeActions.ActionData req : exchActions.cacheStopRequests())
-                registeredCaches.remove(req.descriptor().cacheName());
+                registeredCaches.remove(req.descriptor().cacheId());
 
             for (ExchangeActions.ActionData req : exchActions.cacheStartRequests())
                 registeredCaches.put(req.descriptor().cacheId(), req.descriptor());
