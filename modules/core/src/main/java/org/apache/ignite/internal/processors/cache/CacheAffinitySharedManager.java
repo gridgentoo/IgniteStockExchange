@@ -396,7 +396,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                 CacheGroupContext grp = cctx.cache().cacheGroup(desc.groupId());
 
                 assert grp != null : desc.groupId();
-                assert !grp.affinityNode() : grp.cacheOrGroupName();
+                assert !grp.affinityNode() || grp.isLocal() : grp.cacheOrGroupName();
 
                 if (!grp.isLocal() && grp.affinity().lastVersion().equals(AffinityTopologyVersion.NONE)) {
                     assert grp.localStartVersion().equals(topVer) : grp.localStartVersion();
