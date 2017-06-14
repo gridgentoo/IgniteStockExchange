@@ -19,6 +19,7 @@ package org.apache.ignite.internal.processors.cache;
 
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import javax.cache.CacheException;
 import org.apache.ignite.Ignite;
@@ -111,9 +112,14 @@ public abstract class IgniteTopologyValidatorAbstractCacheTest extends IgniteCac
      */
     void putInvalid(String cacheName) {
         try {
-            grid(0).cache(cacheName).put(KEY_VAL, KEY_VAL);
+            List<Ignite> nodes = nodes();
 
-            assert false : "topology validation broken";
+            assertFalse(nodes.isEmpty());
+
+            for (Ignite node : nodes)
+                node.cache(cacheName).put(KEY_VAL, KEY_VAL);
+
+            fail("Topology validation broken");
         }
         catch (CacheException ex) {
             assert ex.getCause() instanceof IgniteCheckedException &&
@@ -128,7 +134,7 @@ public abstract class IgniteTopologyValidatorAbstractCacheTest extends IgniteCac
      */
     void putValid(String cacheName) {
         try {
-            List<Ignite> nodes = G.allGrids();
+            List<Ignite> nodes = nodes();
 
             assertFalse(nodes.isEmpty());
 
@@ -149,7 +155,7 @@ public abstract class IgniteTopologyValidatorAbstractCacheTest extends IgniteCac
      * @param cacheName cache name.
      */
     void getInvalid(String cacheName) {
-        List<Ignite> nodes = G.allGrids();
+        List<Ignite> nodes = nodes();
 
         assertFalse(nodes.isEmpty());
 
@@ -164,7 +170,7 @@ public abstract class IgniteTopologyValidatorAbstractCacheTest extends IgniteCac
      */
     void removeInvalid(String cacheName) {
         try {
-            List<Ignite> nodes = G.allGrids();
+            List<Ignite> nodes = nodes();
 
             assertFalse(nodes.isEmpty());
 
@@ -177,6 +183,17 @@ public abstract class IgniteTopologyValidatorAbstractCacheTest extends IgniteCac
             assert ex.getCause() instanceof IgniteCheckedException &&
                 ex.getCause().getMessage().contains("cache topology is not valid");
         }
+    }
+
+    /**
+     * @return Nodes.
+     */
+    private List<Ignite> nodes() {
+        if (this instanceof IgniteTopologyValidatorAbstractTxCacheTest ||
+            this instanceof IgniteTopologyValidatorAbstractTxCacheGroupsTest)
+            return Collections.singletonList(ignite(0));
+        else
+            return G.allGrids();
     }
 
     /**
@@ -218,7 +235,7 @@ public abstract class IgniteTopologyValidatorAbstractCacheTest extends IgniteCac
      * @param cacheName cache name.
      */
     void assertEmpty(String cacheName) {
-        assert grid(0).cache(cacheName).get(KEY_VAL) == null;
+        assertNull(grid(0).cache(cacheName).get(KEY_VAL));
     }
 
     /**
