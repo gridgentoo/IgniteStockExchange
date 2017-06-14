@@ -342,7 +342,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
         List<DynamicCacheDescriptor> startDescs = new ArrayList<>(startReqs.size());
 
         for (DynamicCacheChangeRequest startReq : startReqs.values()) {
-            DynamicCacheDescriptor desc = caches.cache(startReq.cacheName());
+            DynamicCacheDescriptor desc = caches.cache(CU.cacheId(startReq.cacheName()));
 
             if (desc == null) {
                 CacheException err = new CacheException("Failed to start client cache " +
@@ -581,14 +581,17 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
         if (msg != null && msg.updateTimeoutObject() == timeoutObj) {
             assert !msg.empty() : msg;
 
+            clientCacheChanges.remove();
+
+            msg.checkCachesExist(caches.registeredCaches.keySet());
+
             try {
-                cctx.discovery().sendCustomEvent(msg);
+                if (!msg.empty())
+                    cctx.discovery().sendCustomEvent(msg);
             }
             catch (IgniteCheckedException e) {
                 U.error(log, "Failed to send discovery event: " + e, e);
             }
-
-            clientCacheChanges.remove();
         }
     }
 
@@ -2142,7 +2145,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
         private final ConcurrentHashMap<Integer, CacheGroupDescriptor> registeredGrps = new ConcurrentHashMap<>();
 
         /** Registered caches (updated from exchange thread). */
-        private final ConcurrentHashMap<String, DynamicCacheDescriptor> registeredCaches = new ConcurrentHashMap<>();
+        private final ConcurrentHashMap<Integer, DynamicCacheDescriptor> registeredCaches = new ConcurrentHashMap<>();
 
         /**
          * @param grps Registered groups.
@@ -2153,7 +2156,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                 registeredGrps.put(grpDesc.groupId(), grpDesc);
 
             for (DynamicCacheDescriptor cacheDesc : caches.values())
-                registeredCaches.put(cacheDesc.cacheName(), cacheDesc);
+                registeredCaches.put(cacheDesc.cacheId(), cacheDesc);
         }
 
         /**
@@ -2186,7 +2189,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                     registeredGrps.put(grpDesc.groupId(), grpDesc);
 
                 if (!registeredCaches.containsKey(desc.cacheName()))
-                    registeredCaches.put(desc.cacheName(), desc);
+                    registeredCaches.put(desc.cacheId(), desc);
             }
         }
 
@@ -2210,15 +2213,15 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                 registeredCaches.remove(req.descriptor().cacheName());
 
             for (ExchangeActions.ActionData req : exchActions.cacheStartRequests())
-                registeredCaches.put(req.descriptor().cacheName(), req.descriptor());
+                registeredCaches.put(req.descriptor().cacheId(), req.descriptor());
         }
 
         /**
-         * @param cacheName Cache name.
+         * @param cacheId Cache ID.
          * @return Cache descriptor if cache found.
          */
-        @Nullable DynamicCacheDescriptor cache(String cacheName) {
-            return registeredCaches.get(cacheName);
+        @Nullable DynamicCacheDescriptor cache(Integer cacheId) {
+            return registeredCaches.get(cacheId);
         }
 
         /**

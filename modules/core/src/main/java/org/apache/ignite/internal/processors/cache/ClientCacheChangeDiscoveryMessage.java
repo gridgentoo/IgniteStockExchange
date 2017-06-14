@@ -19,6 +19,7 @@ package org.apache.ignite.internal.processors.cache;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
@@ -100,6 +101,29 @@ public class ClientCacheChangeDiscoveryMessage implements DiscoveryCustomMessage
      */
     public boolean empty() {
         return F.isEmpty(startedCaches) && F.isEmpty(closedCaches);
+    }
+
+    /**
+     * @param caches Started caches' IDs.
+     */
+    void checkCachesExist(Set<Integer> caches) {
+        if (closedCaches != null) {
+            for (Iterator<Integer> it = closedCaches.iterator(); it.hasNext();) {
+                Integer cacheId = it.next();
+
+                if (!caches.contains(cacheId))
+                    it.remove();
+            }
+        }
+
+        if (startedCaches != null) {
+            for (Iterator<Integer> it = startedCaches.keySet().iterator(); it.hasNext();) {
+                Integer cacheId = it.next();
+
+                if (!caches.contains(cacheId))
+                    it.remove();
+            }
+        }
     }
 
     /**
