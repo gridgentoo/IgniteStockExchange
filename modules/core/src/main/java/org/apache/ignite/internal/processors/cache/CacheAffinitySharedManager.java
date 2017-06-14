@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.cache.CacheException;
 import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.cache.affinity.AffinityFunction;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -38,6 +39,7 @@ import org.apache.ignite.configuration.NearCacheConfiguration;
 import org.apache.ignite.events.DiscoveryEvent;
 import org.apache.ignite.events.Event;
 import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.cluster.ClusterTopologyServerNotFoundException;
 import org.apache.ignite.internal.managers.discovery.DiscoCache;
 import org.apache.ignite.internal.managers.eventstorage.GridLocalEventListener;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
@@ -74,6 +76,10 @@ import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
  */
 @SuppressWarnings("ForLoopReplaceableByForEach")
 public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdapter<K, V> {
+    /** */
+    private final long clientCacheMsgTimeout =
+        IgniteSystemProperties.getLong(IgniteSystemProperties.IGNITE_CLIENT_CACHE_CHANGE_MESSAGE_TIMEOUT, 10_000);
+
     /** Late affinity assignment flag. */
     private boolean lateAffAssign;
 
@@ -98,6 +104,9 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
     /** Pending affinity assignment futures. */
     private final ConcurrentMap<Long, GridDhtAssignmentFetchFuture> pendingAssignmentFetchFuts =
         new ConcurrentHashMap8<>();
+
+    /** */
+    private final ThreadLocal<ClientCacheChangeDiscoveryMessage> clientCacheChanges = new ThreadLocal<>();
 
     /** Discovery listener. */
     private final GridLocalEventListener discoLsnr = new GridLocalEventListener() {
@@ -358,6 +367,7 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
      * @param crd Coordinator flag.
      * @param topVer Current topology version.
      * @param discoCache Discovery data cache.
+     * @return Map of started caches (cache ID to near enabled flag).
      */
     @Nullable private Map<Integer, Boolean> processClientCacheStartRequests(
         ClientCacheChangeDummyDiscoveryMessage msg,
@@ -459,24 +469,27 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                     fetchFut);
 
                 GridDhtPartitionFullMap partMap;
+                ClientCacheDhtTopologyFuture topFut;
 
                 if (res != null) {
                     partMap = res.partitionMap();
 
                     assert partMap != null : res;
 
-                    ClientCacheDhtTopologyFuture topFut = new ClientCacheDhtTopologyFuture(topVer);
-
-                    grp.topology().updateTopologyVersion(topFut, discoCache, -1, false);
-
-                    grp.topology().update(topVer, partMap, null);
+                    topFut = new ClientCacheDhtTopologyFuture(topVer);
                 }
                 else {
-//                    cctx.cache().completeClientCacheChangeFuture(msg.requestId(), new IgniteCheckedException("test"));
-//
-//                    return;
-                    // TODO 5272: mark as 'no server nodes'
+                    partMap = new GridDhtPartitionFullMap(cctx.localNodeId(), cctx.localNode().order(), 1);
+
+                    topFut = new ClientCacheDhtTopologyFuture(topVer,
+                        new ClusterTopologyServerNotFoundException("All server nodes left grid."));
                 }
+
+                grp.topology().updateTopologyVersion(topFut, discoCache, -1, false);
+
+                grp.topology().update(topVer, partMap, null);
+
+                topFut.validate(grp, discoCache.allNodes());
             }
             catch (IgniteCheckedException e) {
                 cctx.cache().closeCaches(startedCaches);
@@ -555,16 +568,67 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
 
         Set<Integer> closedCaches = processCacheCloseRequests(msg, crd, topVer);
 
-        if (startedCaches != null || closedCaches != null) {
-            ClientCacheChangeDiscoveryMessage msg0 = new ClientCacheChangeDiscoveryMessage(startedCaches, closedCaches);
+        if (startedCaches != null || closedCaches != null)
+            scheduleClientChangeMessage(startedCaches, closedCaches);
+    }
+
+    /**
+     * @param timeoutObj Timeout object.
+     */
+    void sendClientCacheChangesMessage(ClientCacheUpdateTimeout timeoutObj) {
+        ClientCacheChangeDiscoveryMessage msg = clientCacheChanges.get();
+
+        if (msg != null && msg.updateTimeoutObject() == timeoutObj) {
+            assert !msg.empty() : msg;
 
             try {
-                cctx.discovery().sendCustomEvent(msg0);
+                cctx.discovery().sendCustomEvent(msg);
             }
             catch (IgniteCheckedException e) {
                 U.error(log, "Failed to send discovery event: " + e, e);
             }
+
+            clientCacheChanges.remove();
         }
+    }
+
+    /**
+     * @param startedCaches Started caches.
+     * @param closedCaches Closed caches.
+     */
+    private void scheduleClientChangeMessage(Map<Integer, Boolean> startedCaches, Set<Integer> closedCaches) {
+        ClientCacheChangeDiscoveryMessage msg = clientCacheChanges.get();
+
+        if (msg == null) {
+            msg = new ClientCacheChangeDiscoveryMessage(startedCaches, closedCaches);
+
+            clientCacheChanges.set(msg);
+        }
+        else {
+            msg.merge(startedCaches, closedCaches);
+
+            if (msg.empty()) {
+                cctx.time().removeTimeoutObject(msg.updateTimeoutObject());
+
+                clientCacheChanges.remove();
+
+                return;
+            }
+        }
+
+        if (msg.updateTimeoutObject() != null)
+            cctx.time().removeTimeoutObject(msg.updateTimeoutObject());
+
+        long timeout = clientCacheMsgTimeout;
+
+        if (timeout <= 0)
+            timeout = 10_000;
+
+        ClientCacheUpdateTimeout timeoutObj = new ClientCacheUpdateTimeout(cctx, timeout);
+
+        msg.updateTimeoutObject(timeoutObj);
+
+        cctx.time().addTimeoutObject(timeoutObj);
     }
 
     /**

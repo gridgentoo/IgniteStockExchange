@@ -377,7 +377,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
      *
      * @param task Task.
      */
-    public void processCustomExchangeTask(CachePartitionExchangeWorkerTask task) {
+    void processCustomExchangeTask(CachePartitionExchangeWorkerTask task) {
         if (task instanceof SchemaExchangeWorkerTask) {
             SchemaAbstractDiscoveryMessage msg = ((SchemaExchangeWorkerTask)task).message();
 
@@ -398,6 +398,11 @@ public class GridCacheProcessor extends GridProcessorAdapter {
             ClientCacheChangeDummyDiscoveryMessage task0 = (ClientCacheChangeDummyDiscoveryMessage)task;
 
             sharedCtx.affinity().processClientCachesChanges(task0);
+        }
+        else if (task instanceof ClientCacheUpdateTimeout) {
+            ClientCacheUpdateTimeout task0 = (ClientCacheUpdateTimeout)task;
+
+            sharedCtx.affinity().sendClientCacheChangesMessage(task0);
         }
         else
             U.warn(log, "Unsupported custom exchange task: " + task);

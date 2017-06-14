@@ -18,37 +18,57 @@
 package org.apache.ignite.internal.processors.cache.distributed.dht;
 
 import java.util.Collection;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
-import org.apache.ignite.internal.processors.cache.GridCacheContext;
-import org.apache.ignite.internal.util.future.GridFinishedFuture;
-import org.jetbrains.annotations.Nullable;
+import org.apache.ignite.internal.processors.cache.CacheGroupContext;
+import org.apache.ignite.internal.util.typedef.internal.U;
 
 /**
  *
  */
-public class ClientCacheDhtTopologyFuture extends GridFinishedFuture<AffinityTopologyVersion>
+public class ClientCacheDhtTopologyFuture extends GridDhtTopologyFutureAdapter
     implements GridDhtTopologyFuture {
+    /** */
+    final AffinityTopologyVersion topVer;
+
     /**
-     * @param topVer Exchange topology version.
+     * @param topVer Topology version.
      */
     public ClientCacheDhtTopologyFuture(AffinityTopologyVersion topVer) {
-        super(topVer);
-
         assert topVer != null;
+
+        this.topVer = topVer;
+
+        onDone(topVer);
+    }
+
+    /**
+     * @param topVer Topology version.
+     * @param e Error.
+     */
+    public ClientCacheDhtTopologyFuture(AffinityTopologyVersion topVer, IgniteCheckedException e) {
+        assert e != null;
+        assert topVer != null;
+
+        this.topVer = topVer;
+
+        onDone(e);
+    }
+
+    /**
+     * @param grp Cache group.
+     * @param topNodes Topology nodes.
+     */
+    public void validate(CacheGroupContext grp, Collection<ClusterNode> topNodes) {
+        grpValidRes = U.newHashMap(1);
+
+        grpValidRes.put(grp.groupId(), validateCacheGroup(grp,topNodes));
     }
 
     /** {@inheritDoc} */
     @Override public AffinityTopologyVersion topologyVersion() {
-        return result();
-    }
-
-    /** {@inheritDoc} */
-    @Nullable @Override public Throwable validateCache(GridCacheContext cctx,
-        boolean recovery,
-        boolean read,
-        @Nullable Object key,
-        @Nullable Collection<?> keys) {
-        return null;
+        return topVer;
     }
 
     /** {@inheritDoc} */

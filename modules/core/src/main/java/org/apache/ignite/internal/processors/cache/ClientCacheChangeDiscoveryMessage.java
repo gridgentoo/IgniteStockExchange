@@ -17,9 +17,14 @@
 
 package org.apache.ignite.internal.processors.cache;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.ignite.internal.managers.discovery.DiscoveryCustomMessage;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.lang.IgniteUuid;
 import org.jetbrains.annotations.Nullable;
 
@@ -34,24 +39,97 @@ public class ClientCacheChangeDiscoveryMessage implements DiscoveryCustomMessage
     private final IgniteUuid id = IgniteUuid.randomUuid();;
 
     /** */
+    @GridToStringInclude
     private Map<Integer, Boolean> startedCaches;
 
     /** */
+    @GridToStringInclude
     private Set<Integer> closedCaches;
 
+    /** Update timeout object, used to batch multiple starts/close into single discovery message. */
+    private transient ClientCacheUpdateTimeout updateTimeoutObj;
+
     /**
-     * @param startedCaches
-     * @param closedCaches
+     * @param startedCaches Started caches.
+     * @param closedCaches Closed caches.
      */
     public ClientCacheChangeDiscoveryMessage(Map<Integer, Boolean> startedCaches, Set<Integer> closedCaches) {
         this.startedCaches = startedCaches;
         this.closedCaches = closedCaches;
     }
 
+    /**
+     * @param startedCaches Started caches.
+     * @param closedCaches Closed caches.
+     */
+    public void merge(@Nullable Map<Integer, Boolean> startedCaches, @Nullable Set<Integer> closedCaches) {
+        Map<Integer, Boolean> startedCaches0 = this.startedCaches;
+        Set<Integer> closedCaches0 = this.closedCaches;
+
+        if (startedCaches != null) {
+            if (startedCaches0 == null)
+                startedCaches0 = new HashMap<>();
+
+            for (Map.Entry<Integer, Boolean> e : startedCaches.entrySet()) {
+                if (closedCaches0 != null && closedCaches0.remove(e.getKey()))
+                    continue;
+
+                Boolean old = startedCaches0.put(e.getKey(), e.getValue());
+
+                assert old == null : e.getKey();
+            }
+
+            this.startedCaches = startedCaches0;
+        }
+
+        if (closedCaches != null) {
+            if (closedCaches0 == null)
+                closedCaches0 = new HashSet<>();
+
+            for (Integer cacheId : closedCaches) {
+                if (startedCaches0 != null && startedCaches0.remove(cacheId))
+                    continue;
+
+                boolean add = closedCaches0.add(cacheId);
+
+                assert add : cacheId;
+            }
+
+            this.closedCaches = closedCaches0;
+        }
+    }
+
+    /**
+     * @return {@code True} if there are no info about started/closed caches.
+     */
+    public boolean empty() {
+        return F.isEmpty(startedCaches) && F.isEmpty(closedCaches);
+    }
+
+    /**
+     * @return Update timeout object.
+     */
+    public ClientCacheUpdateTimeout updateTimeoutObject() {
+        return updateTimeoutObj;
+    }
+
+    /**
+     * @param updateTimeoutObj Update timeout object.
+     */
+    public void updateTimeoutObject(ClientCacheUpdateTimeout updateTimeoutObj) {
+        this.updateTimeoutObj = updateTimeoutObj;
+    }
+
+    /**
+     * @return Started caches map (cache ID to near enabled flag).
+     */
     @Nullable public Map<Integer, Boolean> startedCaches() {
         return startedCaches;
     }
 
+    /**
+     * @return Closed caches.
+     */
     @Nullable public Set<Integer> closedCaches() {
         return closedCaches;
     }
@@ -69,5 +147,10 @@ public class ClientCacheChangeDiscoveryMessage implements DiscoveryCustomMessage
     /** {@inheritDoc} */
     @Override public boolean isMutable() {
         return false;
+    }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return S.toString(ClientCacheChangeDiscoveryMessage.class, this);
     }
 }
