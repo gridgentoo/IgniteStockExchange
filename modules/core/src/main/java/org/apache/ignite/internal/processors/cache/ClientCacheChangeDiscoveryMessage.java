@@ -68,7 +68,7 @@ public class ClientCacheChangeDiscoveryMessage implements DiscoveryCustomMessage
 
         if (startedCaches != null) {
             if (startedCaches0 == null)
-                startedCaches0 = new HashMap<>();
+                this.startedCaches = startedCaches0 = new HashMap<>();
 
             for (Map.Entry<Integer, Boolean> e : startedCaches.entrySet()) {
                 if (closedCaches0 != null && closedCaches0.remove(e.getKey()))
@@ -78,24 +78,20 @@ public class ClientCacheChangeDiscoveryMessage implements DiscoveryCustomMessage
 
                 assert old == null : e.getKey();
             }
-
-            this.startedCaches = startedCaches0;
         }
 
         if (closedCaches != null) {
             if (closedCaches0 == null)
-                closedCaches0 = new HashSet<>();
+                this.closedCaches = closedCaches0 = new HashSet<>();
 
             for (Integer cacheId : closedCaches) {
-                if (startedCaches0 != null && startedCaches0.remove(cacheId))
+                if (startedCaches0 != null && startedCaches0.remove(cacheId) != null)
                     continue;
 
                 boolean add = closedCaches0.add(cacheId);
 
                 assert add : cacheId;
             }
-
-            this.closedCaches = closedCaches0;
         }
     }
 
