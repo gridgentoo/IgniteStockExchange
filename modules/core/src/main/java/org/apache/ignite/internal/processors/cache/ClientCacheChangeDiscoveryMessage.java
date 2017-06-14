@@ -30,7 +30,7 @@ import org.apache.ignite.lang.IgniteUuid;
 import org.jetbrains.annotations.Nullable;
 
 /**
- *
+ * Sent from cache client node to asynchronously notify about started.closed client caches.
  */
 public class ClientCacheChangeDiscoveryMessage implements DiscoveryCustomMessage {
     /** */

@@ -624,7 +624,7 @@ public final class IgniteSystemProperties {
     public static final String IGNITE_SECURITY_COMPATIBILITY_MODE = "IGNITE_SECURITY_COMPATIBILITY_MODE";
 
     /**
-     * When client cache is started or closed special discovery message is send to notify cluster (for example this is
+     * When client cache is started or closed special discovery message is sent to notify cluster (for example this is
      * needed for {@link ClusterGroup#forCacheNodes(String)} API. This timeout specifies how long to wait
      * after client cache start/close before sending this message. If during this timeout another client
      * cache changed, these events are combined into single message.

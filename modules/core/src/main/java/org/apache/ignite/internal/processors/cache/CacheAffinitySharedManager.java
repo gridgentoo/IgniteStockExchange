@@ -412,28 +412,29 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
                     assert grp.localStartVersion().equals(topVer) : grp.localStartVersion();
 
                     if (crd) {
-                        ClientCacheDhtTopologyFuture topFut = new ClientCacheDhtTopologyFuture(topVer);
-
-                        grp.topology().updateTopologyVersion(topFut,
-                            discoCache,
-                            -1,
-                            false);
-
-                        GridClientPartitionTopology clientTop = cctx.exchange().clearClientTopology(grp.groupId());
-
-                        if (clientTop != null) {
-                            grp.topology().update(topVer,
-                                clientTop.partitionMap(true),
-                                clientTop.updateCounters(false));
-                        }
-
                         CacheGroupHolder grpHolder = grpHolders.get(grp.groupId());
 
                         assert grpHolder != null && grpHolder.affinity().idealAssignment() != null;
 
-                        grpHolder = new CacheGroupHolder1(grp, grpHolder.affinity());
+                        if (grpHolder.client()) {
+                            ClientCacheDhtTopologyFuture topFut = new ClientCacheDhtTopologyFuture(topVer);
 
-                        grpHolders.put(grp.groupId(), grpHolder);
+                            grp.topology().updateTopologyVersion(topFut, discoCache, -1, false);
+
+                            GridClientPartitionTopology clientTop = cctx.exchange().clearClientTopology(grp.groupId());
+
+                            if (clientTop != null) {
+                                grp.topology().update(topVer,
+                                    clientTop.partitionMap(true),
+                                    clientTop.updateCounters(false));
+                            }
+
+                            grpHolder = new CacheGroupHolder1(grp, grpHolder.affinity());
+
+                            grpHolders.put(grp.groupId(), grpHolder);
+
+                            assert grpHolder.affinity().lastVersion().equals(grp.affinity().lastVersion());
+                        }
                     }
                     else if (!fetchFuts.containsKey(grp.groupId())) {
                         GridDhtAssignmentFetchFuture fetchFut = new GridDhtAssignmentFetchFuture(cctx,
@@ -555,6 +556,8 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
     }
 
     /**
+     * Process client cache start/close requests, called from exchange thread.
+     *
      * @param msg Change request.
      */
     void processClientCachesChanges(ClientCacheChangeDummyDiscoveryMessage msg) {
@@ -573,11 +576,15 @@ public class CacheAffinitySharedManager<K, V> extends GridCacheSharedManagerAdap
     }
 
     /**
-     * @param timeoutObj Timeout object.
+     * Sends discovery message about started/closed client caches, called from exchange thread.
+     *
+     * @param timeoutObj Timeout object initiated send.
      */
     void sendClientCacheChangesMessage(ClientCacheUpdateTimeout timeoutObj) {
         ClientCacheChangeDiscoveryMessage msg = clientCacheChanges.get();
 
+        // Timeout object was changed if one more client cache changed during timeout,
+        // another timeoutObj was scheduled.
         if (msg != null && msg.updateTimeoutObject() == timeoutObj) {
             assert !msg.empty() : msg;
 

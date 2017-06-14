@@ -44,6 +44,7 @@ import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.jetbrains.annotations.Nullable;
 
+import static org.apache.ignite.cache.CacheAtomicityMode.*;
 import static org.apache.ignite.cache.CacheMode.REPLICATED;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 import static org.apache.ignite.internal.IgniteNodeAttributes.ATTR_IGNITE_INSTANCE_NAME;
@@ -302,7 +303,7 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
 
         Ignite client = startGrid(SRVS);
 
-        for (CacheAtomicityMode atomicityMode : CacheAtomicityMode.values()) {
+        for (CacheAtomicityMode atomicityMode : values()) {
             for (boolean batch : new boolean[]{false, true})
                 startCachesForGroup(srv, client, grp, atomicityMode, batch);
         }
@@ -381,7 +382,7 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
 
         Ignite srv = startGrids(SRVS);
 
-        srv.createCaches(cacheConfigurations(null, CacheAtomicityMode.ATOMIC));
+        srv.createCaches(cacheConfigurations(null, ATOMIC));
 
         ccfg = null;
 
@@ -391,8 +392,8 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
 
         List<CacheConfiguration> cfgs = new ArrayList<>();
 
-        cfgs.addAll(cacheConfigurations(null, CacheAtomicityMode.ATOMIC));
-        cfgs.addAll(cacheConfigurations(null, CacheAtomicityMode.TRANSACTIONAL));
+        cfgs.addAll(cacheConfigurations(null, ATOMIC));
+        cfgs.addAll(cacheConfigurations(null, TRANSACTIONAL));
 
         assertEquals(6, cfgs.size());
 
@@ -545,6 +546,35 @@ public class IgniteDynamicClientCacheStartSelfTest extends GridCommonAbstractTes
             assertFalse(disco.cacheAffinityNode(node, cacheName));
             assertFalse(disco.cacheNearNode(node, cacheName));
         }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testStartClientCachesOnCoordinatorWithGroup() throws Exception {
+        startGrids(3);
+
+        List<CacheConfiguration> ccfgs = cacheConfigurations("testGrp", ATOMIC);
+
+        for (CacheConfiguration ccfg : ccfgs)
+            ccfg.setNodeFilter(new CachePredicate(F.asList(getTestIgniteInstanceName(0))));
+
+        ignite(1).createCaches(ccfgs);
+
+        ccfgs = cacheConfigurations("testGrp", ATOMIC);
+
+        for (CacheConfiguration ccfg : ccfgs)
+            ccfg.setNodeFilter(new CachePredicate(F.asList(getTestIgniteInstanceName(0))));
+
+        for (IgniteCache<Object, Object> cache : ignite(0).getOrCreateCaches(ccfgs)) {
+            cache.put(1, 1);
+
+            assertEquals(1, cache.get(1));
+
+            cache.close();
+        }
+
+        startGrid(4);
     }
 
     /**

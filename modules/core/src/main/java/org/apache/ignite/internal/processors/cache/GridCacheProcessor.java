@@ -2015,9 +2015,8 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     /**
      * @param cacheName Cache name.
      * @param stop {@code True} for stop cache, {@code false} for close cache.
-     * @return Cache context if cache found.
      */
-    @Nullable GridCacheContext blockGateway(String cacheName, boolean stop) {
+    void blockGateway(String cacheName, boolean stop) {
         // Break the proxy before exchange future is done.
         IgniteCacheProxy<?, ?> proxy = jCacheProxies.get(cacheName);
 
@@ -2026,11 +2025,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
                 proxy.gate().stopped();
             else
                 proxy.closeProxy();
-
-            return proxy.context();
         }
-
-        return null;
     }
 
     /**
