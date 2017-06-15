@@ -2099,10 +2099,12 @@ public class GridCacheProcessor extends GridProcessorAdapter {
                 if (ctx == null)
                     continue;
 
-                if (ids == null)
-                    ids = U.newHashSet(cachesToClose.size());
+                if (!ctx.affinityNode()) {
+                    if (ids == null)
+                        ids = U.newHashSet(cachesToClose.size());
 
-                ids.add(ctx.cacheId());
+                    ids.add(ctx.cacheId());
+                }
 
                 if (!ctx.affinityNode() && !locked) {
                     // Do not close client cache while requests processing is in progress.
