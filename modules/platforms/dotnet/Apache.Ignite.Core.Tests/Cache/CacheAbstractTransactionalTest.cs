@@ -606,8 +606,7 @@ namespace Apache.Ignite.Core.Tests.Cache
         /// with multiple participating caches.
         /// </summary>
         [Test]
-        [Ignore("IGNITE-1561")]
-        public void TestTransactionScopeMultiCache()
+        public void TestTransactionScopeMultiCache([Values(true, false)] bool async)
         {
             var cache1 = Cache();
 
@@ -622,8 +621,16 @@ namespace Apache.Ignite.Core.Tests.Cache
             // Commit.
             using (var ts = new TransactionScope())
             {
-                cache1[1] = 10;
-                cache2[1] = 20;
+                if (async)
+                {
+                    cache1.PutAsync(1, 10);
+                    cache2.PutAsync(1, 20);
+                }
+                else
+                {
+                    cache1.Put(1, 10);
+                    cache2.Put(1, 20);
+                }
 
                 ts.Complete();
             }
@@ -634,8 +641,16 @@ namespace Apache.Ignite.Core.Tests.Cache
             // Rollback.
             using (new TransactionScope())
             {
-                cache1[1] = 100;
-                cache2[1] = 200;
+                if (async)
+                {
+                    cache1.PutAsync(1, 100);
+                    cache2.PutAsync(1, 200);
+                }
+                else
+                {
+                    cache1.Put(1, 100);
+                    cache2.Put(1, 200);
+                }
             }
 
             Assert.AreEqual(10, cache1[1]);
