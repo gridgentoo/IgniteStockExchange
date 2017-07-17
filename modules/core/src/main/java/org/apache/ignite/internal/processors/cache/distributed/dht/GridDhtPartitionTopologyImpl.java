@@ -639,7 +639,7 @@ public class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
             updateRebalanceVersion(aff);
 
             if (node2part != null && node2part.valid())
-                checkEvictions(updateSeq, aff);
+                changed |= checkEvictions(updateSeq, aff);
 
             consistencyCheck();
         }
