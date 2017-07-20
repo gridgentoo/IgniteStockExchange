@@ -27,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.ignite.IgniteDataStreamer;
 import org.apache.ignite.yardstick.IgniteAbstractBenchmark;
 import org.apache.ignite.yardstick.cache.model.SampleValue;
@@ -36,7 +37,7 @@ import org.yardstickframework.BenchmarkUtils;
 /**
  *
  */
-public class IgniteStreamerBenchmark extends IgniteAbstractBenchmark {
+public class IgniteSingleCacheStreamerBenchmark extends IgniteAbstractBenchmark {
     /** */
     private List<String> cacheNames;
 
@@ -93,7 +94,11 @@ public class IgniteStreamerBenchmark extends IgniteAbstractBenchmark {
         cacheNames = new ArrayList<>(caches.subList(args.streamerCacheIndex(),
             args.streamerCacheIndex() + args.streamerConcurrentCaches()));
 
-        executor = Executors.newFixedThreadPool(args.streamerConcurrentCaches());
+        if (cacheNames.size() > 1)
+            throw new IllegalArgumentException("IgniteSingleCacheStreamerBenchmark can run only with single cache " +
+                "[cacheNames=" + cacheNames + ']');
+
+        executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
         BenchmarkUtils.println("IgniteStreamerBenchmark start [cacheIndex=" + args.streamerCacheIndex() +
             ", concurrentCaches=" + args.streamerConcurrentCaches() +
@@ -101,58 +106,9 @@ public class IgniteStreamerBenchmark extends IgniteAbstractBenchmark {
             ", bufferSize=" + args.streamerBufferSize() +
             ", cachesToUse=" + cacheNames + ']');
 
-        if (cfg.warmup() > 0) {
-            BenchmarkUtils.println("IgniteStreamerBenchmark start warmup [warmupTimeMillis=" + cfg.warmup() + ']');
-
-            final long warmupEnd = System.currentTimeMillis() + cfg.warmup();
-
-            final AtomicBoolean stop = new AtomicBoolean();
-
-            try {
-                List<Future<Void>> futs = new ArrayList<>();
-
-                for (final String cacheName : cacheNames) {
-                    futs.add(executor.submit(new Callable<Void>() {
-                        @Override public Void call() throws Exception {
-                            Thread.currentThread().setName("streamer-" + cacheName);
-
-                            BenchmarkUtils.println("IgniteStreamerBenchmark start warmup for cache " +
-                                "[name=" + cacheName + ']');
-
-                            final int KEYS = Math.min(100_000, entries);
-
-                            int key = 1;
-
-                            try (IgniteDataStreamer<Object, Object> streamer = ignite().dataStreamer(cacheName)) {
-                                streamer.perNodeBufferSize(args.streamerBufferSize());
-
-                                while (System.currentTimeMillis() < warmupEnd && !stop.get()) {
-                                    for (int i = 0; i < 10; i++) {
-                                        streamer.addData(-key++, new SampleValue(key));
-
-                                        if (key >= KEYS)
-                                            key = 1;
-                                    }
-
-                                    streamer.flush();
-                                }
-                            }
-
-                            BenchmarkUtils.println("IgniteStreamerBenchmark finished warmup for cache " +
-                                "[name=" + cacheName + ']');
-
-                            return null;
-                        }
-                    }));
-                }
-
-                for (Future<Void> fut : futs)
-                    fut.get();
-            }
-            finally {
-                stop.set(true);
-            }
-        }
+        if (cfg.warmup() > 0)
+            throw new IllegalArgumentException("IgniteSingleCacheStreamerBenchmark can run only without warmup " +
+                "[warmup=" + cfg.warmup() + ']');
     }
 
     /** {@inheritDoc} */
@@ -163,50 +119,62 @@ public class IgniteStreamerBenchmark extends IgniteAbstractBenchmark {
 
         final AtomicBoolean stop = new AtomicBoolean();
 
-        try {
-            List<Future<Void>> futs = new ArrayList<>();
+        final String cacheName = cacheNames.get(0);
 
-            for (final String cacheName : cacheNames) {
-                futs.add(executor.submit(new Callable<Void>() {
-                    @Override public Void call() throws Exception {
-                        Thread.currentThread().setName("streamer-" + cacheName);
+        try (IgniteDataStreamer<Object, Object> streamer = ignite().dataStreamer(cacheName)) {
+            streamer.perNodeParallelOperations(args.getStreamerPerNodeParallelOps());
+            streamer.perNodeBufferSize(args.streamerBufferSize());
 
-                        long start = System.currentTimeMillis();
+            final List<Future<Void>> futs = new ArrayList<>();
 
-                        BenchmarkUtils.println("IgniteStreamerBenchmark start load cache [name=" + cacheName + ']');
+            int availableCpus = Runtime.getRuntime().availableProcessors();
 
-                        try (IgniteDataStreamer<Object, Object> streamer = ignite().dataStreamer(cacheName)) {
-                            streamer.perNodeParallelOperations(Runtime.getRuntime().availableProcessors() * 4);
-                            streamer.perNodeBufferSize(args.streamerBufferSize());
+            final AtomicInteger cnt = new AtomicInteger();
+            final int delta = entries / availableCpus;
 
-                            BenchmarkUtils.println("Data streamer: " + streamer);
+            for (int i = 0; i < availableCpus; i++) {
+                futs.add(executor.submit(
+                    new Callable<Void>() {
+                        @Override public Void call() throws Exception {
+                            int min = cnt.getAndAdd(delta);
+                            int max = min + delta;
 
-                            for (int i = 0; i < entries; i++) {
-                                streamer.addData(i, new SampleValue(i));
+                            long start = System.currentTimeMillis();
+
+                            BenchmarkUtils.println("IgniteStreamerBenchmark start load cache " +
+                                "[name=" + cacheName +
+                                ", min=" + min +
+                                ", max=" + max + ']');
+
+                            for (int i = 0; i < delta; i++) {
+                                streamer.addData(min + i, new SampleValue(min + i));
 
                                 if (i > 0 && i % 1000 == 0) {
                                     if (stop.get())
                                         break;
 
                                     if (i % 100_000 == 0) {
-                                        BenchmarkUtils.println("IgniteStreamerBenchmark cache load progress [name=" + cacheName +
+                                        BenchmarkUtils.println("IgniteStreamerBenchmark cache load progress " +
+                                            "[name=" + cacheName +
                                             ", entries=" + i +
+                                            ", delta=" + delta +
                                             ", timeMillis=" + (System.currentTimeMillis() - start) + ']');
                                     }
                                 }
                             }
+
+                            long time = System.currentTimeMillis() - start;
+
+                            BenchmarkUtils.println("Thread finished loading cache [name=" + cacheName +
+                                ", min=" + min +
+                                ", max=" + max +
+                                ", bufferSize=" + args.streamerBufferSize() +
+                                ", totalTimeMillis=" + time + ']');
+
+                            return null;
                         }
-
-                        long time = System.currentTimeMillis() - start;
-
-                        BenchmarkUtils.println("IgniteStreamerBenchmark finished load cache [name=" + cacheName +
-                            ", entries=" + entries +
-                            ", bufferSize=" + args.streamerBufferSize() +
-                            ", totalTimeMillis=" + time + ']');
-
-                        return null;
                     }
-                }));
+                ));
             }
 
             for (Future<Void> fut : futs)
@@ -222,10 +190,8 @@ public class IgniteStreamerBenchmark extends IgniteAbstractBenchmark {
             ", entries=" + entries +
             ", bufferSize=" + args.streamerBufferSize() + ']');
 
-        for (String cacheName : cacheNames) {
-            BenchmarkUtils.println("Cache size [cacheName=" + cacheName +
-                ", size=" + ignite().cache(cacheName).size() + ']');
-        }
+        BenchmarkUtils.println("Cache size [cacheName=" + cacheName +
+            ", size=" + ignite().cache(cacheName).size() + ']');
 
         return false;
     }
