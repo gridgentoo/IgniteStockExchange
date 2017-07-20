@@ -786,6 +786,8 @@ class ServerImpl extends TcpDiscoveryImpl {
         TcpDiscoveryNode node = ring.node(nodeId);
 
         if (node != null) {
+            log.info("Add TcpDiscoveryNodeFailedMessage, explicit call [node=" + nodeId + ']');
+
             TcpDiscoveryNodeFailedMessage msg = new TcpDiscoveryNodeFailedMessage(getLocalNodeId(),
                 node.id(),
                 node.internalOrder());
@@ -2498,6 +2500,12 @@ class ServerImpl extends TcpDiscoveryImpl {
                 return;
             }
 
+            if (msg instanceof TcpDiscoveryNodeFailedMessage) {
+                ServerImpl.this.log.info("Add TcpDiscoveryNodeFailedMessage in queue [" +
+                    "node=" + ((TcpDiscoveryNodeFailedMessage) msg).failedNodeId() +
+                    ", queueSize=" + queue.size() +  ']');
+            }
+
             if (msg.highPriority())
                 queue.addFirst(msg);
             else
@@ -2780,6 +2788,10 @@ class ServerImpl extends TcpDiscoveryImpl {
                         log.debug("New next node [newNext=" + newNext + ", formerNext=" + next +
                             ", ring=" + ring + ", failedNodes=" + failedNodes + ']');
 
+                    log.info("New next node [newNext=" + newNext.id() +
+                        ", formerNext=" + (next != null ? next.id() : null) +
+                        ", failedNodes=" + failedNodes + ']');
+
                     if (debugMode)
                         debugLog(msg, "New next node [newNext=" + newNext + ", formerNext=" + next +
                             ", ring=" + ring + ", failedNodes=" + failedNodes + ']');
@@ -2795,9 +2807,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                 else if (log.isTraceEnabled())
                     log.trace("Next node remains the same [nextId=" + next.id() +
                         ", nextOrder=" + next.internalOrder() + ']');
-
-                // Flag that shows whether next node exists and accepts incoming connections.
-                boolean nextNodeExists = sock != null;
 
                 final boolean sameHost = U.sameMacs(locNode, next);
 
@@ -2822,8 +2831,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                         if (sock == null) {
                             if (timeoutHelper == null)
                                 timeoutHelper = new IgniteSpiOperationTimeoutHelper(spi, true);
-
-                            nextNodeExists = false;
 
                             boolean success = false;
 
@@ -2869,6 +2876,11 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         log.debug("Failed to restore ring because next node ID received is not as " +
                                             "expected [expectedId=" + next.id() + ", rcvdId=" + nextId + ']');
 
+                                    log.error("Failed to restore ring because next node ID received is not as " +
+                                        "expected [expectedId=" + next.id() +
+                                        ", sock=" + sock + ", addr=" + addr +
+                                        ", rcvdId=" + nextId + ']');
+
                                     if (debugMode)
                                         debugLog(msg, "Failed to restore ring because next node ID received is not " +
                                             "as expected [expectedId=" + next.id() + ", rcvdId=" + nextId + ']');
@@ -2891,6 +2903,11 @@ class ServerImpl extends TcpDiscoveryImpl {
                                                     "is not as expected [expected=" + next.internalOrder() +
                                                     ", rcvd=" + nextOrder + ", id=" + next.id() + ']');
 
+                                            log.error("Failed to restore ring because next node order received " +
+                                                "is not as expected [expected=" + next.internalOrder() +
+                                                ", sock=" + sock + ", addr=" + addr +
+                                                ", rcvd=" + nextOrder + ", id=" + next.id() + ']');
+
                                             if (debugMode)
                                                 debugLog(msg, "Failed to restore ring because next node order " +
                                                     "received is not as expected [expected=" + next.internalOrder() +
@@ -2902,6 +2919,9 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                                     if (log.isDebugEnabled())
                                         log.debug("Initialized connection with next node: " + next.id());
+
+                                    log.info("Initialized connection with next node [next=" + next.id() +
+                                        ", sock=" + sock + ", addr=" + addr + ']');
 
                                     if (debugMode)
                                         debugLog(msg, "Initialized connection with next node: " + next.id());
@@ -2922,6 +2942,12 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 if (log.isDebugEnabled())
                                     U.error(log, "Failed to connect to next node [msg=" + msg
                                         + ", err=" + e.getMessage() + ']', e);
+
+                                U.error(log, "Failed to connect to next node [node=" + next.id() +
+                                    ", openSock=" + openSock +
+                                    ", sock=" + sock + ", addr=" + addr +
+                                    ", msg=" + msg
+                                    + ", err=" + e.getMessage() + ']', e);
 
                                 onException("Failed to connect to next node [msg=" + msg + ", err=" + e + ']', e);
 
@@ -2948,13 +2974,14 @@ class ServerImpl extends TcpDiscoveryImpl {
                                     if (log.isDebugEnabled())
                                         log.debug("Closing socket to next: " + next);
 
+                                    log.error("Closing socket to next [next=" + next.id() +
+                                        ", sock=" + sock + ", addr=" + addr + ']');
+
                                     U.closeQuiet(sock);
 
                                     sock = null;
                                 }
                                 else {
-                                    // Next node exists and accepts incoming messages.
-                                    nextNodeExists = true;
                                     // Resetting timeout control object to let the code below to use a new one
                                     // for the next bunch of operations.
                                     timeoutHelper = null;
@@ -3046,6 +3073,12 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 if (latencyCheck && log.isInfoEnabled())
                                     log.info("Latency check message has been written to socket: " + msg.id());
 
+                                if (msg instanceof TcpDiscoveryNodeAddFinishedMessage) {
+                                    TcpDiscoveryNodeAddFinishedMessage msg0 = (TcpDiscoveryNodeAddFinishedMessage)msg;
+
+                                    log.info("TcpDiscoveryNodeAddFinishedMessage has been written to socket [node=" + msg0.nodeId() + ", next=" + next.id() + ", addr=" + addr + ']');
+                                }
+
                                 spi.writeToSocket(sock, out, msg, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
 
                                 long tstamp0 = U.currentTimeMillis();
@@ -3054,6 +3087,12 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                                 if (latencyCheck && log.isInfoEnabled())
                                     log.info("Latency check message has been acked: " + msg.id());
+
+                                if (msg instanceof TcpDiscoveryNodeAddFinishedMessage) {
+                                    TcpDiscoveryNodeAddFinishedMessage msg0 = (TcpDiscoveryNodeAddFinishedMessage)msg;
+
+                                    log.info("TcpDiscoveryNodeAddFinishedMessage has been acked [node=" + msg0.nodeId() + ", next=" + next.id() + ", addr=" + addr + ']');
+                                }
 
                                 spi.stats.onMessageSent(msg, tstamp0 - tstamp);
 
@@ -3095,6 +3134,12 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 U.error(log, "Failed to send message to next node [next=" + next.id() + ", msg=" + msg +
                                     ", err=" + e + ']', e);
 
+                            U.error(log, "Failed to send message to next node [next=" + next.id() +
+                                ", msg=" + msg +
+                                ", sock=" + sock +
+                                ", addr=" + addr +
+                                ", err=" + e + ']', e);
+
                             onException("Failed to send message to next node [next=" + next.id() + ", msg=" + msg + ']',
                                 e);
 
@@ -3120,6 +3165,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 if (log.isDebugEnabled())
                                     log.debug("Closing socket to next (not sent): " + next);
 
+                                log.error("Closing socket to next (not sent) [next=" + next.id() +
+                                    ", sock=" + sock + ", addr=" + addr + ']');
+
                                 U.closeQuiet(sock);
 
                                 sock = null;
@@ -3136,17 +3184,15 @@ class ServerImpl extends TcpDiscoveryImpl {
                     if (!failedNodes.contains(next)) {
                         failedNodes.add(next);
 
-                        if (state == CONNECTED) {
-                            Exception err = errs != null ?
-                                U.exceptionWithSuppressed("Failed to send message to next node [msg=" + msg +
-                                    ", next=" + U.toShortString(next) + ']', errs) :
-                                null;
+                        Exception err = errs != null ? U.exceptionWithSuppressed("Failed to send message to " +
+                            "next node [msg=" + msg + ", next=" + U.toShortString(next) + ']', errs) : null;
 
-                            // If node existed on connection initialization we should check
-                            // whether it has not gone yet.
-                            U.warn(log, "Failed to send message to next node [msg=" + msg + ", next=" + next +
-                                ", errMsg=" + (err != null ? err.getMessage() : "N/A") + ']');
-                        }
+                        // If node existed on connection initialization we should check
+                        // whether it has not gone yet.
+                        U.error(log, "Failed to send message to next node [msg=" + msg +
+                            ", next=" + next +
+                            ", sock=" + sock +
+                            ", errMsg=" + (err != null ? err.getMessage() : "N/A") + ']', err);
                     }
 
                     next = null;
@@ -3181,8 +3227,11 @@ class ServerImpl extends TcpDiscoveryImpl {
                         failedNodesMsgSent.add(failedNode.id());
                 }
 
-                for (TcpDiscoveryNode n : failedNodes)
+                for (TcpDiscoveryNode n : failedNodes) {
+                    log.info("Add TcpDiscoveryNodeFailedMessage, send error [node=" + n.id() + ']');
+
                     msgWorker.addMessage(new TcpDiscoveryNodeFailedMessage(locNodeId, n.id(), n.internalOrder()));
+                }
 
                 if (!sent) {
                     assert next == null : next;
@@ -3328,6 +3377,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     if (!node.socketAddresses().equals(existingNode.socketAddresses())) {
                         if (!pingNode(existingNode)) {
                             U.warn(log, "Sending node failed message for existing node: " + node);
+
+                            log.info("Add TcpDiscoveryNodeFailedMessage, failed ping [node=" + node.id() + ']');
 
                             addMessage(new TcpDiscoveryNodeFailedMessage(locNodeId,
                                 existingNode.id(), existingNode.internalOrder()));
@@ -3933,6 +3984,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 log.debug("Failing reconnecting client node because failed to restore pending " +
                                     "messages [locNodeId=" + locNodeId + ", clientNodeId=" + nodeId + ']');
 
+                            log.info("Add TcpDiscoveryNodeFailedMessage, client reconnect [node=" + node.id() + ']');
+
                             TcpDiscoveryNodeFailedMessage nodeFailedMsg = new TcpDiscoveryNodeFailedMessage(locNodeId,
                                 node.id(), node.internalOrder());
 
@@ -4151,6 +4204,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 onException("Failed to send unauthenticated message to node " +
                                     "[node=" + node + ", err=" + e.getMessage() + ']', e);
                             }
+
+                            log.info("Add TcpDiscoveryNodeFailedMessage, auth failed [node=" + node.id() + ']');
 
                             addMessage(new TcpDiscoveryNodeFailedMessage(locNodeId, node.id(),
                                 node.internalOrder()));
@@ -5093,6 +5148,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                             "(consider increasing configuration property) " +
                                             "[timeout=" + spi.clientFailureDetectionTimeout() + ", node=" + clientNode + ']');
 
+                                        log.info("Add TcpDiscoveryNodeFailedMessage, client metrics updates [node=" + clientNode.id() + ']');
+
                                         TcpDiscoveryNodeFailedMessage nodeFailedMsg = new TcpDiscoveryNodeFailedMessage(
                                             locNodeId, clientNode.id(), clientNode.internalOrder());
 
@@ -5378,7 +5435,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
             if (msgs != null) {
                 for (TcpDiscoveryNodeFailedMessage msg : msgs) {
-                    U.warn(log, "Added node failed message for node from failed nodes list: " + msg);
+                    //U.warn(log, "Added node failed message for node from failed nodes list: " + msg);
+                    log.info("Add TcpDiscoveryNodeFailedMessage, failed nodes list [node=" + msg.failedNodeId() + ']');
 
                     addMessage(msg);
                 }

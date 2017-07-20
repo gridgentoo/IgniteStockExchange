@@ -457,6 +457,8 @@ class ClientImpl extends TcpDiscoveryImpl {
         TcpDiscoveryNode node = rmtNodes.get(nodeId);
 
         if (node != null) {
+            log.info("Add TcpDiscoveryNodeFailedMessage, explicit call [node=" + nodeId + ']');
+
             TcpDiscoveryNodeFailedMessage msg = new TcpDiscoveryNodeFailedMessage(getLocalNodeId(),
                 node.id(),
                 node.internalOrder());
