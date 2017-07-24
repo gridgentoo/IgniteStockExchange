@@ -1800,6 +1800,13 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
 
             if (flush(ptr, stop))
                 return;
+            else if (stop) {
+                FakeRecord fr = (FakeRecord)head.get();
+
+                assert fr.stop : "Invalid fake record on top of the queue: " + fr;
+
+                expWritten = recordOffset(fr);
+            }
 
             // Spin-wait for a while before acquiring the lock.
             for (int i = 0; i < 64; i++) {
