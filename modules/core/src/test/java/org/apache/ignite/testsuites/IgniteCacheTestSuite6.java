@@ -15,40 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.ignite.ml.math.statistics;
+package org.apache.ignite.testsuites;
+
+import junit.framework.TestSuite;
+import org.apache.ignite.internal.processors.cache.distributed.CachePartitionStateTest;
 
 /**
- * This class encapsulates calculating variance.
+ * Test suite.
  */
-public class Variance {
-    /** */
-    private double mean;
+public class IgniteCacheTestSuite6 extends TestSuite {
+    /**
+     * @return IgniteCache test suite.
+     * @throws Exception Thrown in case of the failure.
+     */
+    public static TestSuite suite() throws Exception {
+        TestSuite suite = new TestSuite("IgniteCache Test Suite part 6");
 
-    /** */
-    private long n;
+        suite.addTestSuite(CachePartitionStateTest.class);
 
-    /** */
-    private double m2;
-
-    /** */
-    public Variance() {
-        mean = 0;
-        n = 0;
-        m2 = 0;
-    }
-
-    /** */
-    public Variance update(Double x) {
-        n++;
-        double delta = x - mean;
-        mean += delta / n;
-        double delta2 = x - mean;
-        m2 += delta * delta2;
-        return this;
-    }
-
-    /** */
-    public double getResult() {
-        return m2;
+        return suite;
     }
 }
