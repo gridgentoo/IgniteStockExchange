@@ -2790,7 +2790,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                     log.info("New next node [newNext=" + newNext.id() +
                         ", formerNext=" + (next != null ? next.id() : null) +
-                        ", failedNodes=" + failedNodes + ']');
+                        ", failedNodes=" + failedNodes +
+                        ", msg=" + msg + ']');
 
                     if (debugMode)
                         debugLog(msg, "New next node [newNext=" + newNext + ", formerNext=" + next +
@@ -2856,6 +2857,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 if (locNodeId.equals(res.creatorNodeId())) {
                                     if (log.isDebugEnabled())
                                         log.debug("Handshake response from local node: " + res);
+
+                                    log.info("Handshake response from local node: " + res);
 
                                     U.closeQuiet(sock);
 
@@ -5840,6 +5843,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                     // Handshake.
                     TcpDiscoveryHandshakeRequest req = (TcpDiscoveryHandshakeRequest)msg;
 
+                    log.info("Read handshake request [sock=" + sock + ", req=" + req + ']');
+
                     srvSock = !req.client();
 
                     UUID nodeId = req.creatorNodeId();
@@ -5861,6 +5866,8 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                         if (log.isDebugEnabled())
                             log.debug("Handshake request from local node: " + req);
+
+                        log.info("Handshake request from local node: " + req);
 
                         return;
                     }
@@ -5910,6 +5917,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                         log.debug("Initialized connection with remote node [nodeId=" + nodeId +
                             ", client=" + req.client() + ']');
 
+                    log.info("Initialized connection with remote node [nodeId=" + nodeId +
+                        ", client=" + req.client() + ']');
+
                     if (debugMode) {
                         debugLog(msg, "Initialized connection with remote node [nodeId=" + nodeId +
                             ", client=" + req.client() + ']');
@@ -5918,6 +5928,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                 catch (IOException e) {
                     if (log.isDebugEnabled())
                         U.error(log, "Caught exception on handshake [err=" + e +", sock=" + sock + ']', e);
+
+                    U.error(log, "Caught exception on handshake [err=" + e +", sock=" + sock + ']', e);
 
                     if (X.hasCause(e, SSLException.class) && spi.isSslEnabled() && !spi.isNodeStopping0())
                         LT.warn(log, "Failed to initialize connection " +
@@ -5945,6 +5957,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                 catch (IgniteCheckedException e) {
                     if (log.isDebugEnabled())
                         U.error(log, "Caught exception on handshake [err=" + e +", sock=" + sock + ']', e);
+
+                    U.error(log, "Caught exception on handshake [err=" + e +", sock=" + sock + ']', e);
 
                     onException("Caught exception on handshake [err=" + e +", sock=" + sock + ']', e);
 
@@ -6001,9 +6015,13 @@ class ServerImpl extends TcpDiscoveryImpl {
 
                                 if (clientMsgWrk != null && ok)
                                     continue;
-                                else
+                                else {
                                     // Direct join request - no need to handle this socket anymore.
+                                    log.info("Received join request, stop handle connection [sock=" + sock +
+                                        ", msg=" + msg + ']');
+
                                     break;
+                                }
                             }
                         }
                         else if (msg instanceof TcpDiscoveryClientReconnectMessage) {
@@ -6186,6 +6204,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                             U.error(log, "Caught exception on message read [sock=" + sock +
                                 ", locNodeId=" + locNodeId + ", rmtNodeId=" + nodeId + ']', e);
 
+                        U.error(log, "Caught exception on message read [sock=" + sock +
+                            ", locNodeId=" + locNodeId + ", rmtNodeId=" + nodeId + ']', e);
+
                         onException("Caught exception on message read [sock=" + sock +
                             ", locNodeId=" + locNodeId + ", rmtNodeId=" + nodeId + ']', e);
 
@@ -6212,6 +6233,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                         if (log.isDebugEnabled())
                             U.error(log, "Caught exception on message read [sock=" + sock + ", locNodeId=" + locNodeId +
                                 ", rmtNodeId=" + nodeId + ']', e);
+
+                        U.error(log, "Caught exception on message read [sock=" + sock + ", locNodeId=" + locNodeId +
+                            ", rmtNodeId=" + nodeId + ']', e);
 
                         if (isInterrupted() || sock.isClosed())
                             return;
