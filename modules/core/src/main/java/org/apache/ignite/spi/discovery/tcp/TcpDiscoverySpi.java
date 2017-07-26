@@ -1394,6 +1394,9 @@ public class TcpDiscoverySpi extends IgniteSpiAdapter implements DiscoverySpi {
         else
             sock = new Socket();
 
+        sock.setSendBufferSize(5 * 65536);
+        sock.setReceiveBufferSize(5 * 65536);
+
         sock.bind(new InetSocketAddress(locHost, 0));
 
         sock.setTcpNoDelay(true);

@@ -5676,6 +5676,9 @@ class ServerImpl extends TcpDiscoveryImpl {
                         log.info("TCP discovery accepted incoming connection " +
                             "[rmtAddr=" + sock.getInetAddress() + ", rmtPort=" + sock.getPort() + ']');
 
+                    sock.setSendBufferSize(5 * 65536);
+                    sock.setReceiveBufferSize(5 * 65536);
+
                     SocketReader reader = new SocketReader(sock);
 
                     synchronized (mux) {
