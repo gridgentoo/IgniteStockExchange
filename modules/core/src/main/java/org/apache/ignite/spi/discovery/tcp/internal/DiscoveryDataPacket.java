@@ -342,4 +342,9 @@ public class DiscoveryDataPacket implements Serializable {
     public DiscoveryDataBag bagForDataCollection() {
         return new DiscoveryDataBag(joiningNodeId, commonData.keySet());
     }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        return "DiscoveryDataPacket [joiningNodeId=" + joiningNodeId + ']';
+    }
 }

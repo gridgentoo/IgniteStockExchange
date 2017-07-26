@@ -18,6 +18,7 @@
 package org.apache.ignite.spi.discovery.tcp;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectStreamException;
@@ -2924,7 +2925,10 @@ class ServerImpl extends TcpDiscoveryImpl {
                                         log.debug("Initialized connection with next node: " + next.id());
 
                                     log.info("Initialized connection with next node [next=" + next.id() +
-                                        ", sock=" + sock + ", addr=" + addr + ']');
+                                        ", sock=" + sock +
+                                        ", sndBuf=" + sock.getSendBufferSize() +
+                                        ", rcvBuf=" + sock.getReceiveBufferSize() +
+                                        ", addr=" + addr + ']');
 
                                     if (debugMode)
                                         debugLog(msg, "Initialized connection with next node: " + next.id());
@@ -3076,13 +3080,23 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 if (latencyCheck && log.isInfoEnabled())
                                     log.info("Latency check message has been written to socket: " + msg.id());
 
+                                if (msg instanceof TcpDiscoveryNodeAddedMessage) {
+                                    ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+
+                                    U.marshal(spi.marshaller(), msg, byteOut);
+
+                                    log.info("Send TcpDiscoveryNodeAddedMessage [size=" + byteOut.size() +
+                                        ", node=" + ((TcpDiscoveryNodeAddedMessage)msg).node().id() +
+                                        ", next=" + next.id() + ']');
+                                }
+
+                                spi.writeToSocket(sock, out, msg, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
+
                                 if (msg instanceof TcpDiscoveryNodeAddFinishedMessage) {
                                     TcpDiscoveryNodeAddFinishedMessage msg0 = (TcpDiscoveryNodeAddFinishedMessage)msg;
 
                                     log.info("TcpDiscoveryNodeAddFinishedMessage has been written to socket [node=" + msg0.nodeId() + ", next=" + next.id() + ", addr=" + addr + ']');
                                 }
-
-                                spi.writeToSocket(sock, out, msg, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
 
                                 long tstamp0 = U.currentTimeMillis();
 
@@ -5843,7 +5857,10 @@ class ServerImpl extends TcpDiscoveryImpl {
                     // Handshake.
                     TcpDiscoveryHandshakeRequest req = (TcpDiscoveryHandshakeRequest)msg;
 
-                    log.info("Read handshake request [sock=" + sock + ", req=" + req + ']');
+                    log.info("Read handshake request [sock=" + sock +
+                        ", sndBuf=" + sock.getSendBufferSize() +
+                        ", rcvBuf=" + sock.getReceiveBufferSize() +
+                        ", req=" + req + ']');
 
                     srvSock = !req.client();
 
