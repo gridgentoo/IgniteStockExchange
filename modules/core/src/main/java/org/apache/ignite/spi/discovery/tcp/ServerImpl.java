@@ -3080,6 +3080,8 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 if (latencyCheck && log.isInfoEnabled())
                                     log.info("Latency check message has been written to socket: " + msg.id());
 
+                                long s = 0;
+
                                 if (msg instanceof TcpDiscoveryNodeAddedMessage) {
                                     ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
 
@@ -3088,9 +3090,14 @@ class ServerImpl extends TcpDiscoveryImpl {
                                     log.info("Send TcpDiscoveryNodeAddedMessage [size=" + byteOut.size() +
                                         ", node=" + ((TcpDiscoveryNodeAddedMessage)msg).node().id() +
                                         ", next=" + next.id() + ']');
+
+                                    s = U.currentTimeMillis();
                                 }
 
                                 spi.writeToSocket(sock, out, msg, timeoutHelper.nextTimeoutChunk(spi.getSocketTimeout()));
+
+                                if (msg instanceof TcpDiscoveryNodeAddedMessage)
+                                    log.info("Sent TcpDiscoveryNodeAddedMessage [time=" + (U.currentTimeMillis() - s) + ']');
 
                                 if (msg instanceof TcpDiscoveryNodeAddFinishedMessage) {
                                     TcpDiscoveryNodeAddFinishedMessage msg0 = (TcpDiscoveryNodeAddFinishedMessage)msg;
