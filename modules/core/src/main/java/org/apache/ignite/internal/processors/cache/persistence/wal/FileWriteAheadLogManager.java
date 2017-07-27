@@ -2056,14 +2056,11 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
          * @throws StorageException If failed.
          */
         private boolean close(boolean rollOver) throws IgniteCheckedException, StorageException {
-            if (mode == WALMode.DEFAULT)
-                fsync(null, true);
-            else
+            if (stop.compareAndSet(false, true)) {
                 flushOrWait(null, true);
 
-            assert stopped() : "Segment is not closed after close flush: " + head.get();
+                assert stopped() : "Segment is not closed after close flush: " + head.get();
 
-            if (stop.compareAndSet(false, true)) {
                 try {
                     int switchSegmentRecSize = RecordV1Serializer.REC_TYPE_SIZE + RecordV1Serializer.FILE_WAL_POINTER_SIZE;
 
@@ -2079,9 +2076,11 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
 
                         fileIO.write(buf, written);
 
-                        if (mode == WALMode.DEFAULT)
-                            fileIO.force();
                     }
+
+                    // Instead of two fsyncs.
+                    if (mode == WALMode.DEFAULT)
+                        fileIO.force();
 
                     fileIO.close();
                 }
