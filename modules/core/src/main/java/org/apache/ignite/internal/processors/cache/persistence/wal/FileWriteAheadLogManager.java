@@ -2074,13 +2074,23 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
 
                         buf.rewind();
 
-                        fileIO.write(buf, written);
+                        int rem = buf.remaining();
 
+                        while (rem > 0) {
+                            int written0 = fileIO.write(buf, written);
+
+                            written += written0;
+
+                            rem -= written0;
+                        }
                     }
 
-                    // Instead of two fsyncs.
-                    if (mode == WALMode.DEFAULT)
+                    // Do the final fsync.
+                    if (mode == WALMode.DEFAULT) {
                         fileIO.force();
+
+                        lastFsyncPos = written;
+                    }
 
                     fileIO.close();
                 }
