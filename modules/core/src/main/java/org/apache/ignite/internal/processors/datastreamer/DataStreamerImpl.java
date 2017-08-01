@@ -50,6 +50,7 @@ import org.apache.ignite.IgniteDataStreamerTimeoutException;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.IgniteInterruptedException;
 import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.IgniteSystemProperties;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.cluster.ClusterTopologyException;
@@ -61,6 +62,7 @@ import org.apache.ignite.internal.IgniteClientDisconnectedCheckedException;
 import org.apache.ignite.internal.IgniteFutureTimeoutCheckedException;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.IgniteInterruptedCheckedException;
+import org.apache.ignite.internal.IgniteNodeAttributes;
 import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
 import org.apache.ignite.internal.cluster.ClusterTopologyServerNotFoundException;
 import org.apache.ignite.internal.managers.communication.GridIoMessage;
@@ -114,6 +116,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 import org.jsr166.LongAdder8;
 
+import static org.apache.ignite.IgniteSystemProperties.IGNITE_DATA_STREAMER_USE_STRIPED_POOL_WHEN_ISOLATED;
 import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
 import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
 import static org.apache.ignite.internal.GridTopic.TOPIC_DATASTREAM;
@@ -128,6 +131,10 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
 
     /** Amount of permissions should be available to continue new data processing. */
     private static final int REMAP_SEMAPHORE_PERMISSIONS_COUNT = Integer.MAX_VALUE;
+
+    /** */
+    private static final boolean USE_STRIPED_POOL_WHEN_ISOLATED =
+        IgniteSystemProperties.getBoolean(IGNITE_DATA_STREAMER_USE_STRIPED_POOL_WHEN_ISOLATED);
 
     /** Cache receiver. */
     private StreamReceiver<K, V> rcvr = ISOLATED_UPDATER;
@@ -1358,9 +1365,18 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
             // Cache local node flag.
             isLocNode = node.equals(ctx.discovery().localNode());
 
+            Integer attrStripedPoolSize = node.attribute(IgniteNodeAttributes.ATTR_STRIPED_POOL_SIZE);
+
+            int stripedPoolSize = attrStripedPoolSize != null ? attrStripedPoolSize : node.metrics().getTotalCpus();
+
+            Integer attrStreamerPoolSize = node.attribute(IgniteNodeAttributes.ATTR_DATA_STREAMER_POOL_SIZE);
+
+            int streamerPoolSize = attrStreamerPoolSize != null ? attrStreamerPoolSize : node.metrics().getTotalCpus();
+
             perNodeParallelOps = parallelOps != 0 ?
                 parallelOps :
-                node.metrics().getTotalCpus() * DFLT_PARALLEL_OPS_MULTIPLIER;
+                (USE_STRIPED_POOL_WHEN_ISOLATED && rcvr == ISOLATED_UPDATER) ?
+                    stripedPoolSize : streamerPoolSize;
 
             sem = new Semaphore(perNodeParallelOps);
 
@@ -1679,7 +1695,8 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                             cache.context().deploy().onEnter();
                     }
                     catch (IgniteCheckedException e) {
-                        U.error(log, "Failed to deploy class (request will not be sent): " + jobPda0.deployClass(), e);
+                        U.error(log, "Failed to deploy class (request will not be sent): " +
+                            jobPda0.deployClass(), e);
 
                         return;
                     }
@@ -1713,11 +1730,12 @@ public class DataStreamerImpl<K, V> implements IgniteDataStreamer<K, V>, Delayed
                     dep != null ? dep.classLoaderId() : null,
                     dep == null,
                     topVer,
-                    rcvr == ISOLATED_UPDATER ? partId : GridIoMessage.STRIPE_DISABLED_PART);
+                    (rcvr == ISOLATED_UPDATER && USE_STRIPED_POOL_WHEN_ISOLATED) ?
+                        partId : GridIoMessage.STRIPE_DISABLED_PART);
 
                 try {
-                    ctx.io().sendToGridTopic(node, TOPIC_DATASTREAM, req, plc); // TODO
-//                        req.partition() == GridIoMessage.STRIPE_DISABLED_PART ? plc : GridIoPolicy.SYSTEM_POOL);
+                    ctx.io().sendToGridTopic(node, TOPIC_DATASTREAM, req,
+                        req.partition() == GridIoMessage.STRIPE_DISABLED_PART ? plc : GridIoPolicy.SYSTEM_POOL);
 
                     if (log.isDebugEnabled())
                         log.debug("Sent request to node [nodeId=" + node.id() + ", req=" + req + ']');

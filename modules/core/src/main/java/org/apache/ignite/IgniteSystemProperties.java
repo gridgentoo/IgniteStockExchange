@@ -697,6 +697,13 @@ public final class IgniteSystemProperties {
     public static final String IGNITE_ENABLE_FORCIBLE_NODE_KILL = "IGNITE_ENABLE_FORCIBLE_NODE_KILL";
 
     /**
+     * If this property is set data streamer will use striped pool for processing requests
+     * (default is {@code false}).
+     */
+    public static final String IGNITE_DATA_STREAMER_USE_STRIPED_POOL_WHEN_ISOLATED =
+        "IGNITE_DATA_STREAMER_USE_STRIPED_POOL_WHEN_ISOLATED";
+
+    /**
      * Enforces singleton.
      */
     private IgniteSystemProperties() {
