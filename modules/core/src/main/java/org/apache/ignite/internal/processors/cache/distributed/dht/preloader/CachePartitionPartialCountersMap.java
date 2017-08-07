@@ -29,6 +29,9 @@ import org.apache.ignite.internal.util.typedef.internal.U;
  */
 public class CachePartitionPartialCountersMap implements Serializable {
     /** */
+    private static final long serialVersionUID = 0L;
+
+    /** */
     public static final CachePartitionPartialCountersMap EMPTY = new CachePartitionPartialCountersMap();
 
     /** */

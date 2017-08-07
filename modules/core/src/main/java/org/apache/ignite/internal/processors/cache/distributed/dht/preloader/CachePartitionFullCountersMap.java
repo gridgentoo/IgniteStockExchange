@@ -25,6 +25,9 @@ import java.util.Arrays;
  */
 public class CachePartitionFullCountersMap implements Serializable {
     /** */
+    private static final long serialVersionUID = 0L;
+
+    /** */
     public static final CachePartitionFullCountersMap EMPTY = new CachePartitionFullCountersMap();
 
     /** */
