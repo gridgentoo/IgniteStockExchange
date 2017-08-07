@@ -198,9 +198,7 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
      * @return Partition update counters.
      */
     public CachePartitionFullCountersMap partitionUpdateCounters(int grpId) {
-        CachePartitionFullCountersMap res = partCntrs == null ? null : partCntrs.get(grpId);
-
-        return res != null ? res : CachePartitionFullCountersMap.EMPTY;
+        return partCntrs == null ? null : partCntrs.get(grpId);
     }
 
     /**

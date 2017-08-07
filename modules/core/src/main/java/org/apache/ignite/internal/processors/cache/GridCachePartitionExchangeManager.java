@@ -668,23 +668,21 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
         if (top != null)
             return top;
 
-        Object affKey = null;
-
         CacheGroupDescriptor grpDesc = cctx.cache().cacheGroupDescriptors().get(grpId);
 
-        if (grpDesc != null) {
-            CacheConfiguration<?, ?> ccfg = grpDesc.config();
+        assert grpDesc != null;
 
-            AffinityFunction aff = ccfg.getAffinity();
+        CacheConfiguration<?, ?> ccfg = grpDesc.config();
 
-            affKey = cctx.kernalContext().affinity().similaryAffinityKey(aff,
-                ccfg.getNodeFilter(),
-                ccfg.getBackups(),
-                aff.partitions());
-        }
+        AffinityFunction aff = ccfg.getAffinity();
+
+        Object affKey = cctx.kernalContext().affinity().similaryAffinityKey(aff,
+            ccfg.getNodeFilter(),
+            ccfg.getBackups(),
+            aff.partitions());
 
         GridClientPartitionTopology old = clientTops.putIfAbsent(grpId,
-            top = new GridClientPartitionTopology(cctx, grpId, exchFut, affKey));
+            top = new GridClientPartitionTopology(cctx, grpId, exchFut, aff.partitions(), affKey));
 
         return old != null ? old : top;
     }

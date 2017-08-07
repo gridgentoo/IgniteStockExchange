@@ -28,20 +28,10 @@ public class CachePartitionFullCountersMap implements Serializable {
     private static final long serialVersionUID = 0L;
 
     /** */
-    public static final CachePartitionFullCountersMap EMPTY = new CachePartitionFullCountersMap();
-
-    /** */
     private long[] initialUpdCntrs;
 
     /** */
     private long[] updCntrs;
-
-    /**
-     *
-     */
-    public CachePartitionFullCountersMap() {
-        // Empty map.
-    }
 
     /**
      * @param other Map to copy.

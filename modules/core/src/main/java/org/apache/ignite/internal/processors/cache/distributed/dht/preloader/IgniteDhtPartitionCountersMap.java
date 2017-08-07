@@ -22,8 +22,6 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.apache.ignite.internal.processors.cache.distributed.dht.preloader.CachePartitionFullCountersMap.EMPTY;
-
 /**
  * Partition counters map.
  */
@@ -52,12 +50,12 @@ public class IgniteDhtPartitionCountersMap implements Serializable {
      */
     public synchronized CachePartitionFullCountersMap get(int cacheId) {
         if (map == null)
-            map = new HashMap<>();
+            return null;
 
         CachePartitionFullCountersMap cntrMap = map.get(cacheId);
 
         if (cntrMap == null)
-            return EMPTY;
+            return null;
 
         return cntrMap;
     }

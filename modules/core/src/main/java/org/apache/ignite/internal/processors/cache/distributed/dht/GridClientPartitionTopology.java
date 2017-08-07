@@ -105,7 +105,7 @@ public class GridClientPartitionTopology implements GridDhtPartitionTopology {
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     /** Partition update counters. */
-    private CachePartitionFullCountersMap cntrMap = new CachePartitionFullCountersMap();
+    private CachePartitionFullCountersMap cntrMap;
 
     /** */
     private final Object similarAffKey;
@@ -117,12 +117,14 @@ public class GridClientPartitionTopology implements GridDhtPartitionTopology {
      * @param cctx Context.
      * @param grpId Group ID.
      * @param exchFut Exchange ID.
+     * @param parts Number of partitions in the group.
      * @param similarAffKey Key to find caches with similar affinity.
      */
     public GridClientPartitionTopology(
         GridCacheSharedContext cctx,
         int grpId,
         GridDhtPartitionsExchangeFuture exchFut,
+        int parts,
         Object similarAffKey
     ) {
         this.cctx = cctx;
@@ -138,6 +140,8 @@ public class GridClientPartitionTopology implements GridDhtPartitionTopology {
         lock.writeLock().lock();
 
         try {
+            cntrMap = new CachePartitionFullCountersMap(parts);
+
             beforeExchange0(cctx.localNode(), exchFut);
         }
         finally {
