@@ -1738,6 +1738,9 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
                 }
             }
 
+            for (CacheGroupContext grpCtx : cctx.cache().cacheGroups())
+                grpCtx.topology().applyUpdateCounters();
+
             if (discoEvt.type() == EVT_NODE_JOINED)
                 assignPartitionsStates();
             else if (discoEvt.type() == EVT_DISCOVERY_CUSTOM_EVT) {

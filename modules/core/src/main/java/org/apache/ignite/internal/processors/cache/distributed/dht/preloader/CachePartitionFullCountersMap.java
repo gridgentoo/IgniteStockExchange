@@ -17,12 +17,13 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.preloader;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
  *
  */
-public class CachePartitionFullCountersMap {
+public class CachePartitionFullCountersMap implements Serializable {
     /** */
     public static final CachePartitionFullCountersMap EMPTY = new CachePartitionFullCountersMap();
 

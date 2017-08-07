@@ -17,6 +17,7 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.preloader;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -26,7 +27,7 @@ import org.apache.ignite.internal.util.typedef.internal.U;
 /**
  *
  */
-public class CachePartitionPartialCountersMap {
+public class CachePartitionPartialCountersMap implements Serializable {
     /** */
     public static final CachePartitionPartialCountersMap EMPTY = new CachePartitionPartialCountersMap();
 
