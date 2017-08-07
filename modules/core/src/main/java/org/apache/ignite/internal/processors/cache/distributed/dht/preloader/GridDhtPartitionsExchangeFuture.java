@@ -624,7 +624,7 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
                 if (updateTop && clientTop != null) {
                     top.update(topologyVersion(),
                         clientTop.partitionMap(true),
-                        clientTop.updateCounters(false),
+                        clientTop.fullUpdateCounters(),
                         Collections.<Integer>emptySet(),
                         null);
                 }
@@ -1114,7 +1114,7 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
 
         GridDhtPartitionsSingleMessage msg;
 
-        // Reset lost partition before send local partition to coordinator.
+        // Reset lost partitions before sending local partitions to coordinator.
         if (exchActions != null) {
             Set<String> caches = exchActions.cachesToResetLostPartitions();
 
@@ -1524,10 +1524,12 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
         Map<Integer, Long> minCntrs = new HashMap<>();
 
         for (Map.Entry<UUID, GridDhtPartitionsSingleMessage> e : msgs.entrySet()) {
-            assert e.getValue().partitionUpdateCounters(top.groupId()) != null;
+            CachePartitionPartialCountersMap nodeCntrs = e.getValue().partitionUpdateCounters(top.groupId());
 
-            for (Map.Entry<Integer, T2<Long, Long>> e0 : e.getValue().partitionUpdateCounters(top.groupId()).entrySet()) {
-                int p = e0.getKey();
+            assert nodeCntrs != null;
+
+            for (int i = 0; i < nodeCntrs.size(); i++) {
+                int p = nodeCntrs.partitionAt(i);
 
                 UUID uuid = e.getKey();
 
@@ -1536,10 +1538,9 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
                 if (state != GridDhtPartitionState.OWNING && state != GridDhtPartitionState.MOVING)
                     continue;
 
-                Long cntr = state == GridDhtPartitionState.MOVING ? e0.getValue().get1() : e0.getValue().get2();
-
-                if (cntr == null)
-                    cntr = 0L;
+                long cntr = state == GridDhtPartitionState.MOVING ?
+                    nodeCntrs.initialUpdateCounterAt(i) :
+                    nodeCntrs.updateCounterAt(i);
 
                 Long minCntr = minCntrs.get(p);
 
@@ -1555,6 +1556,7 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
                     maxCntrs.put(p, new CounterWithNodes(cntr, uuid));
                 else if (cntr == maxCntr.cnt)
                     maxCntr.nodes.add(uuid);
+
             }
         }
 
@@ -1728,10 +1730,10 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
                         GridDhtPartitionTopology top = grp != null ? grp.topology() :
                             cctx.exchange().clientTopology(grpId, this);
 
-                        Map<Integer, T2<Long, Long>> cntrs = msg0.partitionUpdateCounters(grpId);
+                        CachePartitionPartialCountersMap cntrs = msg0.partitionUpdateCounters(grpId);
 
                         if (cntrs != null)
-                            top.applyUpdateCounters(cntrs);
+                            top.collectUpdateCounters(cntrs);
                     }
                 }
             }
@@ -1965,7 +1967,7 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
         for (Map.Entry<Integer, GridDhtPartitionFullMap> entry : msg.partitions().entrySet()) {
             Integer grpId = entry.getKey();
 
-            Map<Integer, T2<Long, Long>> cntrMap = msg.partitionUpdateCounters(grpId);
+            CachePartitionFullCountersMap cntrMap = msg.partitionUpdateCounters(grpId);
 
             CacheGroupContext grp = cctx.cache().cacheGroup(grpId);
 

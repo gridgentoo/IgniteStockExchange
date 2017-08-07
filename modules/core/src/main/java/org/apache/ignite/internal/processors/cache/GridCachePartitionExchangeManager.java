@@ -962,8 +962,8 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
      *     finishUnmarshall methods are called).
      * @param exchId Non-null exchange ID if message is created for exchange.
      * @param lastVer Last version.
-     * @param partHistSuppliers
-     * @param partsToReload
+     * @param partHistSuppliers Partition history suppliers map.
+     * @param partsToReload Partitions to reload map.
      * @return Message.
      */
     public GridDhtPartitionsFullMessage createPartitionsFullMessage(
@@ -1007,7 +1007,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                 }
 
                 if (exchId != null)
-                    m.addPartitionUpdateCounters(grp.groupId(), grp.topology().updateCounters(true));
+                    m.addPartitionUpdateCounters(grp.groupId(), grp.topology().fullUpdateCounters());
             }
         }
 
@@ -1025,7 +1025,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
             }
 
             if (exchId != null)
-                m.addPartitionUpdateCounters(top.groupId(), top.updateCounters(true));
+                m.addPartitionUpdateCounters(top.groupId(), top.fullUpdateCounters());
         }
 
         return m;
@@ -1128,7 +1128,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                     grp.affinity().similarAffinityKey());
 
                 if (sndCounters)
-                    m.partitionUpdateCounters(grp.groupId(), grp.topology().updateCounters(true));
+                    m.partitionUpdateCounters(grp.groupId(), grp.topology().localUpdateCounters());
             }
         }
 
@@ -1146,7 +1146,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                 top.similarAffinityKey());
 
             if (sndCounters)
-                m.partitionUpdateCounters(top.groupId(), top.updateCounters(true));
+                m.partitionUpdateCounters(top.groupId(), top.localUpdateCounters());
         }
 
         return m;
