@@ -310,7 +310,7 @@ public interface GridDhtPartitionTopology {
     /**
      * @return Partition update counters.
      */
-    public CachePartitionPartialCountersMap localUpdateCounters();
+    public CachePartitionPartialCountersMap localUpdateCounters(boolean skipZeros);
 
     /**
      * @param part Partition to own.

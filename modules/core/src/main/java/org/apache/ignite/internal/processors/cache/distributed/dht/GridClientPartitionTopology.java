@@ -1070,7 +1070,7 @@ public class GridClientPartitionTopology implements GridDhtPartitionTopology {
     }
 
     /** {@inheritDoc} */
-    @Override public CachePartitionPartialCountersMap localUpdateCounters() {
+    @Override public CachePartitionPartialCountersMap localUpdateCounters(boolean skipZeros) {
         return CachePartitionPartialCountersMap.EMPTY;
     }
 

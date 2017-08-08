@@ -204,7 +204,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
 
                                 if (cctx != null && cntrsPerNode != null && !cctx.isLocal() && cctx.affinityNode())
                                     cntrsPerNode.put(ctx.localNodeId(),
-                                        toCountersMap(cctx.topology().localUpdateCounters()));
+                                        toCountersMap(cctx.topology().localUpdateCounters(false)));
 
                                 routine.handler().updateCounters(topVer, cntrsPerNode, cntrs);
                             }
@@ -1073,7 +1073,7 @@ public class GridContinuousProcessor extends GridProcessorAdapter {
 
                 if (cache != null && !cache.isLocal() && cache.context().userCache())
                     req.addUpdateCounters(ctx.localNodeId(),
-                        toCountersMap(cache.context().topology().localUpdateCounters()));
+                        toCountersMap(cache.context().topology().localUpdateCounters(false)));
             }
         }
 

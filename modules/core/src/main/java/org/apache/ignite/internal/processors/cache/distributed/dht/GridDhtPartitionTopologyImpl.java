@@ -2073,7 +2073,7 @@ public class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
     }
 
     /** {@inheritDoc} */
-    @Override public CachePartitionPartialCountersMap localUpdateCounters() {
+    @Override public CachePartitionPartialCountersMap localUpdateCounters(boolean skipZeros) {
         lock.readLock().lock();
 
         try {
@@ -2097,11 +2097,13 @@ public class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
                 long updCntr = part.updateCounter();
                 long initCntr = part.initialUpdateCounter();
 
-                if (initCntr == 0L && updCntr == 0L)
+                if (skipZeros && initCntr == 0L && updCntr == 0L)
                     continue;
 
                 res.add(part.id(), initCntr, updCntr);
             }
+
+            res.trim();
 
             return res;
         }

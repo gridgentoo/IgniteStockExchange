@@ -1132,7 +1132,8 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
             msg = cctx.exchange().createPartitionsSingleMessage(node,
                 exchangeId(),
                 false,
-                true);
+                true,
+                exchActions);
         }
 
         Map<Integer, Map<Integer, Long>> partHistReserved0 = partHistReserved;

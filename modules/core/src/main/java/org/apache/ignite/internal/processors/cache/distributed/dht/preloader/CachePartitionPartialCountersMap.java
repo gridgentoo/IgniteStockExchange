@@ -92,6 +92,18 @@ public class CachePartitionPartialCountersMap implements Serializable {
     }
 
     /**
+     * Cuts the array sizes according to curIdx. No more entries can be added to this map
+     * after this method is called.
+     */
+    public void trim() {
+        if (curIdx < partIds.length) {
+            partIds = Arrays.copyOf(partIds, curIdx);
+            initialUpdCntrs = Arrays.copyOf(initialUpdCntrs, curIdx);
+            updCntrs = Arrays.copyOf(updCntrs, curIdx);
+        }
+    }
+
+    /**
      * @param partId Partition ID to search.
      * @return Partition index in the array.
      */

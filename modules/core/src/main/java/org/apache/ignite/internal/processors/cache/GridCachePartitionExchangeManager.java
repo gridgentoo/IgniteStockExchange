@@ -670,7 +670,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
 
         CacheGroupDescriptor grpDesc = cctx.cache().cacheGroupDescriptors().get(grpId);
 
-        assert grpDesc != null;
+        assert grpDesc != null: "Failed for exchange: " + exchFut;
 
         CacheConfiguration<?, ?> ccfg = grpDesc.config();
 
@@ -1077,7 +1077,8 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
         GridDhtPartitionsSingleMessage m = createPartitionsSingleMessage(node,
             id,
             cctx.kernalContext().clientNode(),
-            false);
+            false,
+            null);
 
         if (log.isDebugEnabled())
             log.debug("Sending local partitions [nodeId=" + node.id() + ", msg=" + m + ']');
@@ -1102,11 +1103,13 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
      * @param sndCounters {@code True} if need send partition update counters.
      * @return Message.
      */
-    public GridDhtPartitionsSingleMessage createPartitionsSingleMessage(ClusterNode targetNode,
+    public GridDhtPartitionsSingleMessage createPartitionsSingleMessage(
+        ClusterNode targetNode,
         @Nullable GridDhtPartitionExchangeId exchangeId,
         boolean clientOnlyExchange,
-        boolean sndCounters)
-    {
+        boolean sndCounters,
+        ExchangeActions exchActions
+    ) {
         GridDhtPartitionsSingleMessage m = new GridDhtPartitionsSingleMessage(exchangeId,
             clientOnlyExchange,
             cctx.versions().last(),
@@ -1115,7 +1118,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
         Map<Object, T2<Integer, GridPartitionStateMap>> dupData = new HashMap<>();
 
         for (CacheGroupContext grp : cctx.cache().cacheGroups()) {
-            if (!grp.isLocal()) {
+            if (!grp.isLocal() && (exchActions == null || !exchActions.cacheGroupStopping(grp.groupId()))) {
                 GridDhtPartitionMap locMap = grp.topology().localPartitionMap();
 
                 addPartitionMap(m,
@@ -1126,7 +1129,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                     grp.affinity().similarAffinityKey());
 
                 if (sndCounters)
-                    m.partitionUpdateCounters(grp.groupId(), grp.topology().localUpdateCounters());
+                    m.partitionUpdateCounters(grp.groupId(), grp.topology().localUpdateCounters(true));
             }
         }
 
@@ -1144,7 +1147,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                 top.similarAffinityKey());
 
             if (sndCounters)
-                m.partitionUpdateCounters(top.groupId(), top.localUpdateCounters());
+                m.partitionUpdateCounters(top.groupId(), top.localUpdateCounters(true));
         }
 
         return m;
