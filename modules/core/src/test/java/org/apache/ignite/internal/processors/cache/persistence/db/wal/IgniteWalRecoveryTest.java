@@ -138,6 +138,8 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
 
         pCfg.setWalRecordIteratorBufferSize(1024 * 1024);
 
+        pCfg.setWalHistorySize(2);
+
         if (logOnly)
             pCfg.setWalMode(WALMode.LOG_ONLY);
 
@@ -519,7 +521,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     private void checkWalRolloverMultithreaded() throws Exception {
         walSegmentSize = 2 * 1024 * 1024;
 
-        final long endTime = System.currentTimeMillis() + 20 * 60 * 1000;
+        final long endTime = System.currentTimeMillis() + 3 * 60 * 1000;
 
         try {
             IgniteEx ignite = startGrid(1);
