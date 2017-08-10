@@ -26,6 +26,10 @@ import org.apache.ignite.internal.processors.cache.persistence.db.IgnitePdsPageE
 import org.apache.ignite.internal.processors.cache.persistence.db.file.IgnitePdsCacheIntegrationTest;
 import org.apache.ignite.internal.processors.cache.persistence.db.file.IgnitePdsNoActualWalHistoryTest;
 import org.apache.ignite.internal.processors.cache.persistence.db.wal.IgniteWalRecoveryTest;
+import org.apache.ignite.internal.processors.cache.persistence.db.wal.IgniteWalRecoveryTest2;
+import org.apache.ignite.internal.processors.cache.persistence.db.wal.IgniteWalRecoveryTest3;
+import org.apache.ignite.internal.processors.cache.persistence.db.wal.IgniteWalRecoveryTest4;
+import org.apache.ignite.internal.processors.cache.persistence.db.wal.IgniteWalRecoveryTest5;
 import org.apache.ignite.internal.processors.cache.persistence.db.wal.WalRecoveryTxLogicalRecordsTest;
 
 /**
@@ -39,18 +43,22 @@ public class IgnitePdsWithIndexingCoreTestSuite extends TestSuite {
     public static TestSuite suite() throws Exception {
         TestSuite suite = new TestSuite("Ignite Persistent Store With Indexing Test Suite");
 
-        suite.addTestSuite(IgnitePdsCacheIntegrationTest.class);
-        suite.addTestSuite(IgnitePdsPageEvictionTest.class);
-        suite.addTestSuite(IgnitePdsMultiNodePutGetRestartTest.class);
-        suite.addTestSuite(IgnitePersistentStoreCacheGroupsTest.class);
-        suite.addTestSuite(WalRecoveryTxLogicalRecordsTest.class);
+//        suite.addTestSuite(IgnitePdsCacheIntegrationTest.class);
+//        suite.addTestSuite(IgnitePdsPageEvictionTest.class);
+//        suite.addTestSuite(IgnitePdsMultiNodePutGetRestartTest.class);
+//        suite.addTestSuite(IgnitePersistentStoreCacheGroupsTest.class);
+//        suite.addTestSuite(WalRecoveryTxLogicalRecordsTest.class);
 
         suite.addTestSuite(IgniteWalRecoveryTest.class);
-        suite.addTestSuite(IgnitePdsNoActualWalHistoryTest.class);
-        suite.addTestSuite(IgnitePdsAtomicCacheRebalancingTest.class);
-        suite.addTestSuite(IgnitePdsTxCacheRebalancingTest.class);
-
-        suite.addTestSuite(IgnitePdsBinaryMetadataOnClusterRestartTest.class);
+        suite.addTestSuite(IgniteWalRecoveryTest2.class);
+        suite.addTestSuite(IgniteWalRecoveryTest3.class);
+        suite.addTestSuite(IgniteWalRecoveryTest4.class);
+        suite.addTestSuite(IgniteWalRecoveryTest5.class);
+//        suite.addTestSuite(IgnitePdsNoActualWalHistoryTest.class);
+//        suite.addTestSuite(IgnitePdsAtomicCacheRebalancingTest.class);
+//        suite.addTestSuite(IgnitePdsTxCacheRebalancingTest.class);
+//
+//        suite.addTestSuite(IgnitePdsBinaryMetadataOnClusterRestartTest.class);
 
         return suite;
     }

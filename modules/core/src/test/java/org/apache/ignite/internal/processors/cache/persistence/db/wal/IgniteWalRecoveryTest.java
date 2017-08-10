@@ -181,7 +181,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception if failed.
      */
-    public void testWalBig() throws Exception {
+    public void _testWalBig() throws Exception {
         IgniteEx ignite = startGrid(1);
 
         ignite.active(true);
@@ -223,7 +223,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception if failed.
      */
-    public void testWalBigObjectNodeCancel() throws Exception {
+    public void _testWalBigObjectNodeCancel() throws Exception {
         final int MAX_SIZE_POWER = 21;
 
         IgniteEx ignite = startGrid(1);
@@ -261,7 +261,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If fail.
      */
-    public void testSwitchClassLoader() throws Exception {
+    public void _testSwitchClassLoader() throws Exception {
         try {
             final IgniteEx igniteEx = startGrid(1);
 
@@ -305,7 +305,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception if failed.
      */
-    public void testWalSimple() throws Exception {
+    public void _testWalSimple() throws Exception {
         try {
             IgniteEx ignite = startGrid(1);
 
@@ -385,7 +385,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If fail.
      */
-    public void testWalLargeValue() throws Exception {
+    public void _testWalLargeValue() throws Exception {
         try {
             IgniteEx ignite = startGrid(1);
 
@@ -467,7 +467,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception if failed.
      */
-    public void testHugeCheckpointRecord() throws Exception {
+    public void _testHugeCheckpointRecord() throws Exception {
         try {
             final IgniteEx ignite = startGrid(1);
 
@@ -519,7 +519,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     private void checkWalRolloverMultithreaded() throws Exception {
         walSegmentSize = 2 * 1024 * 1024;
 
-        final long endTime = System.currentTimeMillis() + 2 * 60 * 1000;
+        final long endTime = System.currentTimeMillis() + 20 * 60 * 1000;
 
         try {
             IgniteEx ignite = startGrid(1);
@@ -547,7 +547,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If fail.
      */
-    public void testWalRenameDirSimple() throws Exception {
+    public void _testWalRenameDirSimple() throws Exception {
         try {
             IgniteEx ignite = startGrid(1);
 
@@ -609,7 +609,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception if failed.
      */
-    public void testRecoveryNoCheckpoint() throws Exception {
+    public void _testRecoveryNoCheckpoint() throws Exception {
         try {
             IgniteEx ctrlGrid = startGrid(0);
 
@@ -659,7 +659,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception if failed.
      */
-    public void testRecoveryLargeNoCheckpoint() throws Exception {
+    public void _testRecoveryLargeNoCheckpoint() throws Exception {
         try {
             IgniteEx ctrlGrid = startGrid(0);
 
@@ -710,13 +710,13 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
 
     /** {@inheritDoc} */
     @Override protected long getTestTimeout() {
-        return TimeUnit.MINUTES.toMillis(20);
+        return TimeUnit.MINUTES.toMillis(200);
     }
 
     /**
      * @throws Exception if failed.
      */
-    public void testRandomCrash() throws Exception {
+    public void _testRandomCrash() throws Exception {
         try {
             IgniteEx ctrlGrid = startGrid(0);
 
@@ -756,7 +756,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception if failed.
      */
-    public void testLargeRandomCrash() throws Exception {
+    public void _testLargeRandomCrash() throws Exception {
         try {
             IgniteEx ctrlGrid = startGrid(0);
 
@@ -806,7 +806,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void testDestroyCache() throws Exception {
+    public void _testDestroyCache() throws Exception {
         try {
             IgniteEx ignite = startGrid(1);
 
@@ -831,7 +831,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If fail.
      */
-    public void testEvictPartition() throws Exception {
+    public void _testEvictPartition() throws Exception {
         try {
             Ignite ignite1 = startGrid("node1");
 
@@ -875,7 +875,7 @@ public class IgniteWalRecoveryTest extends GridCommonAbstractTest {
     /**
      * @throws Exception if failed.
      */
-    public void testApplyDeltaRecords() throws Exception {
+    public void _testApplyDeltaRecords() throws Exception {
         try {
             IgniteEx ignite0 = (IgniteEx)startGrid("node0");
 
