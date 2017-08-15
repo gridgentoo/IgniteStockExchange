@@ -88,6 +88,7 @@ import org.apache.ignite.internal.util.typedef.internal.LT;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteInClosure;
+import org.apache.ignite.lang.IgniteProductVersion;
 import org.apache.ignite.lang.IgniteRunnable;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
@@ -115,6 +116,9 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
     /** */
     private static final int RELEASE_FUTURE_DUMP_THRESHOLD =
         IgniteSystemProperties.getInteger(IGNITE_PARTITION_RELEASE_FUTURE_DUMP_THRESHOLD, 0);
+
+    /** */
+    public static IgniteProductVersion PRIMITIVE_UPD_CNTRS_SINCE = IgniteProductVersion.fromString("8.1.4");
 
     /** */
     @GridToStringExclude
@@ -1122,11 +1126,14 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
                 resetLostPartitions(caches);
         }
 
+        boolean compat = node.version().compareTo(PRIMITIVE_UPD_CNTRS_SINCE) < 0;
+
         if (cctx.kernalContext().clientNode()) {
             msg = new GridDhtPartitionsSingleMessage(exchangeId(),
                 true,
                 null,
-                true);
+                true,
+                compat);
         }
         else {
             msg = cctx.exchange().createPartitionsSingleMessage(node,

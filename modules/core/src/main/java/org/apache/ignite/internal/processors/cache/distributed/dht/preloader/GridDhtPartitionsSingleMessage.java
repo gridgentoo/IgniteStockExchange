@@ -19,6 +19,7 @@ package org.apache.ignite.internal.processors.cache.distributed.dht.preloader;
 
 import java.io.Externalizable;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +31,7 @@ import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartit
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.plugin.extensions.communication.MessageCollectionItemType;
@@ -87,6 +89,9 @@ public class GridDhtPartitionsSingleMessage extends GridDhtPartitionsAbstractMes
     @GridDirectTransient
     private transient boolean compress;
 
+    /** A flag indicating that message should be written in compatibility mode. */
+    private transient boolean compatibilityMode;
+
     /**
      * Required by {@link Externalizable}.
      */
@@ -100,14 +105,18 @@ public class GridDhtPartitionsSingleMessage extends GridDhtPartitionsAbstractMes
      * @param lastVer Last version.
      * @param compress {@code True} if it is possible to use compression for message.
      */
-    public GridDhtPartitionsSingleMessage(GridDhtPartitionExchangeId exchId,
+    public GridDhtPartitionsSingleMessage(
+        GridDhtPartitionExchangeId exchId,
         boolean client,
         @Nullable GridCacheVersion lastVer,
-        boolean compress) {
+        boolean compress,
+        boolean compatibilityMode
+    ) {
         super(exchId, lastVer);
 
         this.client = client;
         this.compress = compress;
+        this.compatibilityMode = compatibilityMode;
     }
 
     /** {@inheritDoc} */
@@ -246,7 +255,7 @@ public class GridDhtPartitionsSingleMessage extends GridDhtPartitionsAbstractMes
                 partsBytes0 = U.marshal(ctx, parts);
 
             if (partCntrs != null && partCntrsBytes == null)
-                partCntrsBytes0 = U.marshal(ctx, partCntrs);
+                partCntrsBytes0 = U.marshal(ctx, compatibilityMode ? convertToOld(partCntrs) : partCntrs);
 
             if (partHistCntrs != null && partHistCntrsBytes == null)
                 partHistCntrsBytes0 = U.marshal(ctx, partHistCntrs);
@@ -295,9 +304,11 @@ public class GridDhtPartitionsSingleMessage extends GridDhtPartitionsAbstractMes
 
         if (partCntrsBytes != null && partCntrs == null) {
             if (compressed())
-                partCntrs = U.unmarshalZip(ctx.marshaller(), partCntrsBytes, U.resolveClassLoader(ldr, ctx.gridConfig()));
+                partCntrs = convertToNew(
+                    U.<Map>unmarshalZip(ctx.marshaller(), partCntrsBytes, U.resolveClassLoader(ldr, ctx.gridConfig())));
             else
-                partCntrs = U.unmarshal(ctx, partCntrsBytes, U.resolveClassLoader(ldr, ctx.gridConfig()));
+                partCntrs = convertToNew(
+                    U.<Map>unmarshal(ctx, partCntrsBytes, U.resolveClassLoader(ldr, ctx.gridConfig())));
         }
 
         if (partHistCntrsBytes != null && partHistCntrs == null) {
@@ -468,5 +479,70 @@ public class GridDhtPartitionsSingleMessage extends GridDhtPartitionsAbstractMes
     /** {@inheritDoc} */
     @Override public String toString() {
         return S.toString(GridDhtPartitionsSingleMessage.class, this, super.toString());
+    }
+
+    /**
+     * @param cntrsMap New cache counters map.
+     * @return Old cache counters.
+     */
+    private static Map<Integer, Map<Integer, T2<Long, Long>>> convertToOld(
+        Map<Integer, CachePartitionPartialCountersMap> cntrsMap) {
+        Map<Integer, Map<Integer, T2<Long, Long>>> res = U.newHashMap(cntrsMap.size());
+
+        for (Map.Entry<Integer, CachePartitionPartialCountersMap> entry : cntrsMap.entrySet()) {
+            CachePartitionPartialCountersMap cacheCntrs = entry.getValue();
+
+            Map<Integer, T2<Long, Long>> oldCacheCntrs = U.newHashMap(cacheCntrs.size());
+
+            for (int i = 0; i < cacheCntrs.size(); i++) {
+                int part = cacheCntrs.partitionAt(i);
+
+                T2<Long, Long> tup = new T2<>(cacheCntrs.initialUpdateCounterAt(i), cacheCntrs.updateCounterAt(i));
+
+                oldCacheCntrs.put(part, tup);
+            }
+
+            res.put(entry.getKey(), oldCacheCntrs);
+        }
+
+        return res;
+    }
+
+    /**
+     * @param aMap Received map, conversion may be not needed.
+     * @return New counters map.
+     */
+    private static Map<Integer, CachePartitionPartialCountersMap> convertToNew(Map<?, ?> aMap) {
+        Map<Integer, CachePartitionPartialCountersMap> res = null;
+
+        for (Map.Entry<?, ?> o : aMap.entrySet()) {
+            if (o.getValue() instanceof CachePartitionPartialCountersMap)
+                return (Map<Integer, CachePartitionPartialCountersMap>)aMap;
+
+            if (res == null)
+                res = U.newHashMap(aMap.size());
+
+            Map<Integer, T2<Long, Long>> oldCacheMap =
+                (Map<Integer, T2<Long, Long>>)o.getValue();
+
+            // Need to sort the partitions.
+            Integer[] parts = new Integer[oldCacheMap.size()];
+
+            oldCacheMap.keySet().toArray(parts);
+
+            Arrays.sort(parts);
+
+            CachePartitionPartialCountersMap converted = new CachePartitionPartialCountersMap(parts.length);
+
+            for (Integer part : parts) {
+                T2<Long, Long> tup = oldCacheMap.get(part);
+
+                converted.add(part, tup.get1(), tup.get2());
+            }
+
+            res.put((Integer)o.getKey(), converted);
+        }
+
+        return res == null ? Collections.<Integer, CachePartitionPartialCountersMap>emptyMap() : res;
     }
 }

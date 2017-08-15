@@ -1110,10 +1110,13 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
         boolean sndCounters,
         ExchangeActions exchActions
     ) {
+        boolean compat = targetNode.version().compareTo(GridDhtPartitionsExchangeFuture.PRIMITIVE_UPD_CNTRS_SINCE) < 0;
+
         GridDhtPartitionsSingleMessage m = new GridDhtPartitionsSingleMessage(exchangeId,
             clientOnlyExchange,
             cctx.versions().last(),
-            true);
+            true,
+            compat);
 
         Map<Object, T2<Integer, GridPartitionStateMap>> dupData = new HashMap<>();
 
