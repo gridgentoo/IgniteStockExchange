@@ -50,6 +50,13 @@ public class CachePartitionFullCountersMap implements Serializable {
     }
 
     /**
+     * @return Total number of partitions.
+     */
+    public int size() {
+        return initialUpdCntrs.length;
+    }
+
+    /**
      * Gets an initial update counter by the partition ID.
      *
      * @param p Partition ID.

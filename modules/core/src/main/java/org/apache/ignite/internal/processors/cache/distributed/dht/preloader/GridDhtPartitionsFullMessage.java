@@ -260,7 +260,7 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
                 partsBytes0 = U.marshal(ctx, parts);
 
             if (primPartCntrs != null && partCntrsBytes == null)
-                partCntrsBytes0 = U.marshal(ctx, compatibilityMode ? convertToOld(primPartCntrs) : primPartCntrs);
+                partCntrsBytes0 = U.marshal(ctx, compatibilityMode ? primPartCntrs.toOldMap() : primPartCntrs);
 
             if (partHistSuppliers != null && partHistSuppliersBytes == null)
                 partHistSuppliersBytes0 = U.marshal(ctx, partHistSuppliers);
@@ -542,5 +542,18 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
     @Override public String toString() {
         return S.toString(GridDhtPartitionsFullMessage.class, this, "partCnt", parts != null ? parts.size() : 0,
             "super", super.toString());
+    }
+
+    /**
+     * @param obj New or old counters map.
+     * @return New map.
+     */
+    private static IgniteDhtPartitionCountersPrimitiveMap convertToNew(Object obj) {
+        if (obj instanceof IgniteDhtPartitionCountersPrimitiveMap)
+            return (IgniteDhtPartitionCountersPrimitiveMap)obj;
+
+        IgniteDhtPartitionCountersMap old = (IgniteDhtPartitionCountersMap)obj;
+
+        return old.convertToNew();
     }
 }

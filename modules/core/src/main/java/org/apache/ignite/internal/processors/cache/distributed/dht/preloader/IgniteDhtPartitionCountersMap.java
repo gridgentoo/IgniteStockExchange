@@ -61,4 +61,28 @@ public class IgniteDhtPartitionCountersMap implements Serializable {
 
         return cntrMap;
     }
+
+    /**
+     * @return New partition counters map.
+     */
+    public synchronized IgniteDhtPartitionCountersPrimitiveMap convertToNew() {
+        IgniteDhtPartitionCountersPrimitiveMap res = new IgniteDhtPartitionCountersPrimitiveMap();
+
+        for (Map.Entry<Integer, Map<Integer, T2<Long, Long>>> entry : map.entrySet()) {
+            Map<Integer, T2<Long, Long>> val = entry.getValue();
+
+            CachePartitionFullCountersMap fullCntrsMap = new CachePartitionFullCountersMap(val.size());
+
+            for (Map.Entry<Integer, T2<Long, Long>> cacheEntry : val.entrySet()) {
+                int part = cacheEntry.getKey();
+
+                fullCntrsMap.initialUpdateCounter(part, cacheEntry.getValue().get1());
+                fullCntrsMap.updateCounter(part, cacheEntry.getValue().get2());
+            }
+
+            res.putIfAbsent(entry.getKey(), fullCntrsMap);
+        }
+
+        return res;
+    }
 }

@@ -102,6 +102,7 @@ import org.apache.ignite.internal.util.worker.GridWorker;
 import org.apache.ignite.lang.IgniteFuture;
 import org.apache.ignite.lang.IgniteInClosure;
 import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.lang.IgniteProductVersion;
 import org.apache.ignite.lang.IgniteUuid;
 import org.apache.ignite.plugin.security.SecurityCredentials;
 import org.apache.ignite.plugin.segmentation.SegmentationPolicy;
@@ -2165,6 +2166,8 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
         ArrayList<ClusterNode> rmtNodes = new ArrayList<>(topSnapshot.size());
         ArrayList<ClusterNode> allNodes = new ArrayList<>(topSnapshot.size());
 
+        IgniteProductVersion minProdVer = null;
+
         for (ClusterNode node : topSnapshot) {
             if (alive(node))
                 alives.add(node.id());
@@ -2174,8 +2177,16 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
             else {
                 allNodes.add(node);
 
-                if (!node.isLocal())
+                if (!node.isLocal()) {
                     rmtNodes.add(node);
+
+                    if (minProdVer == null)
+                        minProdVer = node.version();
+                    else {
+                        if (minProdVer.compareTo(node.version()) > 0)
+                            minProdVer = node.version();
+                    }
+                }
 
                 if (!CU.clientNode(node))
                     srvNodes.add(node);
@@ -2243,7 +2254,8 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
             Collections.unmodifiableMap(allCacheNodes),
             Collections.unmodifiableMap(cacheGrpAffNodes),
             Collections.unmodifiableMap(nodeMap),
-            alives);
+            alives,
+            minProdVer);
     }
 
     /**

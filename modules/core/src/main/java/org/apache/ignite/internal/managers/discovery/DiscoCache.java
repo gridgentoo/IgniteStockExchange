@@ -32,6 +32,7 @@ import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.P1;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.lang.IgniteProductVersion;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -81,6 +82,9 @@ public class DiscoCache {
     /** Alive nodes. */
     private final Set<UUID> alives = new GridConcurrentHashSet<>();
 
+    /** */
+    private IgniteProductVersion minRmtProdVer;
+
     /**
      * @param state Current cluster state.
      * @param loc Local node.
@@ -95,6 +99,7 @@ public class DiscoCache {
      * @param cacheGrpAffNodes Affinity nodes by cache group ID.
      * @param nodeMap Node map.
      * @param alives Alive nodes.
+     * @param minRmtProdVer Minimal product version seen for remote nodes.
      */
     DiscoCache(
         DiscoveryDataClusterState state,
@@ -109,7 +114,9 @@ public class DiscoCache {
         Map<Integer, List<ClusterNode>> allCacheNodes,
         Map<Integer, List<ClusterNode>> cacheGrpAffNodes,
         Map<UUID, ClusterNode> nodeMap,
-        Set<UUID> alives) {
+        Set<UUID> alives,
+        IgniteProductVersion minRmtProdVer
+    ) {
         this.state = state;
         this.loc = loc;
         this.rmtNodes = rmtNodes;
@@ -123,6 +130,7 @@ public class DiscoCache {
         this.cacheGrpAffNodes = cacheGrpAffNodes;
         this.nodeMap = nodeMap;
         this.alives.addAll(alives);
+        this.minRmtProdVer = minRmtProdVer;
     }
 
     /**
@@ -209,7 +217,7 @@ public class DiscoCache {
     /**
      * @return Oldest alive server node.
      */
-    public @Nullable ClusterNode oldestAliveServerNode(){
+    @Nullable public ClusterNode oldestAliveServerNode(){
         Iterator<ClusterNode> it = aliveServerNodes().iterator();
         return it.hasNext() ? it.next() : null;
     }
@@ -217,7 +225,7 @@ public class DiscoCache {
     /**
      * @return Oldest alive server node with at least one cache configured.
      */
-    public @Nullable ClusterNode oldestAliveServerNodeWithCache(){
+    @Nullable public ClusterNode oldestAliveServerNodeWithCache(){
         Iterator<ClusterNode> it = aliveServerNodesWithCaches().iterator();
         return it.hasNext() ? it.next() : null;
     }
@@ -254,7 +262,7 @@ public class DiscoCache {
      * @param id Node ID.
      * @return Node.
      */
-    public @Nullable ClusterNode node(UUID id) {
+    @Nullable public ClusterNode node(UUID id) {
         return nodeMap.get(id);
     }
 
@@ -277,6 +285,13 @@ public class DiscoCache {
             if (!discovery.alive(alive))
                 alives.remove(alive);
         }
+    }
+
+    /**
+     * @return Minumim seen remote nodes version.
+     */
+    public IgniteProductVersion minimumRemoteNodesVersion() {
+        return minRmtProdVer;
     }
 
     /**

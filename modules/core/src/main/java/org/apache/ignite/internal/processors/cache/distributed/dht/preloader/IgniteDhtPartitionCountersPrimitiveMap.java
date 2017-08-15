@@ -21,6 +21,8 @@ package org.apache.ignite.internal.processors.cache.distributed.dht.preloader;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.ignite.internal.util.typedef.T2;
+import org.apache.ignite.internal.util.typedef.internal.U;
 
 /**
  * Partition counters map.
@@ -58,5 +60,26 @@ public class IgniteDhtPartitionCountersPrimitiveMap implements Serializable {
             return null;
 
         return cntrMap;
+    }
+
+    /**
+     * @return Old map representation.
+     */
+    public synchronized IgniteDhtPartitionCountersMap toOldMap() {
+        IgniteDhtPartitionCountersMap res = new IgniteDhtPartitionCountersMap();
+
+        for (Map.Entry<Integer, CachePartitionFullCountersMap> entry : map.entrySet()) {
+            CachePartitionFullCountersMap val = entry.getValue();
+
+            Map<Integer, T2<Long, Long>> fullParts = U.newHashMap(val.size());
+
+            for (int i = 0; i < val.size(); i++) {
+                fullParts.put(i, new T2<>(val.initialUpdateCounter(i), val.updateCounter(i)));
+            }
+
+            res.putIfAbsent(entry.getKey(), fullParts);
+        }
+
+        return res;
     }
 }

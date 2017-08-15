@@ -118,7 +118,7 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
         IgniteSystemProperties.getInteger(IGNITE_PARTITION_RELEASE_FUTURE_DUMP_THRESHOLD, 0);
 
     /** */
-    public static IgniteProductVersion PRIMITIVE_UPD_CNTRS_SINCE = IgniteProductVersion.fromString("8.1.4");
+    public static final IgniteProductVersion PRIMITIVE_UPD_CNTRS_SINCE = IgniteProductVersion.fromString("8.1.4");
 
     /** */
     @GridToStringExclude
@@ -1167,11 +1167,12 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
      * @param compress Message compress flag.
      * @return Message.
      */
-    private GridDhtPartitionsFullMessage createPartitionsMessage(boolean compress) {
+    private GridDhtPartitionsFullMessage createPartitionsMessage(boolean compress, boolean compatibility) {
         GridCacheVersion last = lastVer.get();
 
         GridDhtPartitionsFullMessage m = cctx.exchange().createPartitionsFullMessage(
             compress,
+            compatibility,
             exchangeId(),
             last != null ? last : cctx.versions().last(),
             partHistSuppliers,
@@ -1188,7 +1189,9 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
      * @throws IgniteCheckedException If failed.
      */
     private void sendAllPartitions(Collection<ClusterNode> nodes) throws IgniteCheckedException {
-        GridDhtPartitionsFullMessage m = createPartitionsMessage(true);
+        IgniteProductVersion minVer = cctx.discovery().discoCache(topologyVersion()).minimumRemoteNodesVersion();
+
+        GridDhtPartitionsFullMessage m = createPartitionsMessage(true, minVer.compareTo(PRIMITIVE_UPD_CNTRS_SINCE) < 0);
 
         assert !nodes.contains(cctx.localNode());
 
@@ -1510,7 +1513,10 @@ public class GridDhtPartitionsExchangeFuture extends GridDhtTopologyFutureAdapte
 
             Map<Integer, Map<Integer, List<UUID>>> assignmentChange = fut.get();
 
-            GridDhtPartitionsFullMessage m = createPartitionsMessage(false);
+            IgniteProductVersion minVer = cctx.discovery().discoCache(topologyVersion()).minimumRemoteNodesVersion();
+
+            GridDhtPartitionsFullMessage m = createPartitionsMessage(false,
+                minVer.compareTo(PRIMITIVE_UPD_CNTRS_SINCE) < 0);
 
             CacheAffinityChangeMessage msg = new CacheAffinityChangeMessage(exchId, m, assignmentChange);
 

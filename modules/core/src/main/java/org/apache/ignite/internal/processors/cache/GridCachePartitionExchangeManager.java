@@ -102,6 +102,7 @@ import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.internal.util.worker.GridWorker;
 import org.apache.ignite.lang.IgniteBiInClosure;
+import org.apache.ignite.lang.IgniteProductVersion;
 import org.apache.ignite.lang.IgniteUuid;
 import org.apache.ignite.thread.IgniteThread;
 import org.jetbrains.annotations.Nullable;
@@ -118,6 +119,7 @@ import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
 import static org.apache.ignite.internal.GridTopic.TOPIC_CACHE;
 import static org.apache.ignite.internal.events.DiscoveryCustomEvent.EVT_DISCOVERY_CUSTOM_EVT;
 import static org.apache.ignite.internal.managers.communication.GridIoPolicy.SYSTEM_POOL;
+import static org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPartitionsExchangeFuture.PRIMITIVE_UPD_CNTRS_SINCE;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPartitionsExchangeFuture.nextDumpTimeout;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPreloader.DFLT_PRELOAD_RESEND_TIMEOUT;
 
@@ -929,9 +931,19 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
      * @param nodes Nodes.
      * @param msgTopVer Topology version. Will be added to full message.
      */
-    private void sendAllPartitions(Collection<ClusterNode> nodes,
-        AffinityTopologyVersion msgTopVer) {
-        GridDhtPartitionsFullMessage m = createPartitionsFullMessage(true, null, null, null, null);
+    private void sendAllPartitions(
+        Collection<ClusterNode> nodes,
+        AffinityTopologyVersion msgTopVer
+    ) {
+        IgniteProductVersion minVer = cctx.discovery().discoCache(msgTopVer).minimumRemoteNodesVersion();
+
+        GridDhtPartitionsFullMessage m = createPartitionsFullMessage(
+            true,
+            minVer.compareTo(PRIMITIVE_UPD_CNTRS_SINCE) < 0,
+            null,
+            null,
+            null,
+            null);
 
         m.topologyVersion(msgTopVer);
 
@@ -966,6 +978,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
      */
     public GridDhtPartitionsFullMessage createPartitionsFullMessage(
         boolean compress,
+        boolean compatibility,
         @Nullable final GridDhtPartitionExchangeId exchId,
         @Nullable GridCacheVersion lastVer,
         @Nullable IgniteDhtPartitionHistorySuppliersMap partHistSuppliers,
@@ -975,8 +988,8 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
             lastVer,
             exchId != null ? exchId.topologyVersion() : AffinityTopologyVersion.NONE,
             partHistSuppliers,
-            partsToReload
-            );
+            partsToReload,
+            compatibility);
 
         m.compress(compress);
 
@@ -1110,7 +1123,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
         boolean sndCounters,
         ExchangeActions exchActions
     ) {
-        boolean compat = targetNode.version().compareTo(GridDhtPartitionsExchangeFuture.PRIMITIVE_UPD_CNTRS_SINCE) < 0;
+        boolean compat = targetNode.version().compareTo(PRIMITIVE_UPD_CNTRS_SINCE) < 0;
 
         GridDhtPartitionsSingleMessage m = new GridDhtPartitionsSingleMessage(exchangeId,
             clientOnlyExchange,
