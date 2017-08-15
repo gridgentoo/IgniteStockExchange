@@ -62,7 +62,7 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
     /** Partitions update counters. */
     @GridToStringInclude
     @GridDirectTransient
-    private IgniteDhtPartitionCountersMap partCntrs;
+    private IgniteDhtPartitionCountersPrimitiveMap primPartCntrs;
 
     /** Serialized partitions counters. */
     private byte[] partCntrsBytes;
@@ -98,6 +98,9 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
     @GridDirectTransient
     private transient boolean compress;
 
+    /** */
+    private transient boolean compatibilityMode;
+
     /**
      * Required by {@link Externalizable}.
      */
@@ -109,14 +112,17 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
      * @param id Exchange ID.
      * @param lastVer Last version.
      * @param topVer Topology version. For messages not related to exchange may be {@link AffinityTopologyVersion#NONE}.
-     * @param partHistSuppliers
-     * @param partsToReload
+     * @param partHistSuppliers Partition history suppliers.
+     * @param partsToReload Partitions to reload.
      */
-    public GridDhtPartitionsFullMessage(@Nullable GridDhtPartitionExchangeId id,
+    public GridDhtPartitionsFullMessage(
+        @Nullable GridDhtPartitionExchangeId id,
         @Nullable GridCacheVersion lastVer,
         @NotNull AffinityTopologyVersion topVer,
         @Nullable IgniteDhtPartitionHistorySuppliersMap partHistSuppliers,
-        @Nullable IgniteDhtPartitionsToReloadMap partsToReload) {
+        @Nullable IgniteDhtPartitionsToReloadMap partsToReload,
+        boolean compatibilityMode
+    ) {
         super(id, lastVer);
 
         assert id == null || topVer.equals(id.topologyVersion());
@@ -124,6 +130,7 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
         this.topVer = topVer;
         this.partHistSuppliers = partHistSuppliers;
         this.partsToReload = partsToReload;
+        this.compatibilityMode = compatibilityMode;
     }
 
     /** {@inheritDoc} */
@@ -187,10 +194,10 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
      * @param cntrMap Partition update counters.
      */
     public void addPartitionUpdateCounters(int grpId, CachePartitionFullCountersMap cntrMap) {
-        if (partCntrs == null)
-            partCntrs = new IgniteDhtPartitionCountersMap();
+        if (primPartCntrs == null)
+            primPartCntrs = new IgniteDhtPartitionCountersPrimitiveMap();
 
-        partCntrs.putIfAbsent(grpId, cntrMap);
+        primPartCntrs.putIfAbsent(grpId, cntrMap);
     }
 
     /**
@@ -198,7 +205,7 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
      * @return Partition update counters.
      */
     public CachePartitionFullCountersMap partitionUpdateCounters(int grpId) {
-        return partCntrs == null ? null : partCntrs.get(grpId);
+        return primPartCntrs == null ? null : primPartCntrs.get(grpId);
     }
 
     /**
@@ -237,7 +244,7 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
         super.prepareMarshal(ctx);
 
         boolean marshal = (parts != null && partsBytes == null) ||
-            (partCntrs != null && partCntrsBytes == null) ||
+            (primPartCntrs != null && partCntrsBytes == null) ||
             (partHistSuppliers != null && partHistSuppliersBytes == null) ||
             (partsToReload != null && partsToReloadBytes == null) ||
             (errs != null && errsBytes == null);
@@ -252,8 +259,8 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
             if (parts != null && partsBytes == null)
                 partsBytes0 = U.marshal(ctx, parts);
 
-            if (partCntrs != null && partCntrsBytes == null)
-                partCntrsBytes0 = U.marshal(ctx, partCntrs);
+            if (primPartCntrs != null && partCntrsBytes == null)
+                partCntrsBytes0 = U.marshal(ctx, compatibilityMode ? convertToOld(primPartCntrs) : primPartCntrs);
 
             if (partHistSuppliers != null && partHistSuppliersBytes == null)
                 partHistSuppliersBytes0 = U.marshal(ctx, partHistSuppliers);
@@ -350,11 +357,13 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
         if (parts == null)
             parts = new HashMap<>();
 
-        if (partCntrsBytes != null && partCntrs == null) {
+        if (partCntrsBytes != null && primPartCntrs == null) {
             if (compressed())
-                partCntrs = U.unmarshalZip(ctx.marshaller(), partCntrsBytes, U.resolveClassLoader(ldr, ctx.gridConfig()));
+                primPartCntrs = convertToNew(
+                    U.unmarshalZip(ctx.marshaller(), partCntrsBytes, U.resolveClassLoader(ldr, ctx.gridConfig())));
             else
-                partCntrs = U.unmarshal(ctx, partCntrsBytes, U.resolveClassLoader(ldr, ctx.gridConfig()));
+                primPartCntrs = convertToNew(
+                    U.unmarshal(ctx, partCntrsBytes, U.resolveClassLoader(ldr, ctx.gridConfig())));
         }
 
         if (partHistSuppliersBytes != null && partHistSuppliers == null) {
@@ -371,8 +380,8 @@ public class GridDhtPartitionsFullMessage extends GridDhtPartitionsAbstractMessa
                 partsToReload = U.unmarshal(ctx, partsToReloadBytes, U.resolveClassLoader(ldr, ctx.gridConfig()));
         }
 
-        if (partCntrs == null)
-            partCntrs = new IgniteDhtPartitionCountersMap();
+        if (primPartCntrs == null)
+            primPartCntrs = new IgniteDhtPartitionCountersPrimitiveMap();
 
         if (errsBytes != null && errs == null) {
             if (compressed())
