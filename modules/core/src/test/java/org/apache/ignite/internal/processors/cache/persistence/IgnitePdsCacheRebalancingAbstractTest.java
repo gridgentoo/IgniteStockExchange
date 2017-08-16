@@ -459,32 +459,35 @@ public abstract class IgnitePdsCacheRebalancingAbstractTest extends GridCommonAb
             }
         }, 1, "load-runner");
 
-        for (int i = 0; i < topChanges; i++) {
-            if (U.currentTimeMillis() > timeOut)
-                break;
+        try {
+            for (int i = 0; i < topChanges; i++) {
+                if (U.currentTimeMillis() > timeOut)
+                    break;
 
-            U.sleep(3_000);
+                U.sleep(3_000);
 
-            boolean add;
+                boolean add;
 
-            if (nodesCnt.get() <= maxNodesCount / 2)
-                add = true;
-            else if (nodesCnt.get() > maxNodesCount)
-                add = false;
-            else // More chance that node will be added
-                add = ThreadLocalRandom.current().nextInt(3) <= 1;
+                if (nodesCnt.get() <= maxNodesCount / 2)
+                    add = true;
+                else if (nodesCnt.get() > maxNodesCount)
+                    add = false;
+                else // More chance that node will be added
+                    add = ThreadLocalRandom.current().nextInt(3) <= 1;
 
-            if (add)
-                startGrid(nodesCnt.incrementAndGet());
-            else
-                stopGrid(nodesCnt.getAndDecrement());
+                if (add)
+                    startGrid(nodesCnt.incrementAndGet());
+                else
+                    stopGrid(nodesCnt.getAndDecrement());
 
-            awaitPartitionMapExchange();
+                awaitPartitionMapExchange();
 
-            cache.rebalance().get();
+                cache.rebalance().get();
+            }
         }
-
-        stop.set(true);
+        finally {
+            stop.set(true);
+        }
 
         fut.get();
 
