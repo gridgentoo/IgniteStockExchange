@@ -2279,6 +2279,7 @@ public class IgniteKernal implements IgniteEx, IgniteMXBean, Externalizable {
                         ">>> " + ack + NL +
                         ">>> " + dash + NL +
                         (igniteInstanceName == null ? "" : ">>> Ignite instance name: " + igniteInstanceName + NL) +
+                        ">>> Ignite node ID: " + getLocalNodeId() + NL +
                         ">>> Grid uptime: " + X.timeSpan2HMSM(U.currentTimeMillis() - startTime) +
                         NL +
                         NL);
