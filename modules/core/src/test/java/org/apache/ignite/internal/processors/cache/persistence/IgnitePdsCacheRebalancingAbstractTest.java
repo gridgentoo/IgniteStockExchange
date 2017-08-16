@@ -63,7 +63,7 @@ public abstract class IgnitePdsCacheRebalancingAbstractTest extends GridCommonAb
     private static final TcpDiscoveryIpFinder IP_FINDER = new TcpDiscoveryVmIpFinder(true);
 
     /** Cache name. */
-    private final String cacheName = "cache";
+    private static final String cacheName = "cache";
 
     /** */
     protected boolean explicitTx;
