@@ -24,7 +24,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.AsynchronousCloseException;
 import java.nio.file.Files;
 import java.sql.Time;
 import java.util.Arrays;
@@ -70,7 +69,6 @@ import org.apache.ignite.internal.processors.timeout.GridTimeoutProcessor;
 import org.apache.ignite.internal.util.GridUnsafe;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.G;
-import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.A;
 import org.apache.ignite.internal.util.typedef.internal.SB;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -1673,9 +1671,6 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
          */
         private final Condition nextSegment = lock.newCondition();
 
-        /** */
-        private volatile Exception closeStack;
-
         /**
          * @param fileIO I/O file interface to use
          * @param idx Absolute WAL segment file index for easy access.
@@ -2038,10 +2033,6 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
                         fileIO.force();
                     }
                     catch (IOException e) {
-                        if (X.hasCause(e, AsynchronousCloseException.class)) {
-                            log.error("Was concurrently closed: ", closeStack);
-                        }
-
                         throw new StorageException(e);
                     }
 
@@ -2073,9 +2064,7 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
                 try {
                     flushOrWait(null, true);
 
-                    WALRecord hd = head.get();
-
-                    assert stopped() : "Segment is not closed after close flush: " + hd;
+                    assert stopped() : "Segment is not closed after close flush: " + head.get();
 
                     try {
                         int switchSegmentRecSize = RecordV1Serializer.REC_TYPE_SIZE + RecordV1Serializer.FILE_WAL_POINTER_SIZE;
@@ -2107,8 +2096,6 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
 
                             lastFsyncPos = written;
                         }
-
-                        closeStack = new Exception("written=" + written + ", head=" + hd);
 
                         fileIO.close();
                     }
@@ -2241,10 +2228,6 @@ public class FileWriteAheadLogManager extends GridCacheSharedManagerAdapter impl
                     assert written == fileIO.position();
                 }
                 catch (IOException e) {
-                    if (X.hasCause(e, AsynchronousCloseException.class)) {
-                        log.error("Was concurrently closed: ", closeStack);
-                    }
-
                     invalidateEnvironmentLocked(e);
 
                     throw new StorageException(e);
