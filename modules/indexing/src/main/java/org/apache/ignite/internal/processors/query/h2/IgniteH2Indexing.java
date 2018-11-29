@@ -1412,53 +1412,30 @@ public class IgniteH2Indexing implements GridQueryIndexing {
     /**
      * @param schemaName Schema name.
      * @param qry Query.
-     * @param keepCacheObj Flag to keep cache object.
-     * @param enforceJoinOrder Enforce join order of tables.
-     * @param startTx Start transaction flag.
-     * @param qryTimeout Query timeout.
-     * @param cancel Cancel object.
      * @param params Query parameters.
      * @param parts Partitions.
+     * @param qryTimeout Query timeout.
+     * @param tracker Query tracker.
+     * @param cancel Cancel object.
+     * @param keepCacheObj Flag to keep cache object.
+     * @param enforceJoinOrder Enforce join order of tables.
      * @param lazy Lazy query execution flag.
-     * @param mvccTracker Query tracker.
      * @return Iterable result.
      */
     private Iterable<List<?>> runQueryTwoStep(
-        final String schemaName,
-        final GridCacheTwoStepQuery qry,
-        final boolean keepCacheObj,
-        final boolean enforceJoinOrder,
-        boolean startTx,
-        final int qryTimeout,
-        final GridQueryCancel cancel,
-        final Object[] params,
-        final int[] parts,
-        final boolean lazy,
-        MvccQueryTracker mvccTracker) {
-        assert !qry.mvccEnabled() || !F.isEmpty(qry.cacheIds());
+        final String schemaName, final GridCacheTwoStepQuery qry, final Object[] params, final int[] parts,
+        final int qryTimeout, MvccQueryTracker tracker, final GridQueryCancel cancel, final boolean keepCacheObj,
+        final boolean enforceJoinOrder, final boolean lazy) {
 
-        try {
-            final MvccQueryTracker tracker = mvccTracker == null && qry.mvccEnabled() ?
-                MvccUtils.mvccTracker(ctx.cache().context().cacheContext(qry.cacheIds().get(0)), startTx) : mvccTracker;
+        int opTimeout = operationTimeout(qryTimeout, tx(ctx));
 
-            GridNearTxLocal tx = tx(ctx);
-
-            if (qry.forUpdate())
-                qry.forUpdate(checkActive(tx) != null);
-
-            int opTimeout = operationTimeout(qryTimeout, tx);
-
-            return new Iterable<List<?>>() {
-                @SuppressWarnings("NullableProblems")
-                @Override public Iterator<List<?>> iterator() {
-                    return rdcQryExec.query(schemaName, qry, keepCacheObj, enforceJoinOrder, opTimeout,
-                        cancel, params, parts, lazy, tracker);
-                }
-            };
-        }
-        catch (IgniteCheckedException e) {
-            throw new CacheException(e);
-        }
+        return new Iterable<List<?>>() {
+            @SuppressWarnings("NullableProblems")
+            @Override public Iterator<List<?>> iterator() {
+                return rdcQryExec.query(schemaName, qry, keepCacheObj, enforceJoinOrder, opTimeout,
+                    cancel, params, parts, lazy, tracker);
+            }
+        };
     }
 
     /**
@@ -1802,6 +1779,20 @@ public class IgniteH2Indexing implements GridQueryIndexing {
         }
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /** {@inheritDoc} */
     @SuppressWarnings({"StringEquality", "unchecked"})
     @Override public List<FieldsQueryCursor<List<?>>> querySqlFields(String schemaName, SqlFieldsQuery qry,
@@ -1821,7 +1812,6 @@ public class IgniteH2Indexing implements GridQueryIndexing {
 
             if (nativeCmd != null)
                 return queryDistributedSqlFieldsNative(qry, nativeCmd, cliCtx);
-
             List<FieldsQueryCursor<List<?>>> res;
 
             {
@@ -1839,10 +1829,11 @@ public class IgniteH2Indexing implements GridQueryIndexing {
                     List<GridQueryFieldMetadata> meta = cachedQry.meta();
 
                     res = Collections.singletonList(doRunDistributedQuery(schemaName, qry, twoStepQry, meta, keepBinary,
-                        startTx, tracker, cancel));
+                        startTx, tracker(tracker, twoStepQry, startTx), cancel));
 
-                    if (!twoStepQry.explain())
-                        twoStepCache.putIfAbsent(cachedQryKey, new H2TwoStepCachedQuery(meta, twoStepQry.copy()));
+                    // It's possible the query was evicted from the cache
+                    // while executing, let's return it into the cache.
+                    twoStepCache.putIfAbsent(cachedQryKey, new H2TwoStepCachedQuery(meta, cachedQry.query()));
 
                     return res;
                 }
@@ -1880,27 +1871,26 @@ public class IgniteH2Indexing implements GridQueryIndexing {
                 // Let's avoid second reflection getter call by returning Prepared object too
                 Prepared prepared = parseRes.prepared();
 
+                H2TwoStepCachedQueryKey queryKey = parseRes.twoStepQueryKey();
                 GridCacheTwoStepQuery twoStepQry = parseRes.twoStepQuery();
-
                 List<GridQueryFieldMetadata> meta = parseRes.meta();
 
                 SqlFieldsQuery newQry = parseRes.newQuery();
-
                 remainingSql = parseRes.remainingSql();
 
                 if (remainingSql != null && failOnMultipleStmts)
                     throw new IgniteSQLException("Multiple statements queries are not supported");
 
+                assert twoStepQry == null || queryKey != null && meta != null;
+
+                // We cannot cache two-step query for multiple statements query except the last statement
+                if (twoStepQry != null && !twoStepQry.explain() && remainingSql == null)
+                    twoStepCache.putIfAbsent(queryKey, new H2TwoStepCachedQuery(meta, twoStepQry.copy()));
+
                 firstArg += prepared.getParameters().size();
 
                 res.addAll(doRunPrepared(schemaName, prepared, newQry, twoStepQry, meta, keepBinary, startTx, tracker,
                     cancel));
-
-                // We cannot cache two-step query for multiple statements query except the last statement
-                if (parseRes.twoStepQuery() != null && parseRes.twoStepQueryKey() != null &&
-                    !parseRes.twoStepQuery().explain() && remainingSql == null)
-                    twoStepCache.putIfAbsent(parseRes.twoStepQueryKey(), new H2TwoStepCachedQuery(meta,
-                        twoStepQry.copy()));
             }
 
             return res;
@@ -1916,6 +1906,24 @@ public class IgniteH2Indexing implements GridQueryIndexing {
             }
 
             throw e;
+        }
+    }
+
+    @Nullable private MvccQueryTracker tracker(MvccQueryTracker tracker, GridCacheTwoStepQuery qry, boolean startTx) {
+        if (tracker != null || !qry.mvccEnabled())
+            return tracker;
+
+        List<Integer> cacheIds = qry.cacheIds();
+
+        assert !F.isEmpty(cacheIds);
+
+        GridCacheContext<Object, Object> cctx = ctx.cache().context().cacheContext(cacheIds.get(0));
+
+        try {
+            return MvccUtils.mvccTracker(cctx, startTx);
+        }
+        catch (IgniteCheckedException e) {
+            throw new IgniteSQLException(e.getMessage(), IgniteQueryErrorCode.UNKNOWN, e);
         }
     }
 
@@ -2320,8 +2328,8 @@ public class IgniteH2Indexing implements GridQueryIndexing {
         }
 
         QueryCursorImpl<List<?>> cursor = new QueryCursorImpl<>(
-            runQueryTwoStep(schemaName, twoStepQry, keepBinary, qry.isEnforceJoinOrder(), startTx, qry.getTimeout(),
-                cancel, qry.getArgs(), partitions, qry.isLazy(), mvccTracker), cancel);
+            runQueryTwoStep(schemaName, twoStepQry, qry.getArgs(), partitions, qry.getTimeout(), mvccTracker, cancel, keepBinary, qry.isEnforceJoinOrder(),
+                qry.isLazy()), cancel);
 
         cursor.fieldsMeta(meta);
 
