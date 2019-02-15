@@ -1,9 +1,6 @@
 # Написания InMemory Биржи с использованием Apache Ignite 
 https://www.youtube.com/watch?v=YhUriXUVUZI&list=PLrTrFnOkIFb3jAMokotG2cyh3W7eWz_xR&index=17
 
-<a href="https://ci.ignite.apache.org/viewType.html?buildTypeId=IgniteTests24Java8_RunAll&branch_IgniteTests24Java8=%3Cdefault%3E"><img src="https://ci.ignite.apache.org/app/rest/builds/buildType:(id:IgniteTests24Java8_RunAll)/statusIcon.svg"/></a>
-
-
 ## Getting Started
 
 For information on how to get started with Apache Ignite, please visit: [Getting Started][getting-started].
