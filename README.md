@@ -1,7 +1,7 @@
 ## Написания InMemory Биржи с использованием Apache Ignite 
 https://www.youtube.com/watch?v=YhUriXUVUZI&list=PLrTrFnOkIFb3jAMokotG2cyh3W7eWz_xR&index=17
 
-## Getting Started
+### Getting Started
 
 For information on how to get started with Apache Ignite, please visit: [Getting Started][getting-started].
 
