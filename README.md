@@ -3,6 +3,12 @@ https://www.youtube.com/watch?v=YhUriXUVUZI&list=PLrTrFnOkIFb3jAMokotG2cyh3W7eWz
 
 ### Getting Started
 
+In-Memory Computing Essentials for Architects and Developers Part 1  
+https://www.youtube.com/watch?v=G22L2KW9gEQ  
+
+In-Memory Computing Essentials for Architects and Developers: Part 2  
+https://www.youtube.com/watch?v=m4RCzR9OIlA  
+
 For information on how to get started with Apache Ignite, please visit: [Getting Started][getting-started].
 
 ## Full Documentation
