@@ -1,6 +1,9 @@
 ## Написания InMemory Биржи с использованием Apache Ignite 
 https://www.youtube.com/watch?v=YhUriXUVUZI&list=PLrTrFnOkIFb3jAMokotG2cyh3W7eWz_xR&index=17
 
+## Архитектура Apache Ignite & Spark (Ignite API) & (Spark API) (Kafka API) (HDFS API)  
+https://www.youtube.com/playlist?list=PLrTrFnOkIFb3jAMokotG2cyh3W7eWz_xR  
+
 ### Getting Started
 
 In-Memory Computing Essentials for Architects and Developers Part 1  
